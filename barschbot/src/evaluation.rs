@@ -1,7 +1,7 @@
 use core::panic;
 use std::{collections::HashMap, ops::Deref};
 
-use crate::{game::{Game, GameState}, colored_piece_type::ColoredPieceType, piece_type::PieceType, bitboard_helper, endgame_table::EndgameTable, square::{self, Square}, zoberist_hash, bb_settings::EvalFactors, bit_board::BitBoard, constants};
+use crate::{game::{Game, GameState}, colored_piece_type::ColoredPieceType, piece_type::PieceType, bitboard_helper, endgame_table::EndgameTable, square::{self, Square}, zoberist_hash, bb_settings::{EvalFactorsFloat, EvalFactorsInt}, bit_board::BitBoard, constants};
 
 pub const CHECKMATE_VALUE: f32 = f32::MAX;
 //                              Pawn, Knight, Bishop, Rook, Queen, King
@@ -112,7 +112,17 @@ impl EvalAttributes {
     }
 }
 
-pub fn static_eval(game: &mut Game, factors: &EvalFactors, do_print: bool) -> (f32, GameState) {
+pub fn static_eval_int(board: &BitBoard, factors: &EvalFactorsInt) -> i32 {
+    let attributes = generate_eval_attributes(&board);
+
+    let sum = factors.evaluate(&attributes);
+
+    
+    return sum * if board.is_whites_turn() { 1 } else { -1 };
+}
+
+
+pub fn static_eval_float(game: &mut Game, factors: &EvalFactorsFloat, do_print: bool) -> (f32, GameState) {
     let gs = game.get_game_state();
 
     //whites perspective

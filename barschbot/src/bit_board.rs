@@ -440,6 +440,10 @@ impl BitBoard {
         return bits.count_ones();
     }
 
+    pub fn is_only_pawns(&self) -> bool {
+        return (self.diagonal_sliders | self.orthogonal_sliders | self.knights) == 0;
+    }
+
     pub fn get_piece_bitboard(&self, colored_piece_type: ColoredPieceType) -> u64 {
         let color_mask = if colored_piece_type.is_white() { self.white_pieces } else { self.black_pieces };
 

@@ -1,5 +1,5 @@
 #![ allow(unused)]
-use bb_settings::{BBSettings, EvalFactors};
+use bb_settings::{BBSettings, EvalFactorsFloat};
 use bit_board::BitBoard;
 use chess_move::ChessMove;
 //use dataset::EvalBoards;
@@ -32,6 +32,7 @@ use crate::bitboard_helper::{RANK_MASKS, FILE_MASKS};
 use crate::colored_piece_type::ColoredPieceType;
 use crate::dataset::EvalBoards;
 use crate::endgame_table::EndgameTable;
+use crate::karpfen_bot::KarpfenBot;
 use crate::opening_book::OpeningBook;
 use crate::perceptron::Perceptron;
 use crate::square::Square;
@@ -63,12 +64,16 @@ mod opening_book;
 mod match_handler;
 mod auto_tuning;
 mod compact_hashmap;
+mod karpfen_bot;
+mod search_stats;
 
 use std::env;
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
 
-    let (table, book) = load_files();
+    //let (table, book) = load_files();
+
+    
 
     /* 
     let fens = load_fens("C:\\Users\\hmart\\Documents\\GitHub\\Chess-Challenge\\Rust\\data\\Fens.txt");
@@ -82,12 +87,10 @@ fn main() {
     auto_tuning::print_confidence(w, d, l);
     */
     
-    play_all_puzzles(&book, &table);
+    //play_all_puzzles(&book, &table);
 
 
-    match_handler::play_game_player(&mut Game::get_start_position(), 
-    true, 
-        &bb_settings::STANDARD_SETTINGS, &table, &book);
+    match_handler::player_vs_karpfen(&mut Game::get_start_position(), true, &mut KarpfenBot::new());
 
     println!("Done");
 }
@@ -95,7 +98,7 @@ fn main() {
 fn load_files() -> (EndgameTable, OpeningBook) {
     let table = EndgameTable::load(4);
 
-    let book = OpeningBook::load_from_file("C:\\Users\\hmart\\Documents\\GitHub\\Chess-Challenge\\Rust\\barschbot\\book.txt");
+    let book = OpeningBook::load_from_file("C:\\Users\\hmart\\Documents\\GitHub\\BarschBot\\data\\book.txt");
 
     return (table, book);
 }
@@ -137,8 +140,10 @@ fn load_lichess_puzzles() -> Vec<(String, Vec<ChessMove>)>{
 //Depth 4: 823 / 1000 (82.3%)
 //Depth 3: 783 / 1000 (78.3%)
 
-//Depth 2: 2579431 / 3678110 (70.12925%)
+//Depth 4: 3035616 / 3678110 (82.53195%)
 //Depth 3: 2835433 / 3678110 (77.0894%)
+//Depth 2: 2579431 / 3678110 (70.12925%)
+
 
 fn play_all_puzzles(book: &OpeningBook, table: &EndgameTable ) {
     let mut puzzles = load_lichess_puzzles();
@@ -171,7 +176,7 @@ fn play_all_puzzles(book: &OpeningBook, table: &EndgameTable ) {
                     //let ml = game.get_legal_moves();
                     //let bmove = ml[rng.gen_range(0..ml.len())];
     
-                    let bmove = barsch_bot::get_best_move(&mut game, table, &bb_settings::STANDARD_SETTINGS, book);
+                    let bmove = barsch_bot::get_best_move(&mut game, table, &bb_settings::STANDARD_BB_SETTINGS, book);
                     
                     //println!("Expected: {} Barsch: {}", moves[i].get_uci(), bmove.get_uci());
                     

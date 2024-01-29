@@ -1,4 +1,4 @@
-use crate::evaluation::{static_eval, generate_eval_attributes};
+use crate::evaluation::{static_eval_float, generate_eval_attributes};
 use crate::perceptron;
 use crate::{bit_board::BitBoard, barsch_bot, game::Game, perceptron::Perceptron};
 use std::cmp;

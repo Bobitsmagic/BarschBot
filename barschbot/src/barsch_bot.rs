@@ -125,7 +125,7 @@ pub fn iterative_deepening(game: &mut Game, table: &EndgameTable, bb_settings: &
     
     if PRINT {
         println!("Evaluating: {}", game.get_board().get_fen());
-        static_eval(game, &bb_settings.eval_factors, true);
+        static_eval_float(game, &bb_settings.eval_factors, true);
     }
 
     let mut start = Instant::now();
@@ -260,7 +260,7 @@ pub fn best_move_sorter(list: &mut ArrayVec<ChessMove, 200>, game: &mut Game, ma
             eval = -100.0;
         }
         else {
-            eval = static_eval(game, &settings.eval_factors, false).0;
+            eval = static_eval_float(game, &settings.eval_factors, false).0;
         }
 
         game.undo_move();        
@@ -299,7 +299,7 @@ pub fn alpha_beta_nega_max(game: &mut Game, mut alpha: f32, beta: f32, depth_lef
     }
 
     if game.get_game_state() != GameState::Undecided {
-        let pair = static_eval(game, &settings.eval_factors, false);
+        let pair = static_eval_float(game, &settings.eval_factors, false);
         return (chess_move::NULL_MOVE, pair.0, pair.1);
     }
     
@@ -384,7 +384,7 @@ pub fn alpha_beta_nega_max(game: &mut Game, mut alpha: f32, beta: f32, depth_lef
 
 pub fn quiescence(game: &mut Game, mut alpha: f32, beta: f32, depth_left: u8, table: &EndgameTable, map: &HashMap<u64, (u8, ChessMove, f32, GameState)>, settings: &BBSettings) -> (ChessMove, f32, GameState) {
     if game.get_game_state() != GameState::Undecided {
-        let pair = static_eval(game, &settings.eval_factors, false);
+        let pair = static_eval_float(game, &settings.eval_factors, false);
         return (chess_move::NULL_MOVE, pair.0, pair.1);
     }
     
@@ -399,7 +399,7 @@ pub fn quiescence(game: &mut Game, mut alpha: f32, beta: f32, depth_left: u8, ta
         return check_avoid_search(game, alpha, beta, depth_left, table, map, settings);
     }
     
-    let (stand_pat, sp_gs) = static_eval(game, &settings.eval_factors, false);
+    let (stand_pat, sp_gs) = static_eval_float(game, &settings.eval_factors, false);
 
     if stand_pat >= beta {
         return (NULL_MOVE, beta, GameState::Undecided);

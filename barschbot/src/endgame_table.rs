@@ -731,7 +731,7 @@ impl EndgameTable {
 
         let start = time::Instant::now();
 
-        let mut file = File::open("C:\\Users\\hmart\\Documents\\GitHub\\Chess-Challenge\\Rust\\barschbot\\sorted_table_base_".to_owned() + &max_piece_count.to_string().to_owned() + ".bin").unwrap();
+        let mut file = File::open("C:\\Users\\hmart\\Documents\\GitHub\\BarschBot\\data\\sorted_table_base_".to_owned() + &max_piece_count.to_string().to_owned() + ".bin").unwrap();
         // read the same file back into a Vec of bytes
         let mut buffer = Vec::<u8>::new();
         file.read_to_end(&mut buffer).unwrap();

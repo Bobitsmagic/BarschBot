@@ -9,9 +9,40 @@ pub struct BBSettings {
     pub null_move_pruning_margin: f32,
     pub null_move_pruning_depth: u8,
     pub max_extensions: u8,
-    pub eval_factors: EvalFactors,
+    pub eval_factors: EvalFactorsFloat,
     pub min_search_time: u64
 }
+
+pub const STANDARD_BB_SETTINGS: BBSettings = BBSettings { 
+    max_depth: 4, 
+    max_quiescence_depth: 3, 
+    max_extensions: 2, 
+    end_game_table: true, 
+    null_move_pruning: true,
+    null_move_pruning_margin: 0.3,
+    null_move_pruning_depth: 3, 
+    min_search_time: 0, 
+    eval_factors: STANDARD_EVAL_FACTORS };
+
+pub struct KBSettings {
+    pub max_depth: i8,
+    pub max_quiescence_depth: u8,
+    pub end_game_table: bool,
+    pub null_move_pruning: bool,
+    pub max_extensions: u8,
+    pub eval_factors: EvalFactorsInt,
+    pub min_search_time: u64
+}
+
+pub const STANDARD_KB_SETTINGS: KBSettings = KBSettings { 
+    max_depth: 7, 
+    max_quiescence_depth: 3, 
+    max_extensions: 2, 
+    end_game_table: true, 
+    null_move_pruning: true, 
+    min_search_time: 0, 
+    eval_factors: STANDARD_EVAL_FACTORS_INT };
+
 
 #[derive(Debug, Copy, Clone)]
 pub enum FactorName {
@@ -56,23 +87,14 @@ pub const ALL_NAMES: [FactorName; 33] = [
     FactorName::UnsafeCheck,
 ];
 
-pub const STANDARD_SETTINGS: BBSettings = BBSettings { 
-    max_depth: 4, 
-    max_quiescence_depth: 3, 
-    max_extensions: 2, 
-    end_game_table: true, 
-    null_move_pruning: true,
-    null_move_pruning_margin: 0.3,
-    null_move_pruning_depth: 3, 
-    min_search_time: 0, 
-    eval_factors: STANDARD_EVAL_FACTORS };
+
 
 #[derive(Clone)]
-pub struct EvalFactors {
+pub struct EvalFactorsFloat {
     values: [f32; 33],
 }
 
-pub const STANDARD_EVAL_FACTORS: EvalFactors = EvalFactors {
+pub const STANDARD_EVAL_FACTORS: EvalFactorsFloat = EvalFactorsFloat {
     values: [
         //Piece value
         1.0, 2.8, 3.2, 5.0, 11.0,
@@ -109,150 +131,8 @@ pub const STANDARD_EVAL_FACTORS: EvalFactors = EvalFactors {
     ]
 };
 
-pub const AUTO_TUNED_VALUES: EvalFactors = EvalFactors {
-    values: [
-        //PieceValueP
-        0.9810926,
-        //PieceValueN
-        2.594,
-        //PieceValueB
-        3.3177702,
-        //PieceValueR
-        5.34578,
-        //PieceValueQ
-        10.850797,
-        //SafeMobilityP
-        0.009179999,
-        //SafeMobilityN
-        0.0743492,
-        //SafeMobilityB
-        0.07696921,
-        //SafeMobilityR
-        0.04579276,
-        //SafeMobilityQ
-        0.0055,
-        //SafeMobilityK
-        0.055476826,
-        //UnsafeMobilityP
-        -0.057623997,
-        //UnsafeMobilityN
-        0.0706456,
-        //UnsafeMobilityB
-        -0.01832443,
-        //UnsafeMobilityR
-        0.054166567,
-        //UnsafeMobilityQ
-        -0.06561,
-        //UnsafeMobilityK
-        -0.07732016,
-        //LateFactorRange
-        0.01,
-        //SquareControl
-        0.013546616,
-        //PawnRank2
-        -0.059148,
-        //PawnRank3
-        0.045,
-        //PawnRank4
-        0.069299996,
-        //PawnRank5
-        0.11,
-        //PawnRank6
-        0.1815,
-        //PawnRank7
-        0.73205006,
-        //PassedPawn
-        0.237864,
-        //DoubledPawn
-        -0.102789,
-        //IsolatedPawn
-        -0.15300001,
-        //KnightOutpost
-        0.062,
-        //KingExposed
-        -0.00713592,
-        //KingControl
-        -0.1338444,
-        //SafeCheck
-        0.2634326,
-        //UnsafeCheck
-        0.07736905,
-    ]
-};
-
-pub const SF_TUNED_VALUES: EvalFactors = EvalFactors {
-    values: [
-        //PieceValueP
-        0.9810926,
-        //PieceValueN
-        2.594,
-        //PieceValueB
-        3.3177702,
-        //PieceValueR
-        5.34578,
-        //PieceValueQ
-        10.850797,
-        //SafeMobilityP
-        0.008721,
-        //SafeMobilityN
-        0.0743492,
-        //SafeMobilityB
-        0.07696921,
-        //SafeMobilityR
-        0.048082396,
-        //SafeMobilityQ
-        0.0055,
-        //SafeMobilityK
-        0.055476826,
-        //UnsafeMobilityP
-        0.0547428,
-        //UnsafeMobilityN
-        0.0706456,
-        //UnsafeMobilityB
-        0.01832443,
-        //UnsafeMobilityR
-        0.054166567,
-        //UnsafeMobilityQ
-        0.06561,
-        //UnsafeMobilityK
-        0.07732016,
-        //LateFactorRange
-        0.01,
-        //SquareControl
-        0.013546616,
-        //PawnRank2
-        -0.059148,
-        //PawnRank3
-        0.045,
-        //PawnRank4
-        0.069299996,
-        //PawnRank5
-        0.11,
-        //PawnRank6
-        0.1815,
-        //PawnRank7
-        0.73205006,
-        //PassedPawn
-        0.237864,
-        //DoubledPawn
-        -0.102789,
-        //IsolatedPawn
-        -0.15300001,
-        //KnightOutpost
-        0.062,
-        //KingExposed
-        -0.00713592,
-        //KingControl
-        -0.1338444,
-        //SafeCheck
-        0.2634326,
-        //UnsafeCheck
-        0.07736905,
-    ]
-};
-
 pub const MAX_MATERIAL_SUM: i32 = 3 * 8 + 5 * 4 + 9 * 2;
-impl EvalFactors {
+impl EvalFactorsFloat {
     pub fn evaluate(&self, attributes: &EvalAttributes) -> f32 {
         let values = self.values;
         
@@ -309,5 +189,95 @@ impl EvalFactors {
         for f in ALL_NAMES {
             println!("\t{:?} -> {}", f, self.get_value(f));
         }
+    }
+}
+
+pub struct EvalFactorsInt {
+    values: [i32; 33],
+}
+
+pub const STANDARD_EVAL_FACTORS_INT: EvalFactorsInt = EvalFactorsInt {
+    values: [
+        //Piece value
+        1000, 2800, 3200, 5000, 11000,
+        //Safe mobility
+        10, 61, 70, 53, 5, 106,
+        //Unsafe Mobility
+        -10, -60, -20, -30, -90, -70,
+
+        //Late factor range
+        1,
+        //Square control
+        106,
+
+        //Pawn push bonus
+        -62, 50, 77, 100, 150, 500,
+        //Passed pawn value
+        204,
+        //Doubled pawn penalty
+        -150,
+        //Isolated pawn penalty
+        -150,
+
+        //Knight outpost value
+        62,
+        
+        //King exposed penalty
+        -66,
+        //King control penalty
+        -162,
+        //Safe check value
+        200,
+        //Unsafe check value
+        86,
+    ]
+};
+
+impl EvalFactorsInt {
+    pub fn evaluate(&self, attributes: &EvalAttributes) -> i32 {
+        let values = self.values;
+        
+        let mut sum = 0;
+        const START_MAT_SUM: i32 = MAX_MATERIAL_SUM;
+
+        for i in 0..5 {
+            sum += self.get_array(FactorName::PieceValueP, i) * attributes.piece_dif[i];
+        }
+
+        sum += self.get_value(FactorName::SquareControl) * attributes.sq_control_dif;
+
+        for i in 0..6 {
+            sum += self.get_array(FactorName::SafeMobilityP, i) * attributes.safe_mobility_dif[i];
+            sum += self.get_array(FactorName::UnsafeMobilityP, i) * attributes.unsafe_mobility_dif[i];
+        }
+
+        for i in 0..6 {
+            sum += self.get_array(FactorName::PawnRank2, i) * attributes.pawn_push_dif[i];
+        }
+
+        sum += self.get_value(FactorName::PassedPawn) * attributes.passed_pawn_dif;
+        sum += self.get_value(FactorName::DoubledPawn) * attributes.doubled_pawn_dif;
+        sum += self.get_value(FactorName::IsolatedPawn) * attributes.isolated_pawn_dif;
+        
+        sum += self.get_value(FactorName::KnightOutpost) * attributes.knight_outpost_dif;
+
+        sum += self.get_value(FactorName::KingExposed) * attributes.king_qn_moves_dif;
+        sum += self.get_value(FactorName::KingControl) * attributes.king_control_dif;
+        sum += self.get_value(FactorName::SafeCheck) * attributes.safe_check_dif;
+        sum += self.get_value(FactorName::UnsafeCheck) * attributes.unsafe_check_dif;
+
+        return sum;
+    }
+
+    pub fn get_value(&self, index: FactorName) -> i32 {
+        return self.values[index as usize];
+    }
+
+    pub fn set_value(&mut self, index: FactorName, value: i32) {
+        self.values[index as usize] = value;
+    }
+
+    pub fn get_array(&self ,index: FactorName, offset: usize) -> i32 {
+        return self.values[index as usize + offset];
     }
 }

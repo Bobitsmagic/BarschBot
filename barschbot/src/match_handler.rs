@@ -1,6 +1,6 @@
 use std::{process::{Child, Stdio, Command}, io::{BufWriter, BufReader, Write, BufRead, self}, time::{Duration, Instant}};
 
-use crate::{visualizer::Visualizer, square::{Square, self}, game::{Game, GameState}, chess_move::{ChessMove, self}, endgame_table::EndgameTable, opening_book::OpeningBook, bb_settings::BBSettings, barsch_bot};
+use crate::{barsch_bot, bb_settings::BBSettings, chess_move::{ChessMove, self}, endgame_table::EndgameTable, game::{Game, GameState}, karpfen_bot::{self, KarpfenBot}, opening_book::OpeningBook, square::{Square, self}, visualizer::Visualizer};
 
 
 pub fn get_human_move(app: &mut Visualizer, game: &mut Game) -> ChessMove {
@@ -94,10 +94,14 @@ fn get_barschbot_move(game: &mut Game, table: &EndgameTable, settings: &BBSettin
     return barsch_bot::get_best_move(game, table, settings, book);
 }
 
-pub fn play_game_player(game: &mut Game, mut human_turn: bool, settings: &BBSettings, table: &EndgameTable, book: &OpeningBook) { 
+fn get_karpfenbot_move(game: &mut Game, bot: &mut KarpfenBot) -> ChessMove {
+    return bot.get_best_move(game);
+}
+
+pub fn player_vs_barsch(game: &mut Game, mut human_turn: bool, settings: &BBSettings, table: &EndgameTable, book: &OpeningBook) { 
     let mut app = Visualizer::new();
     let flip = false;
-
+    
     app.render_board(&game.get_board().type_field, chess_move::NULL_MOVE, flip);    
     
     while game.get_game_state() == GameState::Undecided {
@@ -111,6 +115,37 @@ pub fn play_game_player(game: &mut Game, mut human_turn: bool, settings: &BBSett
 
         if cm == chess_move::NULL_MOVE {
             cm = get_barschbot_move(game, table, settings, book);
+        }
+
+        human_turn = !human_turn;
+
+        game.make_move(cm);
+
+        app.render_board(&game.get_board().type_field, cm, flip);
+    }
+    
+    println!("Result: {}", game.get_game_state().to_string());
+    println!("{}", game.to_string());
+}
+
+
+pub fn player_vs_karpfen(game: &mut Game, mut human_turn: bool, bot: &mut KarpfenBot) { 
+    let mut app = Visualizer::new();
+    let flip = false;
+    
+    app.render_board(&game.get_board().type_field, chess_move::NULL_MOVE, flip);    
+    
+    while game.get_game_state() == GameState::Undecided {
+        
+        let mut cm = if human_turn {
+            get_human_move(&mut app, game)
+        }
+        else {
+            get_karpfenbot_move(game, bot)
+        };
+
+        if cm == chess_move::NULL_MOVE {
+            cm = get_karpfenbot_move(game, bot);
         }
 
         human_turn = !human_turn;
