@@ -12,7 +12,7 @@ pub enum Square {
 }
 
 
-const ARRAY: [Square; 65] = [
+pub const ARRAY: [Square; 65] = [
     Square::A1,
     Square::B1,
     Square::C1,
@@ -168,6 +168,10 @@ impl Square {
     pub fn from_u8(index: u8) -> Square {
         return ARRAY[index as usize];
     }
+    pub fn from_coords(x: u8, y: u8) -> Square {
+        return ARRAY[(y * 8 + x) as usize];
+    }
+
     pub fn rank(&self) -> u8 {
         return (*self) as u8 / 8;
     }

@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 arrayvec = "0.7.4"
 backtrace = "0.3.69"
+bitintr = "0.3.0"
 find_folder = "0.3.0"
 num = "0.4.1"
 num-bigint = "0.4.4"

@@ -208,28 +208,9 @@ impl KarpfenBot {
 
             let mut full_search = moves_evaluated == 0;
 
-            if !full_search {
-                let mut no_lmr = depth_left <= 2 || moves_evaluated <= 4 || !is_quiet;
 
-                if !no_lmr {
-                    let mut r = 2 + depth_left / 8 + moves_evaluated / 16 + if do_pruning { 1 } else { 0 } 
-                        - if self.quiet_move_history[m.start_square as usize][m.target_square as usize] > 0 { 1} else { 0 };
-
-                    local_score = -self.search(ply + 1, depth_left - r, -alpha - 1, -alpha, true, game);
-                    no_lmr = alpha < local_score;
-                }
-
-                if no_lmr {
-                    local_score = -self.search(ply + 1, depth_left - 1, -alpha - 1, -alpha, true, game);
-                    full_search = alpha < local_score && local_score < beta;
-                }
-            }
-
-            if full_search {
-                let r = 1;
-
-                local_score = -self.search(ply + 1, depth_left - r, -beta, -alpha, true, game);
-            }
+            local_score = -self.search(ply + 1, depth_left - 1, -beta, -alpha, true, game);
+         
 
             game.undo_move();
 
@@ -286,7 +267,11 @@ impl KarpfenBot {
         return best_score;
     }
 
-    pub fn quiescence_search(&mut self, ply: i8, depth_left: i8, mut alpha: i32, mut beta: i32, game: &mut Game) -> i32 {
+    pub fn in_check_search(&mut self, ply: i8, depth_left: i8, mut alpha: i32, game: &mut Game) {
+        
+    }
+
+    pub fn quiescence_search(&mut self, ply: i8, depth_left: i8, mut alpha: i32, beta: i32, game: &mut Game) -> i32 {
         let gs = game.get_game_state();
 
         if gs.is_draw() {

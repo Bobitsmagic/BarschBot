@@ -1536,6 +1536,42 @@ impl BitBoard {
         return list;
     }
 
+    
+    pub fn get_pseudo_legal_piece_attacks(&self, cpt: ColoredPieceType, square: Square) -> u64 {
+        let is_white = cpt.is_white();
+        let allied: u64 = if is_white { self.white_pieces } else { self.black_pieces };
+        let opponent: u64 = if is_white { self.black_pieces } else { self.white_pieces };
+
+        let pt = PieceType::from_cpt(cpt);
+
+        match pt {
+            PieceType::Pawn => panic!("Pawns are not supported"),
+            PieceType::Knight => {
+                return bitboard_helper::KNIGHT_ATTACKS[square as usize] & !allied;
+            },
+
+            PieceType::Bishop => {
+                return bitboard_helper::fill_diagonal(square, allied, opponent)
+            },
+
+            PieceType::Rook => {
+                return bitboard_helper::fill_orthogonal(square, allied, opponent)
+            },
+
+            PieceType::Queen => {
+                return bitboard_helper::fill_diagonal(square, allied, opponent) | 
+                    bitboard_helper::fill_orthogonal(square, allied, opponent);
+            },
+
+            PieceType::King => {
+                return bitboard_helper::KING_ATTACKS[square as usize] & !allied;
+            },
+
+            PieceType::None => panic!("None is not a valid piece type"),
+        }
+    }
+    
+
     pub fn get_diagonal_moves(&self, start_square: Square) -> ArrayVec<Square, 16>
     {
         //diagonal moves

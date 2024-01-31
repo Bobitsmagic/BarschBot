@@ -1,4 +1,6 @@
-use crate::square::Square;
+use core::panic;
+
+use crate::{constants::BISHOP, fill_arrays, square::Square};
 
 pub fn set_bit(bit_board: &mut u64, square: Square, value: bool) {
     debug_assert!(square != Square::None);
@@ -114,9 +116,7 @@ pub fn gen_queen_moves(mut square: u32, free: u64) -> u64 {
 }
 
 pub fn order_bits(value: u64, mask: u64) -> u64 {
-    unsafe {
-        return core::arch::x86_64::_pext_u64(value, mask);
-    }
+    return bitintr::Pext::pext(value, mask);
 }
 
 // https://www.chessprogramming.org/Kogge-Stone_Algorithm
@@ -148,91 +148,197 @@ pub const ORTHOGONAL_FILL_FUNCTIONS: [fn(u64, u64) -> u64; 4] = [
     fill_right,
 ];
 
-pub fn fill_up(mut gen: u64, mut pro: u64) -> u64 {
-    gen |= pro & (gen <<  8);
-    pro &=       (pro <<  8);
-    gen |= pro & (gen << 16);
-    pro &=       (pro << 16);
-    gen |= pro & (gen << 32);
+pub fn fill_up(mut gen: u64, mut free: u64) -> u64 {
+    gen |= free & (gen <<  8);
+    free &=       (free <<  8);
+    gen |= free & (gen << 16);
+    free &=       (free << 16);
+    gen |= free & (gen << 32);
 
     return gen;
 }
 
-pub fn fill_down(mut gen: u64, mut pro: u64) -> u64 {
-    gen |= pro & (gen >>  8);
-    pro &=       (pro >>  8);
-    gen |= pro & (gen >> 16);
-    pro &=       (pro >> 16);
-    gen |= pro & (gen >> 32);
+pub fn fill_down(mut gen: u64, mut free: u64) -> u64 {
+    gen |= free & (gen >>  8);
+    free &=       (free >>  8);
+    gen |= free & (gen >> 16);
+    free &=       (free >> 16);
+    gen |= free & (gen >> 32);
 
     return gen;
 }
 
 //Right moving
-pub fn fill_right(mut gen: u64, mut pro: u64) -> u64 {
-    pro &= RIGHT_MOVE_MASK[1];
-    gen |= pro & (gen << 1);
-    pro &=       (pro << 1);
-    gen |= pro & (gen << 2);
-    pro &=       (pro << 2);
-    gen |= pro & (gen << 4);
+pub fn fill_right(mut gen: u64, mut free: u64) -> u64 {
+    free &= RIGHT_MOVE_MASK[1];
+    gen |= free & (gen << 1);
+    free &=       (free << 1);
+    gen |= free & (gen << 2);
+    free &=       (free << 2);
+    gen |= free & (gen << 4);
 
     return gen;
 }
 
-pub fn fill_up_right(mut gen: u64, mut pro: u64) -> u64 {
-    pro &= RIGHT_MOVE_MASK[1];
-    gen |= pro & (gen <<  9);
-    pro &=       (pro <<  9);
-    gen |= pro & (gen << 18);
-    pro &=       (pro << 18);
-    gen |= pro & (gen << 36);
+pub fn fill_up_right(mut gen: u64, mut free: u64) -> u64 {
+    free &= RIGHT_MOVE_MASK[1];
+    gen |= free & (gen <<  9);
+    free &=       (free <<  9);
+    gen |= free & (gen << 18);
+    free &=       (free << 18);
+    gen |= free & (gen << 36);
 
     return gen;
 }
 
-pub fn fill_down_right(mut gen: u64, mut pro: u64) -> u64 {
-    pro &= RIGHT_MOVE_MASK[1];
-    gen |= pro & (gen >>  7);
-    pro &=       (pro >>  7);
-    gen |= pro & (gen >> 14);
-    pro &=       (pro >> 14);
-    gen |= pro & (gen >> 28);
+pub fn fill_down_right(mut gen: u64, mut free: u64) -> u64 {
+    free &= RIGHT_MOVE_MASK[1];
+    gen |= free & (gen >>  7);
+    free &=       (free >>  7);
+    gen |= free & (gen >> 14);
+    free &=       (free >> 14);
+    gen |= free & (gen >> 28);
     return gen;
 }
 
 //Left moving
-pub fn fill_left(mut gen: u64, mut pro: u64) -> u64 {
-    pro &= LEFT_MOVE_MASK[1];
-    gen |= pro & (gen >> 1);
-    pro &=       (pro >> 1);
-    gen |= pro & (gen >> 2);
-    pro &=       (pro >> 2);
-    gen |= pro & (gen >> 4);
+pub fn fill_left(mut gen: u64, mut free: u64) -> u64 {
+    free &= LEFT_MOVE_MASK[1];
+    gen |= free & (gen >> 1);
+    free &=       (free >> 1);
+    gen |= free & (gen >> 2);
+    free &=       (free >> 2);
+    gen |= free & (gen >> 4);
 
     return gen;
 }
 
-pub fn fill_up_left(mut gen: u64, mut pro: u64) -> u64 {
-    pro &= LEFT_MOVE_MASK[1];
-    gen |= pro & (gen <<  7);
-    pro &=       (pro <<  7);
-    gen |= pro & (gen << 14);
-    pro &=       (pro << 14);
-    gen |= pro & (gen << 28);
+pub fn fill_up_left(mut gen: u64, mut free: u64) -> u64 {
+    free &= LEFT_MOVE_MASK[1];
+    gen |= free & (gen <<  7);
+    free &=       (free <<  7);
+    gen |= free & (gen << 14);
+    free &=       (free << 14);
+    gen |= free & (gen << 28);
 
     return gen;
 }
 
-pub fn fill_down_left(mut gen: u64, mut pro: u64) -> u64 {
-    pro &= LEFT_MOVE_MASK[1];
-    gen |= pro & (gen >>  9);
-    pro &=       (pro >>  9);
-    gen |= pro & (gen >> 18);
-    pro &=       (pro >> 18);
-    gen |= pro & (gen >> 36);
+pub fn fill_down_left(mut gen: u64, mut free: u64) -> u64 {
+    free &= LEFT_MOVE_MASK[1];
+    gen |= free & (gen >>  9);
+    free &=       (free >>  9);
+    gen |= free & (gen >> 18);
+    free &=       (free >> 18);
+    gen |= free & (gen >> 36);
 
     return gen;
+}
+
+pub fn fill_diagonal(square: Square, allied: u64, opponent: u64) -> u64 {  
+    let mut gen = square.bit_board();
+    let mut next = gen;
+    let free = !(allied | opponent | !DIAGONAL_ATTACKS[square as usize]) | gen;
+
+    loop {
+        next =  (next |
+                (gen >> 7) | 
+                (gen >> 9) | 
+                (gen << 9) | 
+                (gen << 7)) & free;
+
+        if gen == next {
+            break;
+        }
+
+        gen = next;
+    }
+
+    return (gen | 
+        ((gen >> 7) | 
+        (gen >> 9) | 
+        (gen << 9) | 
+        (gen << 7)) & opponent) & !square.bit_board();
+}
+
+pub fn fill_orthogonal(square: Square, allied: u64, opponent: u64) -> u64 {
+    let mut gen = square.bit_board();
+    let mut next = gen;
+    let free = !(allied | opponent | !ORTHOGONAL_ATTACKS[square as usize]) | gen;
+
+    loop {
+        next =  (next |
+                (gen >> 1) & LEFT_MOVE_MASK[1] | 
+                (gen >> 8) | 
+                (gen << 1) & RIGHT_MOVE_MASK[1] | 
+                (gen << 8)) & free;
+
+        if gen == next {
+            break;
+        }
+
+        gen = next;
+    }
+
+    return (gen | 
+        ((gen >> 1) & LEFT_MOVE_MASK[1] | 
+        (gen >> 8) | 
+        (gen << 1) & RIGHT_MOVE_MASK[1] | 
+        (gen << 8)) & ORTHOGONAL_ATTACKS[square as usize] & opponent) & !square.bit_board();
+}
+
+pub fn fill_orthogonal_2(square: Square, allied: u64, opponent: u64) -> u64 {
+    return fill_arrays::ORTHOGONAL_FILL[square as usize][order_bits(allied | opponent,  fill_arrays::ORTHOGONAL_MASK[square as usize]) as usize] & !allied;
+}
+
+pub fn fill_orthogonal_3(square: Square, allied: u64, opponent: u64) -> u64 {
+    let gen = 1 << square as u8;
+    let mut next = 0;
+    let free = !(allied | opponent);
+
+    for f in ORTHOGONAL_FILL_FUNCTIONS {
+        next |= f(gen, free);
+    }
+
+    return (next | 
+        ((gen >> 1) & LEFT_MOVE_MASK[1] | 
+        (gen >> 8) | 
+        (gen << 1) & RIGHT_MOVE_MASK[1] | 
+        (gen << 8)) & ORTHOGONAL_ATTACKS[square as usize] & opponent) & !square.bit_board();
+}
+
+pub fn fill_orthogonal_4(square: Square, allied: u64, opponent: u64) -> u64 {
+    return (fill_arrays::VERTICAL_FILL[square as usize][order_bits(allied | opponent,  fill_arrays::VERTICAL_MASK[square as usize]) as usize] |  
+        fill_arrays::HORIZONTAL_FILL[square as usize][order_bits(allied | opponent,  fill_arrays::HORIZONTAL_MASK[square as usize]) as usize]) & !allied;
+}
+
+
+//1101 -> 101
+//10101 -> 111
+//41 -> 
+pub fn fill_diagonal_2(square: Square, allied: u64, opponent: u64) -> u64 {  
+    let gen = 1 << square as u8;
+    let mut next = 0;
+    let free = !(allied | opponent);
+
+    for f in DIAGONAL_FILL_FUNCTIONS {
+        next |= f(gen, free);
+    }
+
+    return (next | 
+        ((next >> 7) | 
+        (next >> 9) | 
+        (next << 9) | 
+        (next << 7)) & DIAGONAL_ATTACKS[square as usize] & opponent) & !gen;
+}
+
+pub fn all_pawn_attacks(pawns: u64, white: bool) -> u64 {
+    if white {
+        return (pawns << 7) & LEFT_MOVE_MASK[1] | (pawns << 9) & RIGHT_MOVE_MASK[1];
+    }
+    else {
+        return (pawns >> 9) & LEFT_MOVE_MASK[1] | (pawns >> 7) & RIGHT_MOVE_MASK[1];
+    }
 }
 
 //Captures
@@ -338,6 +444,8 @@ pub fn get_in_between(s1: Square, s2: Square) -> u64 {
     return IN_BETWEEN_SQUARES[s1 as usize + (s2 as usize * 64)];
 }
 
+
+
 const IN_BETWEEN_SQUARES: [u64; 64 * 64] = [
     0, 0, 2, 6, 14, 30, 62, 126, 0, 0, 0, 0, 0, 0, 0, 0, 256, 0, 512, 0, 0, 0, 0, 0, 65792, 0, 0, 262656, 0, 0, 0, 0, 16843008, 0, 0, 0, 134480384, 0, 0, 0, 4311810304, 0, 0, 0, 0, 68853957120, 0, 0, 1103823438080, 0, 0, 0, 0, 0, 35253226045952, 0, 282578800148736, 0, 0, 0, 0, 0, 0, 18049651735527936,
     0, 0, 0, 4, 12, 28, 60, 124, 0, 0, 0, 0, 0, 0, 0, 0, 0, 512, 0, 1024, 0, 0, 0, 0, 0, 131584, 0, 0, 525312, 0, 0, 0, 0, 33686016, 0, 0, 0, 268960768, 0, 0, 0, 8623620608, 0, 0, 0, 0, 137707914240, 0, 0, 2207646876160, 0, 0, 0, 0, 0, 70506452091904, 0, 565157600297472, 0, 0, 0, 0, 0, 0,
@@ -408,7 +516,7 @@ const IN_BETWEEN_SQUARES: [u64; 64 * 64] = [
 
 pub fn print_bitboard(value: u64) {
     if value == 0 {
-        println!("0");
+        println!("Empty");
         return;
     }
 

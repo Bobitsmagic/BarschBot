@@ -28,7 +28,7 @@ use num_bigint::BigInt;
 use num_traits::{Zero, One, ToPrimitive};
 
 use crate::bb_settings::FactorName;
-use crate::bitboard_helper::{RANK_MASKS, FILE_MASKS};
+use crate::bitboard_helper::{gen_bishop_moves, FILE_MASKS, ORTHOGONAL_FILL_FUNCTIONS, RANK_MASKS};
 use crate::colored_piece_type::ColoredPieceType;
 use crate::dataset::EvalBoards;
 use crate::endgame_table::EndgameTable;
@@ -66,14 +66,95 @@ mod auto_tuning;
 mod compact_hashmap;
 mod karpfen_bot;
 mod search_stats;
+mod benchmark;
+
+mod fill_arrays;
 
 use std::env;
 fn main() {
-    env::set_var("RUST_BACKTRACE", "1");
+    //env::set_var("RUST_BACKTRACE", "1");
 
     //let (table, book) = load_files();
 
+     /* 
+    let border = bitboard_helper::FILE_MASKS[0] | bitboard_helper::FILE_MASKS[7] | bitboard_helper::RANK_MASKS[0] | bitboard_helper::RANK_MASKS[7];
+    for x in 0..8_u8 {
+        for y in 0..8_u8 {
+            let sq = Square::from_coords(x, y);
+            let bb = sq.bit_board();
+
+            let res = (RANK_MASKS[y as usize] & !FILE_MASKS[0] & !FILE_MASKS[7]) & !bb;
+            //(FILE_MASKS[x as usize] & !RANK_MASKS[0] & !RANK_MASKS[7])
+
+            print!("{}, ", res);
+        }   
+    }
+    println!("]");
+     */
+
+     /* 
+    let mut kek = "[\n".to_owned();
+    for s in 0..64 {
+        let sq = Square::from_u8(s);
+        let bb = sq.bit_board();
+        
+        let mask = fill_arrays::VERTICAL_MASK[s as usize];
+        let count = mask.count_ones();
+        
+        let mut res = vec![0_u64; 1 << count];
+        
+        for bits in 0..(1_u64 << count) {
+            let mut value = 0_u64;
+            let mut i = 0;
+            for index in bitboard_helper::iterate_set_bits(mask) {
+                value |= ((bits >> i) & 1) << index;
+                
+                i += 1;
+            }
+            
+            assert!(i == count);
+            
+            //bitboard_helper::print_bitboard(value);
+            
+            res[bits as usize] = bitboard_helper::fill_orthogonal(sq, value, 0) & FILE_MASKS[sq.file() as usize];
+        }
+        
+        kek += "\t&[";
+        for r in res {
+            kek += &format!("{:#x}, ", r);
+        }
+
+        kek += "],\n";
+    }
+
+    fs::write("vertical_fill.txt", kek).expect("Unable to write file");
+    return;
+    */
     
+
+    /* 
+    let sq = Square::E4;
+    let bb = 235334534534545346_u64;
+
+    bitboard_helper::print_bitboard(bb);
+
+    let mask = bitboard_helper::ORTHOGONAL_MASK[sq as usize];
+
+    bitboard_helper::print_bitboard(mask);
+
+    let res = bb & mask;
+
+    bitboard_helper::print_bitboard(res);
+
+    let pext = bitboard_helper::order_bits(res, mask);
+
+    bitboard_helper::print_bitboard(pext);
+
+    return;
+    */
+
+    benchmark::benchmark();
+    return;
 
     /* 
     let fens = load_fens("C:\\Users\\hmart\\Documents\\GitHub\\Chess-Challenge\\Rust\\data\\Fens.txt");
