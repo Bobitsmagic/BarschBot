@@ -39,16 +39,14 @@ pub struct EvalAttributes2 {
 
     pub pawn_matrix: [i8; 2 * 2 * 2 * 6], //Passed, Doubled, Isolated, Rank
 
-    pub knight_outpost_dif: i8,
-
     //Number of moves a Queen and Knight could do at the king pos
     pub king_q_moves_dif: i8,
     //Number of attacked squares the king can move to
     pub king_control_dif: [i8; 6],
     //Value of being in check by a specific pt
-    pub king_capture_dif: [i8; 6],  //-2, -1, 0, 1, 2
-    pub safe_check_dif: [i8; 6],
-    pub unsafe_check_dif: [i8; 6],
+    pub king_capture_dif: [i8; 5],  //-2, -1, 0, 1, 2
+    pub safe_check_dif: [i8; 5],
+    pub unsafe_check_dif: [i8; 5],
 }
 
 impl EvalAttributes {
@@ -144,19 +142,17 @@ impl EvalAttributes2 {
 
             pawn_matrix: [0; 2 * 2 * 2 * 6],
 
-            knight_outpost_dif: 0,
-
             king_q_moves_dif: 0,
             king_control_dif: [0; 6],
-            king_capture_dif: [0; 6],
-            safe_check_dif: [0; 6],
-            unsafe_check_dif: [0; 6],
+            king_capture_dif: [0; 5],
+            safe_check_dif: [0; 5],
+            unsafe_check_dif: [0; 5],
         }
     }
 }
 
 pub fn static_eval_int(board: &BitBoard, factors: &EvalFactorsInt) -> i32 {
-    let attributes = generate_eval_attributes(&board);
+    let attributes = generate_eval_attributes_fast(&board);
 
     let sum = factors.evaluate(&attributes);
 
@@ -434,7 +430,7 @@ pub fn generate_eval_attributes(board: &BitBoard) -> EvalAttributes {
     };
 }
 
-pub fn generate_eval_attributes_fast(board: &BitBoard) {
+pub fn generate_eval_attributes_fast(board: &BitBoard) -> EvalAttributes2 {
     const MAT_SUM_VAL: [i32; 5] = [0, 1, 1, 2, 4];
 
     //lcm(1, 3, 5, 11) = 165
@@ -573,14 +569,17 @@ pub fn generate_eval_attributes_fast(board: &BitBoard) {
             let y = (i / 8) as usize;
 
             //let rank = if white { y } else { 7 - y };
-            let rank = (y ^ (7 * white as usize));
+            let rank = y ^ (7 * white as usize);
 
             ret.pawn_matrix[(bitboard_helper::get_bit(passed_pawn_mask, Square::from_u8(i as u8)) as usize) * 24
                 + (bitboard_helper::get_bit(doubled_pawn_mask, Square::from_u8(i as u8)) as usize) * 12
                 + (bitboard_helper::get_bit(isolated_pawn_mask, Square::from_u8(i as u8)) as usize) * 6
                 + (rank as usize)] += factor as i8;
         }
+
     }
+
+    return ret;
 
     fn passed_pawn_mask(allied_pawns: u64, opponent_pawns: u64, pawn_mask: [u64; 64]) -> u64 {
         let mut ret = 0;
@@ -614,9 +613,7 @@ pub fn generate_eval_attributes_fast(board: &BitBoard) {
         }
 
         return ret;
-    }
-
-    
+    }   
 }
 
 pub fn eval_pawn_structure(board: &BitBoard) -> (i32, i32, i32, [i32; 6]) {

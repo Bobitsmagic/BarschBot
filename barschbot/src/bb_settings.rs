@@ -1,4 +1,4 @@
-use crate::evaluation::EvalAttributes;
+use crate::evaluation::{EvalAttributes, EvalAttributes2};
 
 #[derive(Clone)]
 pub struct BBSettings {
@@ -41,7 +41,7 @@ pub const STANDARD_KB_SETTINGS: KBSettings = KBSettings {
     end_game_table: true, 
     null_move_pruning: true, 
     min_search_time: 0, 
-    eval_factors: STANDARD_EVAL_FACTORS_INT };
+    eval_factors: ZERO_EVAL_FACTORS_INT };
 
 
 #[derive(Debug, Copy, Clone)]
@@ -192,92 +192,17 @@ impl EvalFactorsFloat {
     }
 }
 
-pub struct EvalFactorsInt {
-    values: [i32; 33],
+pub struct EvalFactrorsInt {
+    values: [i32; 152 * 2],
 }
 
-pub const STANDARD_EVAL_FACTORS_INT: EvalFactorsInt = EvalFactorsInt {
-    values: [
-        //Piece value
-        1000, 2800, 3200, 5000, 11000,
-        //Safe mobility
-        10, 61, 70, 53, 5, 106,
-        //Unsafe Mobility
-        -10, -60, -20, -30, -90, -70,
-
-        //Late factor range
-        1,
-        //Square control
-        106,
-
-        //Pawn push bonus
-        -62, 50, 77, 100, 150, 500,
-        //Passed pawn value
-        204,
-        //Doubled pawn penalty
-        -150,
-        //Isolated pawn penalty
-        -150,
-
-        //Knight outpost value
-        62,
-        
-        //King exposed penalty
-        -66,
-        //King control penalty
-        -162,
-        //Safe check value
-        200,
-        //Unsafe check value
-        86,
-    ]
+pub const ZERO_EVAL_FACTORS_INT: EvalFactrorsInt = EvalFactrorsInt {
+    values: [0; 152 * 2]
 };
 
-impl EvalFactorsInt {
-    pub fn evaluate(&self, attributes: &EvalAttributes) -> i32 {
-        let values = self.values;
+impl EvalFactrorsInt {
+    pub fn evaluate(&self, attributes: &EvalAttributes2) -> i32 {
         
-        let mut sum = 0;
-        const START_MAT_SUM: i32 = MAX_MATERIAL_SUM;
-
-        for i in 0..5 {
-            sum += self.get_array(FactorName::PieceValueP, i) * attributes.piece_dif[i];
-        }
-
-        sum += self.get_value(FactorName::SquareControl) * attributes.sq_control_dif;
-
-        for i in 0..6 {
-            sum += self.get_array(FactorName::SafeMobilityP, i) * attributes.safe_mobility_dif[i];
-            sum += self.get_array(FactorName::UnsafeMobilityP, i) * attributes.unsafe_mobility_dif[i];
-        }
-
-        for i in 0..6 {
-            sum += self.get_array(FactorName::PawnRank2, i) * attributes.pawn_push_dif[i];
-        }
-
-        sum += self.get_value(FactorName::PassedPawn) * attributes.passed_pawn_dif;
-        sum += self.get_value(FactorName::DoubledPawn) * attributes.doubled_pawn_dif;
-        sum += self.get_value(FactorName::IsolatedPawn) * attributes.isolated_pawn_dif;
-        
-        sum += self.get_value(FactorName::KnightOutpost) * attributes.knight_outpost_dif;
-
-        sum += self.get_value(FactorName::KingExposed) * attributes.king_qn_moves_dif;
-        sum += self.get_value(FactorName::KingControl) * attributes.king_control_dif;
-        sum += self.get_value(FactorName::SafeCheck) * attributes.safe_check_dif;
-        sum += self.get_value(FactorName::UnsafeCheck) * attributes.unsafe_check_dif;
-
-        return sum;
-    }
-
-    pub fn get_value(&self, index: FactorName) -> i32 {
-        return self.values[index as usize];
-    }
-
-    pub fn set_value(&mut self, index: FactorName, value: i32) {
-        self.values[index as usize] = value;
-    }
-
-    pub fn get_array(&self ,index: FactorName, offset: usize) -> i32 {
-        return self.values[index as usize + offset];
     }
 }
+

@@ -309,7 +309,6 @@ impl KarpfenBot {
             return tt_entry.score;
         }
 
-
         let mut local_score = evaluation::static_eval_int(&game.get_board(), &self.settings.eval_factors);
         
         if match tt_entry.node_type {
