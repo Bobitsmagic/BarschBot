@@ -21,13 +21,12 @@ pub fn fill_benchmark() -> u32 {
 
             let allied = (i * 123456789) & bitboard_helper::DIAGONAL_ATTACKS[*sq as usize] | sq.bit_board();
             let opponent = (i * 987654321) & bitboard_helper::DIAGONAL_ATTACKS[*sq as usize] & !allied;
-            let v1 = bitboard_helper::fill_orthogonal_3(*sq, allied, opponent);
+            let v1 = bitboard_helper::gen_rook_moves(*sq, allied, opponent);
             
             sum += v1.count_ones();
             
-             
-            /* 
-            let v2 = bitboard_helper::fill_orthogonal_3(*sq, allied, opponent);
+             /* 
+            let v2 = bitboard_helper::fill_orthogonal_2(*sq, allied, opponent);
             if v1 != v2 {
                 println!("Error at square: {}", sq.to_string());
                 println!("Allied:");

@@ -1,6 +1,8 @@
 use core::panic;
 
-use crate::{constants::BISHOP, fill_arrays, square::Square};
+use bitintr::{Lzcnt, T1mskc};
+
+use crate::{constants::BISHOP, fill_arrays, square::{self, Square}};
 
 pub fn set_bit(bit_board: &mut u64, square: Square, value: bool) {
     debug_assert!(square != Square::None);
@@ -48,75 +50,23 @@ pub fn shift_board(value: u64, dx: i32, dy: i32) -> u64 {
     }
 }
 
-pub fn gen_rook_moves(mut pos: u64, free: u64) -> u64 {
-    let mask = ORTHOGONAL_ATTACKS[pos.trailing_zeros() as usize] & free;
-    
-    println!("Pos");
-    print_bitboard(pos);
-    println!("Mask kek");
-    print_bitboard(mask);
-
-    let mut res = 0;
-    while res != pos {
-        pos = res;
-
-        res |= RIGHT_MOVE_MASK[1] & (pos << 1);
-        res |= LEFT_MOVE_MASK[1] & (pos >> 1);
-
-        res |= (pos << 8);
-        res |= (pos >> 8);
-
-        res &= mask;
-    }
-
-    return res;
-}
-pub fn gen_bishop_moves(mut pos: u64, free: u64) -> u64 {
-    let mask = ORTHOGONAL_ATTACKS[pos.trailing_zeros() as usize] & free;
-    
-    let mut res = 0;
-    while res != pos {
-        pos = res;
-
-        res |= LEFT_MOVE_MASK[1] & (res << 7);
-        res |= RIGHT_MOVE_MASK[1] & (res << 9);
-
-        res |= LEFT_MOVE_MASK[1] & (res >> 9);
-        res |= RIGHT_MOVE_MASK[1] & (res >> 7);
-
-        res &= mask;
-    }
-
-    return res;
-}
-pub fn gen_queen_moves(mut square: u32, free: u64) -> u64 {
-    let mask = QUEEN_ATTACKS[square as usize]  & free;
-    let mut pos = 1 << square;
-        
-    let mut res = 0;
-    while res != pos {
-        pos = res;
-
-        res |= RIGHT_MOVE_MASK[1] & (res << 1);
-        res |= LEFT_MOVE_MASK[1] & (res >> 1);
-
-        res |= (pos << 8);
-        res |= (pos >> 8);
-
-        res |= LEFT_MOVE_MASK[1] & (res << 7);
-        res |= RIGHT_MOVE_MASK[1] & (res << 9);
-
-        res |= LEFT_MOVE_MASK[1] & (res >> 9);
-        res |= RIGHT_MOVE_MASK[1] & (res >> 7);
-
-        res &= mask;
-    }
-
-    return res;
-}
-
 pub fn order_bits(value: u64, mask: u64) -> u64 {
-    return bitintr::Pext::pext(value, mask);
+
+
+    return bitintr::Pext::pext(value, mask); //650 ms
+
+
+    //return bitintr::Pdep::pdep(value, mask);
+    let mut ret = 0;
+    for i in iterate_set_bits(mask) {
+        ret = (ret << 1) | (value >> i) & 1;        
+    }
+
+    return ret; //650 ms
+
+    unsafe {
+        return core::arch::x86_64::_pext_u64(value, mask); //990 ms
+    }
 }
 
 // https://www.chessprogramming.org/Kogge-Stone_Algorithm
@@ -235,101 +185,40 @@ pub fn fill_down_left(mut gen: u64, mut free: u64) -> u64 {
     return gen;
 }
 
-pub fn fill_diagonal(square: Square, allied: u64, opponent: u64) -> u64 {  
-    let mut gen = square.bit_board();
-    let mut next = gen;
-    let free = !(allied | opponent | !DIAGONAL_ATTACKS[square as usize]) | gen;
-
-    loop {
-        next =  (next |
-                (gen >> 7) | 
-                (gen >> 9) | 
-                (gen << 9) | 
-                (gen << 7)) & free;
-
-        if gen == next {
-            break;
-        }
-
-        gen = next;
-    }
-
-    return (gen | 
-        ((gen >> 7) | 
-        (gen >> 9) | 
-        (gen << 9) | 
-        (gen << 7)) & opponent) & !square.bit_board();
-}
-
-pub fn fill_orthogonal(square: Square, allied: u64, opponent: u64) -> u64 {
-    let mut gen = square.bit_board();
-    let mut next = gen;
-    let free = !(allied | opponent | !ORTHOGONAL_ATTACKS[square as usize]) | gen;
-
-    loop {
-        next =  (next |
-                (gen >> 1) & LEFT_MOVE_MASK[1] | 
-                (gen >> 8) | 
-                (gen << 1) & RIGHT_MOVE_MASK[1] | 
-                (gen << 8)) & free;
-
-        if gen == next {
-            break;
-        }
-
-        gen = next;
-    }
-
-    return (gen | 
-        ((gen >> 1) & LEFT_MOVE_MASK[1] | 
-        (gen >> 8) | 
-        (gen << 1) & RIGHT_MOVE_MASK[1] | 
-        (gen << 8)) & ORTHOGONAL_ATTACKS[square as usize] & opponent) & !square.bit_board();
-}
-
-pub fn fill_orthogonal_2(square: Square, allied: u64, opponent: u64) -> u64 {
-    return fill_arrays::ORTHOGONAL_FILL[square as usize][order_bits(allied | opponent,  fill_arrays::ORTHOGONAL_MASK[square as usize]) as usize] & !allied;
-}
-
-pub fn fill_orthogonal_3(square: Square, allied: u64, opponent: u64) -> u64 {
-    let gen = 1 << square as u8;
+pub fn gen_rook_moves(square: Square, allied: u64, opponent: u64) -> u64 {
+    let bb = square.bit_board();
     let mut next = 0;
     let free = !(allied | opponent);
 
     for f in ORTHOGONAL_FILL_FUNCTIONS {
-        next |= f(gen, free);
+        next |= f(bb, free);
     }
 
     return (next | 
-        ((gen >> 1) & LEFT_MOVE_MASK[1] | 
-        (gen >> 8) | 
-        (gen << 1) & RIGHT_MOVE_MASK[1] | 
-        (gen << 8)) & ORTHOGONAL_ATTACKS[square as usize] & opponent) & !square.bit_board();
+        ((next >> 1) & LEFT_MOVE_MASK[1] | 
+        (next >> 8) | 
+        (next << 1) & RIGHT_MOVE_MASK[1] | 
+        (next << 8)) & ORTHOGONAL_ATTACKS[square as usize] & opponent) & !bb;
 }
 
-pub fn fill_orthogonal_4(square: Square, allied: u64, opponent: u64) -> u64 {
-    return (fill_arrays::VERTICAL_FILL[square as usize][order_bits(allied | opponent,  fill_arrays::VERTICAL_MASK[square as usize]) as usize] |  
-        fill_arrays::HORIZONTAL_FILL[square as usize][order_bits(allied | opponent,  fill_arrays::HORIZONTAL_MASK[square as usize]) as usize]) & !allied;
-}
-
-
-//1101 -> 101
-//10101 -> 111
-//41 -> 
-pub fn fill_diagonal_2(square: Square, allied: u64, opponent: u64) -> u64 {  
-    let gen = 1 << square as u8;
+pub fn gen_bishop_moves(square: Square, allied: u64, opponent: u64) -> u64 {  
+    let bb = square.bit_board();
     let mut next = 0;
     let free = !(allied | opponent);
 
     for f in DIAGONAL_FILL_FUNCTIONS {
-        next |= f(gen, free);
+        next |= f(bb, free);
     }
 
     return (next | 
         ((next >> 7) | 
         (next >> 9) | 
         (next << 9) | 
-        (next << 7)) & DIAGONAL_ATTACKS[square as usize] & opponent) & !gen;
+        (next << 7)) & DIAGONAL_ATTACKS[square as usize] & opponent) & !bb;
+}
+
+pub fn gen_queen_moves(square: Square, allied: u64, opponent: u64) -> u64 {
+    return gen_rook_moves(square, allied, opponent) | gen_bishop_moves(square, allied, opponent);
 }
 
 pub fn all_pawn_attacks(pawns: u64, white: bool) -> u64 {
@@ -340,35 +229,6 @@ pub fn all_pawn_attacks(pawns: u64, white: bool) -> u64 {
         return (pawns >> 9) & LEFT_MOVE_MASK[1] | (pawns >> 7) & RIGHT_MOVE_MASK[1];
     }
 }
-
-//Captures
-pub fn capture_up(gen: u64, opponents: u64) -> u64 {
-    return (gen << 8) & opponents;
-}
-pub fn capture_down(gen: u64, opponents: u64) -> u64 {
-    return (gen >> 8) & opponents;
-}
-
-pub fn capture_right(gen: u64, opponents: u64) -> u64 {
-    return (gen << 1) & opponents & RIGHT_MOVE_MASK[1];
-}
-pub fn capture_up_right(gen: u64, opponents: u64) -> u64 {
-    return (gen << 9) & opponents & RIGHT_MOVE_MASK[1];
-}
-pub fn capture_down_right(gen: u64, opponents: u64) -> u64 {
-    return (gen >> 7) & opponents & RIGHT_MOVE_MASK[1];
-}
-
-pub fn capture_left(gen: u64, opponents: u64) -> u64 {
-    return (gen >> 1) & opponents & LEFT_MOVE_MASK[1];
-}
-pub fn capture_down_left(gen: u64, opponents: u64) -> u64 {
-    return (gen >> 9) & opponents & LEFT_MOVE_MASK[1];
-}
-pub fn capture_up_left(gen: u64, opponents: u64) -> u64 {
-    return (gen << 7) & opponents & LEFT_MOVE_MASK[1];
-}
-
 
 pub const RIGHT_MOVE_MASK: [u64; 8] = [
     0xffffffffffffffff,
@@ -443,8 +303,6 @@ pub const KING_ATTACKS: [u64; 64] = [770, 1797, 3594, 7188, 14376, 28752, 57504,
 pub fn get_in_between(s1: Square, s2: Square) -> u64 {
     return IN_BETWEEN_SQUARES[s1 as usize + (s2 as usize * 64)];
 }
-
-
 
 const IN_BETWEEN_SQUARES: [u64; 64 * 64] = [
     0, 0, 2, 6, 14, 30, 62, 126, 0, 0, 0, 0, 0, 0, 0, 0, 256, 0, 512, 0, 0, 0, 0, 0, 65792, 0, 0, 262656, 0, 0, 0, 0, 16843008, 0, 0, 0, 134480384, 0, 0, 0, 4311810304, 0, 0, 0, 0, 68853957120, 0, 0, 1103823438080, 0, 0, 0, 0, 0, 35253226045952, 0, 282578800148736, 0, 0, 0, 0, 0, 0, 18049651735527936,

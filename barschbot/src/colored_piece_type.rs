@@ -1,6 +1,6 @@
 use graphics::types::Color;
 
-use crate::piece_type::PieceType;
+use crate::piece_type::{self, PieceType};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ColoredPieceType {
@@ -112,6 +112,10 @@ impl ColoredPieceType {
         ];
 
         return ARRAY[value as usize];
+    }
+
+    pub fn get_piece_type(&self) -> PieceType {
+        return PieceType::from_cpt(*self);
     }
 
     pub fn is_white(&self) -> bool {

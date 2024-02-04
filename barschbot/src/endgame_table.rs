@@ -3,8 +3,6 @@ use std::{collections::HashMap, fs::File, io::{Write, Read}};
 
 use std::{thread, time};
 
-use rayon::slice::ParallelSliceMut;
-
 use crate::{colored_piece_type::ColoredPieceType, piece_type::PieceType, bit_board::BitBoard, square::Square, constants, chess_move, compact_hashmap::CompactHashmap };
 
 const MAX_PIECE_COUNT: u8 = 4;

@@ -1,8 +1,9 @@
 use core::panic;
 use std::char;
 use arrayvec::ArrayVec;
+use graphics::rectangle::square;
 
-use crate::{bitboard_helper::{self, toggle_bit}, chess_move::ChessMove, square::Square, colored_piece_type::ColoredPieceType, piece_type::PieceType, endgame_table::BoardState, zoberist_hash::ZoberistHash64};
+use crate::{bitboard_helper::{self, toggle_bit}, chess_move::ChessMove, square::Square, colored_piece_type::ColoredPieceType, piece_type::{self, PieceType}, endgame_table::BoardState, zoberist_hash::ZoberistHash64};
 
 
 
@@ -20,8 +21,8 @@ pub struct BitBoard {
 
     en_passant_square: Square,
 
-    white_pieces: u64,
-    black_pieces: u64,
+    pub white_pieces: u64,
+    pub black_pieces: u64,
     pawns: u64,
     knights: u64,
     orthogonal_sliders: u64,
@@ -458,17 +459,9 @@ impl BitBoard {
         };
     }
 
-    pub fn get_pawn_attacks (&self, white: bool) -> u64 {
-        let color_mask = if white { self.white_pieces } else { self.black_pieces };
-        
-        if white {
-            return bitboard_helper::capture_up_left(self.pawns & color_mask, u64::MAX) | 
-                bitboard_helper::capture_up_right(self.pawns & color_mask, u64::MAX); 
-        }
-        else {
-            return bitboard_helper::capture_down_left(self.pawns & color_mask, u64::MAX) | 
-                bitboard_helper::capture_down_right(self.pawns & color_mask, u64::MAX); 
-        }
+    pub fn get_all_pawn_attacks (&self, white: bool) -> u64 {
+        let pawns = self.pawns & if white { self.white_pieces } else { self.black_pieces };
+        return bitboard_helper::all_pawn_attacks(pawns, white);
     }
 
     pub fn get_piece_captures_at(&self, colored_piece_type: ColoredPieceType, square: Square) -> ArrayVec<PieceType, 10> {
@@ -523,48 +516,96 @@ impl BitBoard {
 
         return list;
     }
-    
-    pub fn get_piece_moves_at(&self, piece_type: PieceType, square: Square) -> u8 {
+
+        
+    pub fn get_piece_attacks_at(&self, cpt: ColoredPieceType, square: Square) -> u64 {
         let all_mask = self.black_pieces | self.white_pieces;
+        let allied = if cpt.is_white() { self.white_pieces } else { self.black_pieces };
+        let opponent = if !cpt.is_white() { self.white_pieces } else { self.black_pieces };
         
         
         let mut res = 0_u64;
-        match piece_type {
+        match PieceType::from_cpt(cpt) {
             PieceType::Pawn => {
-                return 3;
+                return if cpt.is_white() 
+                    { bitboard_helper::WHITE_PAWN_ATTACKS[square as usize] } 
+                    else 
+                    { bitboard_helper::BLACK_PAWN_ATTACKS[square as usize] } 
             },
             PieceType::Knight => {
-                return bitboard_helper::KNIGHT_ATTACKS[square as usize].count_ones() as u8;
+                return bitboard_helper::KNIGHT_ATTACKS[square as usize];
             },
+            PieceType::Bishop => {                
+                return bitboard_helper::gen_bishop_moves(square, allied, opponent);
+            }
+            PieceType::Rook => {
+                return bitboard_helper::gen_rook_moves(square, allied, opponent);
+            }
+
+            PieceType::Queen => {
+                return bitboard_helper::gen_bishop_moves(square, allied, opponent) |            
+                    bitboard_helper::gen_rook_moves(square, allied, opponent);
+            }
+
             PieceType::King => {
-                return bitboard_helper::KING_ATTACKS[square as usize].count_ones() as u8;
+                return bitboard_helper::KING_ATTACKS[square as usize];
             },
-            _ => ()
-        }
 
-        let all_mask = self.white_pieces | self.black_pieces;
-        if piece_type.is_diagonal_slider() {
-            for index in bitboard_helper::iterate_set_bits(bitboard_helper::DIAGONAL_ATTACKS[square as usize]) {
-                let in_between = bitboard_helper::get_in_between(square, Square::from_u8(index as u8));
-
-                if in_between & all_mask == 0 {
-                    res |= 1_u64 << index;
-                }
+            _ => {
+                panic!("None has no attacks");
             }
         }
-
-        if piece_type.is_orthogonal_slider() {
-            for index in bitboard_helper::iterate_set_bits(bitboard_helper::ORTHOGONAL_ATTACKS[square as usize]) {
-                let in_between = bitboard_helper::get_in_between(square, Square::from_u8(index as u8));
-
-                if in_between & all_mask == 0 {
-                    res |= 1_u64 << index;
-                }
-            }
-        }
-
-        return res.count_ones() as u8;
     }
+    
+    pub fn get_piece_attacks_with_batteries(&self, cpt: ColoredPieceType, square: Square) -> u64 {
+        let all_mask = self.black_pieces | self.white_pieces;
+        let allied = if cpt.is_white() { self.white_pieces } else { self.black_pieces };
+        let opponent = if !cpt.is_white() { self.white_pieces } else { self.black_pieces };
+        
+        
+        let mut res = 0_u64;
+        match PieceType::from_cpt(cpt) {
+            PieceType::Pawn => {
+                return if cpt.is_white() 
+                    { bitboard_helper::WHITE_PAWN_ATTACKS[square as usize] } 
+                    else 
+                    { bitboard_helper::BLACK_PAWN_ATTACKS[square as usize] } 
+            },
+            PieceType::Knight => {
+                return bitboard_helper::KNIGHT_ATTACKS[square as usize];
+            },
+            PieceType::Bishop => {                
+                return bitboard_helper::gen_bishop_moves(square, allied & !self.diagonal_sliders, opponent);
+            }
+            PieceType::Rook => {
+                return bitboard_helper::gen_rook_moves(square, allied & !self.orthogonal_sliders, opponent);
+            }
+
+            PieceType::Queen => {
+                return bitboard_helper::gen_bishop_moves(square, allied & !self.diagonal_sliders, opponent) |            
+                    bitboard_helper::gen_rook_moves(square, allied & !self.orthogonal_sliders, opponent);
+            }
+
+            PieceType::King => {
+                return bitboard_helper::KING_ATTACKS[square as usize];
+            },
+
+            _ => {
+                panic!("None has no attacks");
+            }
+        }
+    }
+
+    pub fn gen_all_attacks_with_batteries(&self) -> [u64; 64] {
+        let mut ret = [0_u64; 64];
+
+        for s in bitboard_helper::iterate_set_bits(self.white_pieces | self.black_pieces) {
+            ret[s as usize] = self.get_piece_attacks_at(self.type_field[s as usize], Square::from_u8(s as u8));
+        }
+
+        return ret;
+    }
+
 
     fn square_is_attacked_by_ignore_king(&self, white: bool, target_square: Square) -> bool {
         let color_mask = if white { self.white_pieces } else { self.black_pieces };
@@ -1551,16 +1592,16 @@ impl BitBoard {
             },
 
             PieceType::Bishop => {
-                return bitboard_helper::fill_diagonal(square, allied, opponent)
+                return bitboard_helper::gen_bishop_moves(square, allied, opponent)
             },
 
             PieceType::Rook => {
-                return bitboard_helper::fill_orthogonal(square, allied, opponent)
+                return bitboard_helper::gen_rook_moves(square, allied, opponent)
             },
 
             PieceType::Queen => {
-                return bitboard_helper::fill_diagonal(square, allied, opponent) | 
-                    bitboard_helper::fill_orthogonal(square, allied, opponent);
+                return bitboard_helper::gen_bishop_moves(square, allied, opponent) | 
+                    bitboard_helper::gen_rook_moves(square, allied, opponent);
             },
 
             PieceType::King => {
@@ -1571,78 +1612,6 @@ impl BitBoard {
         }
     }
     
-
-    pub fn get_diagonal_moves(&self, start_square: Square) -> ArrayVec<Square, 16>
-    {
-        //diagonal moves
-        const DIAGONAL_DIRECTIONS: [(i32, i32); 4] = [
-            (1, 1),
-            (1, -1),
-            (-1, 1),
-            (-1, -1),
-        ];
-
-        let mut list = ArrayVec::new();
-        for (dx, dy) in DIAGONAL_DIRECTIONS {
-            let mut x = start_square.file() as i32 + dx; 
-            let mut y = start_square.rank() as i32 + dy;
-
-            while x >= 0 && x < 8 && y >= 0 && y < 8 {
-                let target_square = Square::from_u8((x + y * 8) as u8);
-                let target_piece_type = self.type_field[target_square as usize];
-
-                list.push(target_square);
-                
-                if target_piece_type != ColoredPieceType::None {
-                    break;
-                }
-
-                x += dx;
-                y += dy;
-            }
-        }
-
-        return list;
-    }
-
-    pub fn get_queen_moves(&self, start_square: Square) -> u64
-    {
-        //diagonal moves
-        const QUEEN_DIRECTIONS: [(i32, i32); 8] = [
-            (1, 1),
-            (1, -1),
-            (-1, 1),
-            (-1, -1),
-
-            (1, 0),
-            (-1, 0),
-            (0, 1),
-            (0, -1),
-        ];
-
-        let mut ret = 0;
-        for (dx, dy) in QUEEN_DIRECTIONS {
-            let mut x = start_square.file() as i32 + dx; 
-            let mut y = start_square.rank() as i32 + dy;
-
-            while x >= 0 && x < 8 && y >= 0 && y < 8 {
-                let target_square = Square::from_u8((x + y * 8) as u8);
-                let target_piece_type = self.type_field[target_square as usize];
-
-                bitboard_helper::set_bit(&mut ret, target_square, true);
-                
-                if target_piece_type != ColoredPieceType::None {
-                    break;
-                }
-
-                x += dx;
-                y += dy;
-            }
-        }
-
-        return ret;
-    }
-
     pub fn make_move(&mut self, m: ChessMove) {
         if m.is_null_move() {
             self.en_passant_square = Square::None;

@@ -1,7 +1,5 @@
 use core::panic;
-use std::{collections::HashMap, ops::Deref};
-
-use crate::{game::{Game, GameState}, colored_piece_type::ColoredPieceType, piece_type::PieceType, bitboard_helper, endgame_table::EndgameTable, square::{self, Square}, zoberist_hash, bb_settings::{EvalFactorsFloat, EvalFactorsInt}, bit_board::BitBoard, constants};
+use crate::{game::{Game, GameState}, colored_piece_type::ColoredPieceType, piece_type::PieceType, bitboard_helper::{self, iterate_set_bits}, square::Square, bb_settings::{EvalFactorsFloat, EvalFactorsInt}, bit_board::BitBoard, constants};
 
 pub const CHECKMATE_VALUE: f32 = f32::MAX;
 //                              Pawn, Knight, Bishop, Rook, Queen, King
@@ -29,6 +27,28 @@ pub struct EvalAttributes {
     pub safe_check_dif: i32,
     //Number of unsafe moves to a square the opponent king can move to
     pub unsafe_check_dif: i32,
+}
+
+pub struct EvalAttributes2 {
+    pub piece_dif: [i8; 5], 
+    pub safe_mobility_dif: [i8; 6], 
+    pub unsafe_mobility_dif: [i8; 6],
+
+    pub material_sum: i8, //For endgame calculations (Max: 24)
+    pub sq_control_dif: [i8; 64], //Sign of controlling each square
+
+    pub pawn_matrix: [i8; 2 * 2 * 2 * 6], //Passed, Doubled, Isolated, Rank
+
+    pub knight_outpost_dif: i8,
+
+    //Number of moves a Queen and Knight could do at the king pos
+    pub king_q_moves_dif: i8,
+    //Number of attacked squares the king can move to
+    pub king_control_dif: [i8; 6],
+    //Value of being in check by a specific pt
+    pub king_capture_dif: [i8; 6],  //-2, -1, 0, 1, 2
+    pub safe_check_dif: [i8; 6],
+    pub unsafe_check_dif: [i8; 6],
 }
 
 impl EvalAttributes {
@@ -112,6 +132,29 @@ impl EvalAttributes {
     }
 }
 
+impl EvalAttributes2 {
+    pub fn new() -> EvalAttributes2 {
+        EvalAttributes2 {
+            piece_dif: [0; 5], 
+            safe_mobility_dif: [0; 6], 
+            unsafe_mobility_dif: [0; 6],
+
+            material_sum: 0,
+            sq_control_dif: [0; 64],
+
+            pawn_matrix: [0; 2 * 2 * 2 * 6],
+
+            knight_outpost_dif: 0,
+
+            king_q_moves_dif: 0,
+            king_control_dif: [0; 6],
+            king_capture_dif: [0; 6],
+            safe_check_dif: [0; 6],
+            unsafe_check_dif: [0; 6],
+        }
+    }
+}
+
 pub fn static_eval_int(board: &BitBoard, factors: &EvalFactorsInt) -> i32 {
     let attributes = generate_eval_attributes(&board);
 
@@ -187,12 +230,6 @@ pub fn generate_eval_attributes(board: &BitBoard) -> EvalAttributes {
     let mut white_list = board.generate_legal_moves_eval(true);
     let mut black_list = board.generate_legal_moves_eval(false);
 
-
-    //white_list.sort_unstable_by(|a, b| { return a.get_uci().cmp(&b.get_uci())});
-    //black_list.sort_unstable_by(|a, b| { return a.get_uci().cmp(&b.get_uci())});
-    //board.print_local_moves(&white_list);
-    //board.print_local_moves(&black_list);
-
     let mut least_valueable_attacker_white = [PieceType::None; 64];
     let mut least_valueable_attacker_black = [PieceType::None; 64];
 
@@ -236,8 +273,8 @@ pub fn generate_eval_attributes(board: &BitBoard) -> EvalAttributes {
     let white_king_pos = board.get_king_square(true);
     let black_king_pos = board.get_king_square(false);
 
-    let white_king_queen_mask = board.get_queen_moves(white_king_pos);
-    let black_king_queen_mask = board.get_queen_moves(black_king_pos);
+    let white_king_queen_mask = board.get_piece_attacks_at(ColoredPieceType::WhiteQueen, white_king_pos);
+    let black_king_queen_mask = board.get_piece_attacks_at(ColoredPieceType::BlackQueen, black_king_pos);
 
     let white_king_knight_mask = bitboard_helper::KNIGHT_ATTACKS[white_king_pos as usize];
     let black_king_knight_mask = bitboard_helper::KNIGHT_ATTACKS[black_king_pos as usize];
@@ -395,6 +432,191 @@ pub fn generate_eval_attributes(board: &BitBoard) -> EvalAttributes {
         safe_check_dif: safe_king_attacks,
         unsafe_check_dif: unsafe_king_attacks,
     };
+}
+
+pub fn generate_eval_attributes_fast(board: &BitBoard) {
+    const MAT_SUM_VAL: [i32; 5] = [0, 1, 1, 2, 4];
+
+    //lcm(1, 3, 5, 11) = 165
+    const PIECE_ATTACK_SCORE: [i32; 7] = [165, 55, 55, 33, 15, 1, 0];
+    //const PIECE_ATTACK_SCORE: [i32; 7] = [10000, 1000, 1000, 100, 10, 1, 0];
+    
+    let mut ret = EvalAttributes2::new();
+    
+    let all_attacks = board.gen_all_attacks_with_batteries();
+    
+    let white_king_square = board.get_king_square(true);
+    let black_king_square = board.get_king_square(false);
+    
+    let white_king_moves = bitboard_helper::KING_ATTACKS[white_king_square as usize];
+    let black_king_moves = bitboard_helper::KING_ATTACKS[black_king_square as usize];
+
+    let white_king_pawn_moves = board.get_piece_attacks_at(ColoredPieceType::WhitePawn, white_king_square);
+    let black_king_pawn_moves = board.get_piece_attacks_at(ColoredPieceType::BlackPawn, black_king_square);
+
+    let white_king_n_moves = board.get_piece_attacks_at(ColoredPieceType::WhiteKnight, white_king_square);
+    let black_king_n_moves = board.get_piece_attacks_at(ColoredPieceType::BlackKnight, black_king_square);
+    
+    let white_king_b_moves = board.get_piece_attacks_at(ColoredPieceType::WhiteBishop, white_king_square);
+    let black_king_b_moves = board.get_piece_attacks_at(ColoredPieceType::BlackBishop, black_king_square);
+    
+    let white_king_r_moves = board.get_piece_attacks_at(ColoredPieceType::WhiteRook, white_king_square); 
+    let black_king_r_moves = board.get_piece_attacks_at(ColoredPieceType::BlackRook, black_king_square); 
+
+    let white_king_qn_moves = white_king_r_moves | white_king_b_moves | white_king_n_moves;
+    let black_king_qn_moves = black_king_r_moves | black_king_b_moves | black_king_n_moves;
+
+    ret.king_q_moves_dif = white_king_qn_moves.count_ones() as i8 - black_king_qn_moves.count_ones() as i8;
+    
+    let mut see = [0_i32, 64];    
+    let mut lva_white = [PieceType::None; 64];
+    let mut lva_black = [PieceType::None; 64];
+    
+    //Calculate SEE, piece count, material sum
+    for white in [true, false] {
+        let factor = if white { 1 } else { -1 };
+        
+        for i in 0..6 {
+            let pt = PieceType::from_u8(i as u8);
+            let cpt = ColoredPieceType::from_pt(pt, white);
+            
+            let bb = board.get_piece_bitboard(cpt);
+            let count = bb.count_ones() as i32;
+
+            if i < 5 {
+                ret.piece_dif[i as usize] += (count * factor) as i8; 
+                ret.material_sum += (MAT_SUM_VAL[pt as usize] * count) as i8;        
+            }
+            
+            for pos in bitboard_helper::iterate_set_bits(bb) {
+                let attacks = all_attacks[pos as usize];
+                for sq in bitboard_helper::iterate_set_bits(attacks) {
+                    see[sq as usize] += PIECE_ATTACK_SCORE[pt as usize] * factor;
+
+                    if white {
+                        lva_white[sq as usize] = lva_white[sq as usize].min(pt);
+                    }
+                    else {
+                        lva_black[sq as usize] = lva_black[sq as usize].min(pt);
+                    }
+                }
+            }
+        }
+    }    
+    
+    for i in 0..64 {
+        ret.sq_control_dif[i] = see[i].signum() as i8;
+    }
+
+    for white in [true, false] {
+        let factor = if white { 1 } else { -1 };
+        let lva_opponnent = if white { lva_black } else { lva_white };
+        let opponent_king_moves =       if white { black_king_moves } else { white_king_moves }; 
+        let opponent_king_pawn_moves =  if white { black_king_pawn_moves } else { white_king_pawn_moves };
+        let opponent_king_n_moves =     if white { black_king_n_moves } else { white_king_n_moves };
+        let opponent_king_b_moves =     if white { black_king_b_moves } else { white_king_b_moves };
+        let opponent_king_r_moves =     if white { black_king_r_moves } else { white_king_r_moves };
+
+        for i in iterate_set_bits(if white { board.white_pieces } else { board.black_pieces }) {
+            let cpt = board.get_piece_type(Square::from_u8(i as u8));
+            let pt = cpt.get_piece_type();
+
+            let attacks = all_attacks[i as usize];
+
+            ret.king_control_dif[pt as usize] += ((attacks & opponent_king_moves).count_ones() as i32 * factor) as i8;
+
+            let check_intersection = attacks & match(pt) {
+                PieceType::Pawn => opponent_king_pawn_moves,
+                PieceType::Knight => opponent_king_n_moves,
+                PieceType::Bishop => opponent_king_b_moves,
+                PieceType::Rook => opponent_king_r_moves,
+                PieceType::Queen => (opponent_king_b_moves | opponent_king_r_moves),
+                _ => 0
+            };
+            
+            for attack in bitboard_helper::iterate_set_bits(attacks) {
+                let capture = board.get_piece_type(Square::from_u8(attack as u8));
+                if capture.get_piece_type() == PieceType::King {
+                    ret.king_capture_dif[pt as usize] += factor as i8;
+                }
+
+                let is_check = bitboard_helper::get_bit(check_intersection, Square::from_u8(attack as u8));
+
+                //Approximation of attack safety (Ignores pins, Complex exchanges, etc)
+                //LVA greater or eq moving piece &&
+                //SEE - moving piece + capture >= 0
+                if lva_opponnent[attack as usize].ge(&pt) && see[attack as usize] * factor - PIECE_ATTACK_SCORE[pt as usize] + PIECE_ATTACK_SCORE[capture as usize] >= 0 {
+                    ret.safe_mobility_dif[pt as usize] += factor as i8;
+
+                    if is_check {
+                        ret.safe_check_dif[pt as usize] += factor as i8;
+                    }
+                }
+                else {
+                    ret.unsafe_mobility_dif[pt as usize] += factor as i8;
+
+                    if is_check {
+                        ret.unsafe_check_dif[pt as usize] += factor as i8;
+                    }
+                }
+            }
+        }
+    
+        let allied_pawns = if white { board.get_piece_bitboard(ColoredPieceType::WhitePawn) } else { board.get_piece_bitboard(ColoredPieceType::BlackPawn) };
+        let opponent_pawns = if white { board.get_piece_bitboard(ColoredPieceType::BlackPawn) } else { board.get_piece_bitboard(ColoredPieceType::WhitePawn) };
+
+        let passed_pawn_mask = passed_pawn_mask(allied_pawns, opponent_pawns, if white { bitboard_helper::WHITE_PASSED_PAWN_MASK } else { bitboard_helper::BLACK_PASSED_PAWN_MASK });
+        let doubled_pawn_mask = doubled_pawn_mask(allied_pawns);
+        let isolated_pawn_mask = isolated_pawn_mask(allied_pawns);
+
+        for i in iterate_set_bits(allied_pawns) {
+            let y = (i / 8) as usize;
+
+            //let rank = if white { y } else { 7 - y };
+            let rank = (y ^ (7 * white as usize));
+
+            ret.pawn_matrix[(bitboard_helper::get_bit(passed_pawn_mask, Square::from_u8(i as u8)) as usize) * 24
+                + (bitboard_helper::get_bit(doubled_pawn_mask, Square::from_u8(i as u8)) as usize) * 12
+                + (bitboard_helper::get_bit(isolated_pawn_mask, Square::from_u8(i as u8)) as usize) * 6
+                + (rank as usize)] += factor as i8;
+        }
+    }
+
+    fn passed_pawn_mask(allied_pawns: u64, opponent_pawns: u64, pawn_mask: [u64; 64]) -> u64 {
+        let mut ret = 0;
+
+        for i in bitboard_helper::iterate_set_bits(allied_pawns) {
+            if opponent_pawns & pawn_mask[i as usize] == 0 {
+                ret |= 1 << i;
+            }
+        }
+
+        return ret;
+    }
+
+    //Thanks github copilot
+    fn doubled_pawn_mask(pawn_bitboard: u64) -> u64 {
+        let mut buffer = pawn_bitboard << 8;
+        buffer |= buffer << 8;
+        buffer |= buffer << 16;
+        buffer |= buffer << 32;
+
+        return pawn_bitboard & buffer;
+    }
+
+    fn isolated_pawn_mask(pawn_bitboard: u64) -> u64 {
+        let mut ret = 0;
+
+        for i in bitboard_helper::iterate_set_bits(pawn_bitboard) {
+            if pawn_bitboard & bitboard_helper::NEIGHBOUR_FILES[(i % 8)  as usize] == 0 {
+                ret |= 1 << i;
+            }
+        }
+
+        return ret;
+    }
+
+    
 }
 
 pub fn eval_pawn_structure(board: &BitBoard) -> (i32, i32, i32, [i32; 6]) {
