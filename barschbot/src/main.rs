@@ -10,6 +10,9 @@ use std::time::Instant;
 use std::fs;
 use std::str;
 
+use crate::auto_tuning::compare_fish;
+use crate::bb_settings::BBSettings;
+use crate::dataset::EvalBoards;
 use crate::endgame_table::EndgameTable;
 use crate::karpfen_bot::KarpfenBot;
 use crate::opening_book::OpeningBook;
@@ -29,7 +32,7 @@ mod piece_type;
 mod colored_piece_type;
 mod square;
 mod dataset;
-mod perceptron;
+mod perceptron_float;
 mod visualizer;
 mod evaluation;
 mod endgame_table;
@@ -41,31 +44,46 @@ mod compact_hashmap;
 mod karpfen_bot;
 mod search_stats;
 mod benchmark;
+mod kb_settings;
+mod perceptron_int;
 
 mod fill_arrays;
 
+const FEN_PATH: &str = "C:\\Users\\hmart\\Documents\\GitHub\\BarschBot\\data\\Fens.txt";
+
 //use std::env;
 fn main() {
-    //env::set_var("RUST_BACKTRACE", "1");
-
-    //let (table, book) = load_files();
-
     /* 
-    let fens = load_fens("C:\\Users\\hmart\\Documents\\GitHub\\Chess-Challenge\\Rust\\data\\Fens.txt");
-    let a = bb_settings::STANDARD_SETTINGS;
-    let mut b = bb_settings::STANDARD_SETTINGS;
+    let dataset = EvalBoards::load("C:\\Users\\hmart\\Documents\\GitHub\\BarschBot\\data\\chessData.csv");
+    
+    let input_set = dataset.create_input_set_int();
+    let output_set: Vec<f64> = dataset.create_output_set().iter().map(|x| *x as f64).collect();
 
-    b.null_move_pruning = false;
-    //b.max_depth = 4;
+    let mut nn = perceptron_float::Perceptron::new(input_set[0].len());
+    let factors = kb_settings::STANDARD_EVAL_FACTORS.values;
 
-    let (w, d, l) = auto_tuning::compare_settings_parallel(&fens, &book, &table, &a, &b);
-    auto_tuning::print_confidence(w, d, l);
+    for i in 0..factors.len() {
+        nn.weights[i] = factors[i] as i32 as f64;
+    }
+
+    for i in 0..factors.len() {
+        nn.weights[i + factors.len()] = (factors[i] >> 32) as f64;
+    }
+
+
+    nn.randomize_weights();
+    nn.gauss_newton(&input_set, &output_set);
+    //nn.gradient_descent(&input_set, &output_set);
     */
     
-    //play_all_puzzles(&book, &table);
 
-    benchmark::benchmark();
-    //match_handler::player_vs_karpfen(&mut Game::get_start_position(), true, &mut KarpfenBot::new());
+    let (endgame_table, opening_book) = load_files();
+    let (w, l, d) = compare_fish(&load_fens(FEN_PATH), &opening_book, &endgame_table, &bb_settings::STANDARD_BB_SETTINGS, &kb_settings::STANDARD_KB_SETTINGS);
+    
+    auto_tuning::print_confidence(w, l, d);
+
+
+    //match_handler::player_vs_karpfen(&mut Game::get_start_position(), true, &mut KarpfenBot::new(), &opening_book, &endgame_table);
 
     println!("Done");
 }

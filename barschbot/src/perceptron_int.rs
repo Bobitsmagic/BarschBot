@@ -3,7 +3,7 @@ use rand::prelude::*;
 use rand_distr::StandardNormal;
 
 pub struct Perceptron {
-    pub weights: Vec<f32>
+    pub weights: Vec<i32>
 }
 
 pub fn test_perceptron() {
@@ -11,7 +11,7 @@ pub fn test_perceptron() {
     const SAMPLE_COUNT: usize = 12_000_00;
     let mut rng = thread_rng();
 
-    let target_weights = vec![3.14159274, -2.71828175, -42.0, 1337.0, 69.0, -31.0];
+    let target_weights = vec![1, 3, 7, 42, -69, 99];
 
     let teacher = Perceptron { weights: target_weights };
 
@@ -19,13 +19,13 @@ pub fn test_perceptron() {
     let mut outputs = Vec::new();
 
     for i in 0..SAMPLE_COUNT {
-        let mut vec: Vec<f32> = Vec::new();
+        let mut vec: Vec<i32> = Vec::new();
         for d in 0..DIMENSIONS {
-            vec.push(rng.sample(StandardNormal));
+            vec.push(rng.gen_range(-100..101));
         }
         
-        let str: f32 =  rng.sample(StandardNormal);
-        outputs.push(teacher.calc_output(&vec) + str * 10.0);
+        let str: i32 =  rng.gen_range(-10..11);
+        outputs.push(teacher.calc_output(&vec) + str);
         inputs.push(vec);
     }
 
@@ -38,7 +38,7 @@ pub fn test_perceptron() {
 
 impl Perceptron {
     pub fn new(weight_count: usize) -> Self {
-        return Perceptron { weights: vec![0.0; weight_count]  }
+        return Perceptron { weights: vec![0; weight_count]  }
     }
 
     pub fn print(&self) {
@@ -53,12 +53,12 @@ impl Perceptron {
         let mut rng = thread_rng();
 
         for i in 0..self.weights.len() {
-            self.weights[i] = rng.sample(StandardNormal);
+            self.weights[i] = rng.gen_range(-100..101);
         }
     }
 
-    pub fn calc_squares_error(&self, input_set: &Vec<Vec<f32>>, output_set: &Vec<f32>) -> f32 {
-        let mut sum = 0.0;
+    pub fn calc_squares_error(&self, input_set: &Vec<Vec<i32>>, output_set: &Vec<i32>) -> i32 {
+        let mut sum = 0;
         for input_index in 0..input_set.len() {
             let error = output_set[input_index] - self.calc_output(&input_set[input_index]);
 
@@ -68,10 +68,10 @@ impl Perceptron {
         return sum;
     }
 
-    pub fn calc_output(&self, input: &Vec<f32>) -> f32 {
+    pub fn calc_output(&self, input: &Vec<i32>) -> i32 {
         assert_eq!(input.len(), self.weights.len());
 
-        let mut sum = 0.0;
+        let mut sum = 0;
         for i in 0..input.len() {
             sum += input[i] * self.weights[i];
         }
@@ -79,8 +79,8 @@ impl Perceptron {
         return sum;
     }
 
-    pub fn calc_gradient(&self, input_set: &Vec<Vec<f32>>, output_set: &Vec<f32>) -> Vec<f32> {
-        let mut gradient = vec![0.0; input_set[0].len()];
+    pub fn calc_gradient(&self, input_set: &Vec<Vec<i32>>, output_set: &Vec<i32>) -> Vec<i32> {
+        let mut gradient = vec![0; input_set[0].len()];
 
         for input_index in 0..input_set.len() {
             let error = output_set[input_index] - self.calc_output(&input_set[input_index]);
@@ -93,8 +93,8 @@ impl Perceptron {
         return gradient;
     }
 
-    pub fn calc_stochastic_gradient(&self, input_set: &Vec<Vec<f32>>, output_set: &Vec<f32>, index_set: &Vec<usize>) -> Vec<f32> {
-        let mut gradient = vec![0.0; input_set[0].len()];
+    pub fn calc_stochastic_gradient(&self, input_set: &Vec<Vec<i32>>, output_set: &Vec<i32>, index_set: &Vec<usize>) -> Vec<i32> {
+        let mut gradient = vec![0; input_set[0].len()];
 
 
         for input_index in index_set {
@@ -108,7 +108,7 @@ impl Perceptron {
         return gradient;
     }
 
-    pub fn gradient_descent(&mut self, input_set: &Vec<Vec<f32>>, output_set: &Vec<f32>) {
+    pub fn gradient_descent(&mut self, input_set: &Vec<Vec<i32>>, output_set: &Vec<i32>) {
 
         const MAX_IT: usize = 100_0000;
         const SAMPLE_COUNT: usize = 100_00;
@@ -128,14 +128,14 @@ impl Perceptron {
 
             //Skip pawn
             for i in 0..gradient.len() {
-                self.weights[i] += (gradient[i] / SAMPLE_COUNT as f32) * 0.001;
+                self.weights[i] += (gradient[i] / SAMPLE_COUNT as i32).signum();
             }
             if i % 10000 == 0 {
                 println!("Sq");
-                println!("{} -> {}", i, f32::sqrt(self.calc_squares_error(input_set, output_set) / input_set.len() as f32));
+                println!("{} -> {}", i, (self.calc_squares_error(input_set, output_set) / input_set.len() as i32));
                 self.print();
             }
         }
-        println!("NSE: {}", self.calc_squares_error(input_set, output_set) / input_set.len() as f32);
+        println!("NSE: {}", self.calc_squares_error(input_set, output_set) / input_set.len() as i32);
     }
 }

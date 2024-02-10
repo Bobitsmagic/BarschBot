@@ -1,13 +1,13 @@
-use crate::evaluation::{static_eval_float, generate_eval_attributes};
-use crate::perceptron;
-use crate::{bit_board::BitBoard, barsch_bot, game::Game, perceptron::Perceptron};
+use crate::evaluation::{generate_eval_attributes, generate_eval_attributes_fast, static_eval_float};
+use crate::perceptron_float;
+use crate::{bit_board::BitBoard, barsch_bot, game::Game, perceptron_float::Perceptron};
 use std::cmp;
 use std::fs::{read_to_string, self};
 use rand::{thread_rng, Rng};
 
 pub struct EvalBoards {
     boards: Vec<BitBoard>,
-    evals: Vec<f32>
+    evals: Vec<i32>
 }
 
 impl EvalBoards {
@@ -52,11 +52,12 @@ impl EvalBoards {
             
             let eval: i32 = opt.unwrap();
 
-            if eval.abs() > 1000 {
-                continue;
+            if eval.abs() > 100 {
+                //continue;
             }
+
             boards.push(board);
-            evals.push(eval as f32 / 100.0);
+            evals.push(eval * 10);
 
             if positions % 1_000_000 == 0{
                 println!("{}", positions);
@@ -65,12 +66,12 @@ impl EvalBoards {
 
         println!("Totol position count: {}, filtered count: {}", positions, boards.len());
 
-        let mut min = f32::MAX;
-        let mut max = f32::MIN;
+        let mut min = i32::MAX;
+        let mut max = i32::MIN;
 
         for i in &evals {
-            min = f32::min(min, *i);
-            max = f32::max(max, *i);
+            min = i32::min(min, *i);
+            max = i32::max(max, *i);
         }
 
         for i in 0..evals.len() {
@@ -102,7 +103,36 @@ impl EvalBoards {
         return ret;
     }
 
-    pub fn create_output_set(&self) -> Vec<f32> {
+    pub fn create_input_set_int(&self) -> Vec<Vec<f64>> {
+        let mut ret = Vec::new();
+        println!("Creating input set");
+        for i in 0..self.boards.len() {
+
+            let (array, mat_sum) = generate_eval_attributes_fast(&self.boards[i]).get_vector();
+
+            let mut vec = Vec::new();
+
+            let scale = mat_sum as f64 / 24.0;
+            for i in 0..array.len() {
+                vec.push(array[i] as f64 * scale);
+            }
+
+            let scale = (24 - mat_sum) as f64 / 24.0;
+            for i in 0..array.len() {
+                vec.push(array[i] as f64 * scale);
+            }
+
+            ret.push(vec);
+
+            if i % 1_000_000 == 0 {
+                println!("{} -> {}%", i, (i as f64 / self.boards.len() as f64) * 100.0);
+            }  
+        }
+
+        return ret;
+    }
+
+    pub fn create_output_set(&self) -> Vec<i32> {
         return self.evals.clone();
 
         //fn normalize(val: f64) -> f64 {

@@ -1,5 +1,5 @@
 use core::panic;
-use crate::{game::{Game, GameState}, colored_piece_type::ColoredPieceType, piece_type::PieceType, bitboard_helper::{self, iterate_set_bits}, square::Square, bb_settings::{EvalFactorsFloat, EvalFactorsInt}, bit_board::BitBoard, constants};
+use crate::{bb_settings::EvalFactorsFloat, bit_board::BitBoard, bitboard_helper::{self, iterate_set_bits}, colored_piece_type::ColoredPieceType, constants, game::{Game, GameState}, kb_settings::EvalFactorsInt, piece_type::PieceType, square::Square};
 
 pub const CHECKMATE_VALUE: f32 = f32::MAX;
 //                              Pawn, Knight, Bishop, Rook, Queen, King
@@ -30,23 +30,25 @@ pub struct EvalAttributes {
 }
 
 pub struct EvalAttributes2 {
+    pub material_sum: i8, //For endgame calculations (Max: 24)
+
     pub piece_dif: [i8; 5], 
     pub safe_mobility_dif: [i8; 6], 
     pub unsafe_mobility_dif: [i8; 6],
 
-    pub material_sum: i8, //For endgame calculations (Max: 24)
-    pub sq_control_dif: [i8; 64], //Sign of controlling each square
-
-    pub pawn_matrix: [i8; 2 * 2 * 2 * 6], //Passed, Doubled, Isolated, Rank
-
+    pub sq_control_dif: i8,
+    
+    pub pawn_push_dif: [i8; 6], 
+    pub passed_pawn_dif: i8, 
+    pub doubled_pawn_dif: i8, 
+    pub isolated_pawn_dif: i8, 
+    
     //Number of moves a Queen and Knight could do at the king pos
     pub king_q_moves_dif: i8,
-    //Number of attacked squares the king can move to
-    pub king_control_dif: [i8; 6],
     //Value of being in check by a specific pt
-    pub king_capture_dif: [i8; 5],  //-2, -1, 0, 1, 2
-    pub safe_check_dif: [i8; 5],
-    pub unsafe_check_dif: [i8; 5],
+    pub king_capture_dif: i8,  //-2, -1, 0, 1, 2
+    pub safe_check_dif: i8,
+    pub unsafe_check_dif: i8,
 }
 
 impl EvalAttributes {
@@ -138,16 +140,48 @@ impl EvalAttributes2 {
             unsafe_mobility_dif: [0; 6],
 
             material_sum: 0,
-            sq_control_dif: [0; 64],
+            sq_control_dif: 0,
 
-            pawn_matrix: [0; 2 * 2 * 2 * 6],
+            pawn_push_dif: [0; 6], 
+            passed_pawn_dif: 0, 
+            doubled_pawn_dif: 0, 
+            isolated_pawn_dif: 0, 
 
             king_q_moves_dif: 0,
-            king_control_dif: [0; 6],
-            king_capture_dif: [0; 5],
-            safe_check_dif: [0; 5],
-            unsafe_check_dif: [0; 5],
+            king_capture_dif: 0,
+            safe_check_dif: 0,
+            unsafe_check_dif: 0,
         }
+    }
+
+    pub fn get_vector(&self) -> ([i8; 31], i8)  {
+        let mut ret = [0; 31];
+
+        for i in 0..5 {
+            ret[i] = self.piece_dif[i];
+        }
+
+        for i in 0..6 {
+            ret[i + 5] = self.safe_mobility_dif[i];
+            ret[i + 11] = self.unsafe_mobility_dif[i];
+        }
+
+        ret[17] = self.sq_control_dif;
+
+        for i in 0..6 {
+            ret[i + 18] = self.pawn_push_dif[i];
+        }
+
+        ret[24] = self.passed_pawn_dif;
+        ret[25] = self.doubled_pawn_dif;
+        ret[26] = self.isolated_pawn_dif;
+
+        ret[27] = self.king_q_moves_dif;
+        ret[28] = self.king_capture_dif;
+        ret[29] = self.safe_check_dif;
+        ret[30] = self.unsafe_check_dif;
+
+        return (ret, self.material_sum);
     }
 }
 
@@ -464,7 +498,7 @@ pub fn generate_eval_attributes_fast(board: &BitBoard) -> EvalAttributes2 {
 
     ret.king_q_moves_dif = white_king_qn_moves.count_ones() as i8 - black_king_qn_moves.count_ones() as i8;
     
-    let mut see = [0_i32, 64];    
+    let mut see = [0_i32; 64];    
     let mut lva_white = [PieceType::None; 64];
     let mut lva_black = [PieceType::None; 64];
     
@@ -501,7 +535,7 @@ pub fn generate_eval_attributes_fast(board: &BitBoard) -> EvalAttributes2 {
     }    
     
     for i in 0..64 {
-        ret.sq_control_dif[i] = see[i].signum() as i8;
+        ret.sq_control_dif += see[i].signum() as i8;
     }
 
     for white in [true, false] {
@@ -519,8 +553,6 @@ pub fn generate_eval_attributes_fast(board: &BitBoard) -> EvalAttributes2 {
 
             let attacks = all_attacks[i as usize];
 
-            ret.king_control_dif[pt as usize] += ((attacks & opponent_king_moves).count_ones() as i32 * factor) as i8;
-
             let check_intersection = attacks & match(pt) {
                 PieceType::Pawn => opponent_king_pawn_moves,
                 PieceType::Knight => opponent_king_n_moves,
@@ -533,7 +565,7 @@ pub fn generate_eval_attributes_fast(board: &BitBoard) -> EvalAttributes2 {
             for attack in bitboard_helper::iterate_set_bits(attacks) {
                 let capture = board.get_piece_type(Square::from_u8(attack as u8));
                 if capture.get_piece_type() == PieceType::King {
-                    ret.king_capture_dif[pt as usize] += factor as i8;
+                    ret.king_capture_dif += factor as i8;
                 }
 
                 let is_check = bitboard_helper::get_bit(check_intersection, Square::from_u8(attack as u8));
@@ -541,18 +573,18 @@ pub fn generate_eval_attributes_fast(board: &BitBoard) -> EvalAttributes2 {
                 //Approximation of attack safety (Ignores pins, Complex exchanges, etc)
                 //LVA greater or eq moving piece &&
                 //SEE - moving piece + capture >= 0
-                if lva_opponnent[attack as usize].ge(&pt) && see[attack as usize] * factor - PIECE_ATTACK_SCORE[pt as usize] + PIECE_ATTACK_SCORE[capture as usize] >= 0 {
+                if lva_opponnent[attack as usize].ge(&pt) && see[attack as usize] * factor - PIECE_ATTACK_SCORE[pt as usize] + PIECE_ATTACK_SCORE[capture.get_piece_type() as usize] >= 0 {
                     ret.safe_mobility_dif[pt as usize] += factor as i8;
 
                     if is_check {
-                        ret.safe_check_dif[pt as usize] += factor as i8;
+                        ret.safe_check_dif += factor as i8;
                     }
                 }
                 else {
                     ret.unsafe_mobility_dif[pt as usize] += factor as i8;
 
                     if is_check {
-                        ret.unsafe_check_dif[pt as usize] += factor as i8;
+                        ret.unsafe_check_dif += factor as i8;
                     }
                 }
             }
@@ -565,18 +597,17 @@ pub fn generate_eval_attributes_fast(board: &BitBoard) -> EvalAttributes2 {
         let doubled_pawn_mask = doubled_pawn_mask(allied_pawns);
         let isolated_pawn_mask = isolated_pawn_mask(allied_pawns);
 
+        ret.passed_pawn_dif = (passed_pawn_mask.count_ones() as i32 * factor) as i8;
+        ret.doubled_pawn_dif = (doubled_pawn_mask.count_ones() as i32 * factor) as i8;
+        ret.isolated_pawn_dif = (isolated_pawn_mask.count_ones() as i32 * factor) as i8;
+
         for i in iterate_set_bits(allied_pawns) {
             let y = (i / 8) as usize;
 
-            //let rank = if white { y } else { 7 - y };
-            let rank = y ^ (7 * white as usize);
+            let rank = if white { y } else { 7 - y };
 
-            ret.pawn_matrix[(bitboard_helper::get_bit(passed_pawn_mask, Square::from_u8(i as u8)) as usize) * 24
-                + (bitboard_helper::get_bit(doubled_pawn_mask, Square::from_u8(i as u8)) as usize) * 12
-                + (bitboard_helper::get_bit(isolated_pawn_mask, Square::from_u8(i as u8)) as usize) * 6
-                + (rank as usize)] += factor as i8;
+            ret.pawn_push_dif[rank - 1] += factor as i8;
         }
-
     }
 
     return ret;

@@ -4,7 +4,7 @@ use num_bigint::BigInt;
 use num_traits::{Zero, One, ToPrimitive};
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
-use crate::{endgame_table::EndgameTable, bb_settings::{BBSettings, FactorName, self}, opening_book::OpeningBook, game::{GameState, Game}, match_handler::{play_bot_game, barsch_vs_sf, self}};
+use crate::{bb_settings::{self, BBSettings, FactorName}, endgame_table::EndgameTable, game::{Game, GameState}, karpfen_bot::KarpfenBot, kb_settings::{self, KBSettings}, match_handler::{self, barsch_vs_karpfen, barsch_vs_sf, play_bot_game}, opening_book::OpeningBook};
 
 const THREAD_COUNT: usize = 14;
 
@@ -291,6 +291,114 @@ fn play_sf_parallel(fens: &&Vec<String>, book: &OpeningBook, table: &EndgameTabl
         list[2] = draws;
         list[3] = barsch_duration.as_millis() as usize;
         list[4] = sf_duration.as_millis() as usize;
+    });
+
+    let mut sum_a = 0;
+    let mut sum_b = 0;
+    let mut sum_d = 0;
+    let mut sum_dur_a = 0;
+    let mut sum_dur_b = 0;
+
+    for list in threads {
+        sum_a += list[0];
+        sum_b += list[1];
+        sum_d += list[2];
+        sum_dur_a += list[3];
+        sum_dur_b += list[4];
+    }
+
+    println!("Time: {:?}, {:?}", Duration::from_millis(sum_dur_a as u64), Duration::from_millis(sum_dur_b as u64));
+
+    return (sum_a as i32, sum_b as i32, sum_d as i32);
+}
+
+pub fn compare_fish(fens: &Vec<String>, opening_book: &OpeningBook, endgame_table: &EndgameTable, bb_setting: &BBSettings, kb_settings: &KBSettings) -> (i32, i32, i32) {
+    let mut threads = Vec::new();
+    let fens_per_thread = fens.len() / THREAD_COUNT;
+    let mut reisdue = fens.len() % THREAD_COUNT;
+
+    let mut fen_index = 0;
+    for t in 0..THREAD_COUNT {
+        let mut list = Vec::new();
+        for i in 0..fens_per_thread {
+            list.push(fen_index);
+            fen_index += 1;
+        }
+
+        if reisdue > 0 {
+            list.push(fen_index);
+            fen_index += 1;
+            reisdue -= 1;
+        }
+
+        threads.push(list);
+    }
+    
+    threads.par_iter_mut().for_each(|list| {
+        let mut barsch_wins = 0;
+        let mut sf_wins = 0;
+        let mut draws = 0;
+        let mut barsch_duration = Duration::ZERO;
+        let mut karpfen_duration = Duration::ZERO;
+
+        let mut cmd = match_handler::get_stock_fish_process();
+
+        let mut bot = KarpfenBot::with_settings(kb_settings.clone());
+
+        let mut count = 0;
+        for i in 0..list.len() {
+            let fen = &fens[list[i]];
+            let white_start = Game::from_fen(&fen).is_whites_turn();
+            
+            bot.reset();
+            let (res, dur_a, dur_b) = barsch_vs_karpfen(
+                &mut Game::from_fen(&fen), opening_book, endgame_table, &bb_setting, &mut bot, true);       
+            barsch_duration += dur_a;
+            karpfen_duration += dur_b;
+
+            if res.is_draw() {
+                draws += 1;
+            }
+            else {
+                if white_start == (res == GameState::WhiteCheckmate) {
+                    sf_wins += 1;
+                }
+                else {
+                    barsch_wins += 1;
+                }
+            }
+            
+            bot.reset();
+            let (res, dur_a, dur_b) = barsch_vs_karpfen(
+                &mut Game::from_fen(&fen), opening_book, endgame_table, &bb_setting, &mut bot, false);       
+
+            barsch_duration += dur_a;
+            karpfen_duration += dur_b;
+
+            if res.is_draw() {
+                draws += 1;
+            }
+            else {
+                if white_start != (res == GameState::WhiteCheckmate) {
+                    sf_wins += 1;
+                }
+                else {
+                    barsch_wins += 1;
+                }
+            }
+
+            count += 1;
+            if count % 10 == 0 {
+                println!("Sum: W {} L {} D {}", barsch_wins, sf_wins, draws); 
+            }
+        }
+        
+        //println!("Chunk done Sum: W {} L {} D {}", a_wins, b_wins, draws);
+        list[0] = barsch_wins;
+        list[1] = sf_wins;
+        list[2] = draws;
+        list[3] = barsch_duration.as_millis() as usize;
+        list[4] = karpfen_duration.as_millis() as usize;
     });
 
     let mut sum_a = 0;

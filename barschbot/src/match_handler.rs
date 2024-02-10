@@ -1,6 +1,6 @@
 use std::{process::{Child, Stdio, Command}, io::{BufWriter, BufReader, Write, BufRead, self}, time::{Duration, Instant}};
 
-use crate::{barsch_bot, bb_settings::BBSettings, chess_move::{ChessMove, self}, endgame_table::EndgameTable, game::{Game, GameState}, karpfen_bot::{self, KarpfenBot}, opening_book::OpeningBook, square::{Square, self}, visualizer::Visualizer};
+use crate::{barsch_bot, bb_settings::BBSettings, chess_move::{self, ChessMove}, endgame_table::{self, EndgameTable}, game::{Game, GameState}, karpfen_bot::{self, KarpfenBot}, opening_book::{self, OpeningBook}, square::{self, Square}, visualizer::Visualizer};
 
 
 pub fn get_human_move(app: &mut Visualizer, game: &mut Game) -> ChessMove {
@@ -94,8 +94,8 @@ fn get_barschbot_move(game: &mut Game, table: &EndgameTable, settings: &BBSettin
     return barsch_bot::get_best_move(game, table, settings, book);
 }
 
-fn get_karpfenbot_move(game: &mut Game, bot: &mut KarpfenBot) -> ChessMove {
-    return bot.get_best_move(game);
+fn get_karpfenbot_move(game: &mut Game, bot: &mut KarpfenBot, opening_book: &OpeningBook, endgame_table: &EndgameTable) -> ChessMove {
+    return bot.get_best_move(game, opening_book, endgame_table);
 }
 
 pub fn player_vs_barsch(game: &mut Game, mut human_turn: bool, settings: &BBSettings, table: &EndgameTable, book: &OpeningBook) { 
@@ -129,7 +129,7 @@ pub fn player_vs_barsch(game: &mut Game, mut human_turn: bool, settings: &BBSett
 }
 
 
-pub fn player_vs_karpfen(game: &mut Game, mut human_turn: bool, bot: &mut KarpfenBot) { 
+pub fn player_vs_karpfen(game: &mut Game, mut human_turn: bool, bot: &mut KarpfenBot, opening_book: &OpeningBook, endgame_table: &EndgameTable) { 
     let mut app = Visualizer::new();
     let flip = false;
     
@@ -141,11 +141,11 @@ pub fn player_vs_karpfen(game: &mut Game, mut human_turn: bool, bot: &mut Karpfe
             get_human_move(&mut app, game)
         }
         else {
-            get_karpfenbot_move(game, bot)
+            get_karpfenbot_move(game, bot, opening_book, endgame_table)
         };
 
         if cm == chess_move::NULL_MOVE {
-            cm = get_karpfenbot_move(game, bot);
+            cm = get_karpfenbot_move(game, bot, opening_book, endgame_table);
         }
 
         human_turn = !human_turn;
@@ -157,6 +157,39 @@ pub fn player_vs_karpfen(game: &mut Game, mut human_turn: bool, bot: &mut Karpfe
     
     println!("Result: {}", game.get_game_state().to_string());
     println!("{}", game.to_string());
+}
+
+pub fn barsch_vs_karpfen(game: &mut Game, opening_book: &OpeningBook, endgame_table: &EndgameTable, bb_setting: &BBSettings, karpfen_bot: &mut KarpfenBot, mut barsch_turn: bool) -> (GameState, Duration, Duration) {
+    let mut duration_1 = Duration::ZERO;
+    let mut duration_2 = Duration::ZERO;
+
+    while game.get_game_state() == GameState::Undecided {
+        
+        let start = Instant::now();
+        let cm = if barsch_turn {
+            barsch_bot::get_best_move(game, endgame_table, bb_setting, opening_book)
+        } else {
+            get_karpfenbot_move(game, karpfen_bot, opening_book, endgame_table)
+        };
+
+        if cm == chess_move::NULL_MOVE || !game.get_legal_moves().contains(&cm) {
+            cm.print();
+            println!("Illegal move by {} \n{}", if barsch_turn { "Barsch" } else { "Karpfen" }, game.to_string());
+        }
+        
+        if barsch_turn {
+            duration_1 += start.elapsed();
+        }
+        else {
+            duration_2 += start.elapsed();
+        }
+
+        barsch_turn = !barsch_turn;
+
+        game.make_move(cm);
+    }
+
+    return (game.get_game_state(), duration_1, duration_2);
 }
 
 pub fn play_bot_game(game: &mut Game, table: &EndgameTable, book: &OpeningBook, bb_settings_a: &BBSettings , bb_settings_b: &BBSettings) -> (GameState, Duration, Duration) {

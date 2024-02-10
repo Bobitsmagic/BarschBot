@@ -97,6 +97,10 @@ impl ChessMove {
     }
 
     pub fn get_board_name(&self, board: &BitBoard) -> String {
+        if self.is_null_move() {
+            return "NULL_MOVE".to_owned();
+        }
+
         if self.is_castle() {
             if (self.target_square as u8) < (self.start_square as u8) {
                 return "O-O-O".to_owned();
@@ -106,7 +110,12 @@ impl ChessMove {
             }
         }
 
+        let moves = board.get_legal_moves();
+
+        
         let mut s = "".to_owned();
+
+
 
         if PieceType::from_cpt(self.move_piece_type) == PieceType::Pawn {
             if self.is_direct_capture() || self.is_en_passant() {
@@ -117,6 +126,13 @@ impl ChessMove {
             s += &PieceType::from_cpt(self.move_piece_type).get_char().to_string();
         }
         
+
+        for m in moves {
+            if m.target_square == self.target_square && m.move_piece_type == self.move_piece_type && m.start_square != self.start_square && m.move_piece_type.get_piece_type() != PieceType::Pawn {
+                s += &self.start_square.to_string();
+                break;
+            }
+        }
 
         if self.is_direct_capture() || self.is_en_passant() {
             s += "x";

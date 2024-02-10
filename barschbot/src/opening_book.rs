@@ -17,6 +17,8 @@ impl OpeningBook {
         let mut moves: HashMap<u64, ChessMove> = HashMap::new();
 
         for line in read_to_string(path).unwrap().lines() {
+
+            //println!("Line: {}", line);
             let parts = line.split(",").collect::<Vec<_>>();
 
             let board = BitBoard::from_fen(parts[0]);

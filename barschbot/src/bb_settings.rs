@@ -14,7 +14,7 @@ pub struct BBSettings {
 }
 
 pub const STANDARD_BB_SETTINGS: BBSettings = BBSettings { 
-    max_depth: 4, 
+    max_depth: 6, 
     max_quiescence_depth: 3, 
     max_extensions: 2, 
     end_game_table: true, 
@@ -22,27 +22,8 @@ pub const STANDARD_BB_SETTINGS: BBSettings = BBSettings {
     null_move_pruning_margin: 0.3,
     null_move_pruning_depth: 3, 
     min_search_time: 0, 
-    eval_factors: STANDARD_EVAL_FACTORS };
-
-pub struct KBSettings {
-    pub max_depth: i8,
-    pub max_quiescence_depth: u8,
-    pub end_game_table: bool,
-    pub null_move_pruning: bool,
-    pub max_extensions: u8,
-    pub eval_factors: EvalFactorsInt,
-    pub min_search_time: u64
-}
-
-pub const STANDARD_KB_SETTINGS: KBSettings = KBSettings { 
-    max_depth: 7, 
-    max_quiescence_depth: 3, 
-    max_extensions: 2, 
-    end_game_table: true, 
-    null_move_pruning: true, 
-    min_search_time: 0, 
-    eval_factors: ZERO_EVAL_FACTORS_INT };
-
+    eval_factors: STANDARD_EVAL_FACTORS 
+};
 
 #[derive(Debug, Copy, Clone)]
 pub enum FactorName {
@@ -191,18 +172,3 @@ impl EvalFactorsFloat {
         }
     }
 }
-
-pub struct EvalFactrorsInt {
-    values: [i32; 152 * 2],
-}
-
-pub const ZERO_EVAL_FACTORS_INT: EvalFactrorsInt = EvalFactrorsInt {
-    values: [0; 152 * 2]
-};
-
-impl EvalFactrorsInt {
-    pub fn evaluate(&self, attributes: &EvalAttributes2) -> i32 {
-        
-    }
-}
-

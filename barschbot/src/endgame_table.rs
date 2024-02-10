@@ -778,7 +778,7 @@ impl EndgameTable {
         if !self.table_map.contains_key(hash) {
             //board.print();
 
-            return 0;
+            return UNDEFINED;
         } 
 
         let mut s = self.table_map.get(hash).unwrap();
@@ -787,7 +787,7 @@ impl EndgameTable {
             println!("Undefined: ");
             board.print();
 
-            return 0;
+            return UNDEFINED;
         }
 
         if sym.is_whites_turn() != board.is_whites_turn() {
