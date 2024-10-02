@@ -55,6 +55,7 @@ fn get_stock_fish_move(game: &mut Game, cmd: &mut Child) -> ChessMove {
             
             //println!("{}", s);
 
+            s.split(" ").skip(1).next().unwrap();
 
             let parts = s.split(" ").collect::<Vec<_>>();
             let length = parts[1].len() - 2;

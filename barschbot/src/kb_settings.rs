@@ -67,7 +67,7 @@ pub const STANDARD_EVAL_FACTORS: EvalFactorsInt = EvalFactorsInt {
         5000 | (6000 << 32), //Rook value
         11000 | (12000 << 32), //Queen value
 
-        10 | (10 << 32), //Pawn safe mobility
+        0 | (0 << 32), //Pawn safe mobility
         62 | (60 << 32), //Knight safe mobility
         70 | (50 << 32), //Bishop safe mobility
         8 | (20 << 32), //Rook safe mobility

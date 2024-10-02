@@ -293,7 +293,6 @@ impl BitBoard {
             }
         }
 
-
         s += " ";
         if self.whites_turn {
             s += "w";
