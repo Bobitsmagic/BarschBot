@@ -1,3 +1,6 @@
+use core::panic;
+use std::{option, panic::PanicInfo};
+
 use crate::board::piece_type::PieceType;
 
 use super::{bit_array::BitArray, color::Color, piece_type::ColoredPieceType, square::Square};
@@ -128,4 +131,48 @@ impl BitBoard {
         }
     }
 
+    pub fn get_piecetype(&self, square: Square) -> PieceType {
+        if !(self.white_piece | self.black_piece).get_bit(square) {
+            return PieceType::None;
+        }
+
+        if self.pawn.get_bit(square) {
+            return PieceType::Pawn;
+        }
+
+        if self.knight.get_bit(square) {
+            return PieceType::Knight;
+        }
+
+        match (self.diagonal_slider.get_bit(square), self.orthogonal_slider.get_bit(square)) {
+            (false, false) => {
+                debug_assert!(self.king.get_bit(square), "Bitboard is invalid");
+                return PieceType::King;
+            }
+            (true, false) => {
+                return PieceType::Bishop;
+            }
+            (false, true) => {
+                return PieceType::Rook;
+            }
+            (true, true) => {
+                return PieceType::Queen;
+            }
+        }
+    }
+
+    pub fn get_colored_piecetype(&self, square: Square) -> ColoredPieceType {
+        let c_res = match (self.white_piece.get_bit(square), self.black_piece.get_bit(square)) {
+            (false, false) => None,
+            (true, false) => Some(Color::White),
+            (false, true) => Some(Color::Black),
+            (true, true) => panic!("Bitboard is invalid"),
+        };
+
+        if let Some(color) = c_res {
+            return self.get_piecetype(square).colored(color);
+        } 
+
+        return ColoredPieceType::None;
+    }
 }

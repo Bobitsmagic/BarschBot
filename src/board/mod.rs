@@ -1,3 +1,4 @@
+pub mod attack_board;
 pub mod bit_array;
 pub mod bit_board;
 pub mod chess_move;

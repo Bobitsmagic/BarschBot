@@ -32,3 +32,10 @@ $ J = sqrt(2) mat(y_(00), y_(01), dots;
   dots.v, dots.v, dots.down) $
 
 $ J^T J = mat(y_00^2) $
+
+= Move generation
+== Pseudo moves
+Pawns: Bitboard parallel
+Knights: Per knight 
+Slider: Per slider 
+  perfect hashing or bitmask sort or 
