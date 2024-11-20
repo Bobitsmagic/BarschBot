@@ -1,5 +1,4 @@
 use core::panic;
-use std::{option, panic::PanicInfo};
 
 use crate::board::piece_type::PieceType;
 

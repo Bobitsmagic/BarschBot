@@ -1,4 +1,4 @@
-use super::{bit_array::BitArray, bit_board::BitBoard, piece_type::ColoredPieceType, square::Square};
+use super::{bit_array::BitArray, bit_board::BitBoard, color::Color, piece_type::{ColoredPieceType, PieceType}, square::Square};
 
 pub struct AttackBoard {
     white_attacks: BitArray,
@@ -24,7 +24,7 @@ impl AttackBoard {
     }
 
     pub fn add_piece(&mut self, cpt: ColoredPieceType, sq: Square, bb: &BitBoard) {
-        unimplemented!()
+        
     }
 }
 

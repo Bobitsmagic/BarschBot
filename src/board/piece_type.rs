@@ -138,7 +138,7 @@ impl ColoredPieceType {
             ColoredPieceType::BlackRook => "♖",
             ColoredPieceType::BlackQueen => "♕",
             ColoredPieceType::BlackKing => "♔",
-            ColoredPieceType::None => "□",
+            ColoredPieceType::None => " ",
         }
     }
 
@@ -165,6 +165,23 @@ impl ColoredPieceType {
     pub fn opposite(&self) -> ColoredPieceType {
         self.piece_type().colored(!self.color())
     }
+
+    pub fn black(&self) -> ColoredPieceType {
+        if *self == ColoredPieceType::None {
+            return ColoredPieceType::None;
+        }
+
+        self.piece_type().colored(Color::Black)
+    }
+
+    pub fn white(&self) -> ColoredPieceType {
+        if *self == ColoredPieceType::None {
+            return ColoredPieceType::None;
+        }
+
+        self.piece_type().colored(Color::White)
+    }
+
     pub fn color(&self) -> Color {
         match self {
             ColoredPieceType::WhitePawn => Color::White,

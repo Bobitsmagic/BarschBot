@@ -1,97 +1,10 @@
-use super::square::Square;
+use std::u64;
 
-//Constants
-pub const ROWS: [BitArray; 8] = [
-    BitArray { bits: 0xFF },
-    BitArray { bits: 0xFF00 },
-    BitArray { bits: 0xFF0000 },
-    BitArray { bits: 0xFF000000 },
-    BitArray { bits: 0xFF00000000 },
-    BitArray { bits: 0xFF0000000000 },
-    BitArray { bits: 0xFF000000000000 },
-    BitArray { bits: 0xFF00000000000000 },
-];
+use super::{bit_array_lookup::*, square::Square};
 
-pub const COLLUMNS: [BitArray; 8] = [
-    BitArray { bits: 0x0101010101010101 },
-    BitArray { bits: 0x0202020202020202 },
-    BitArray { bits: 0x0404040404040404 },
-    BitArray { bits: 0x0808080808080808 },
-    BitArray { bits: 0x1010101010101010 },
-    BitArray { bits: 0x2020202020202020 },
-    BitArray { bits: 0x4040404040404040 },
-    BitArray { bits: 0x8080808080808080 },
-];
 
-pub const SQUARES: [BitArray; 65] = [
-    BitArray { bits: 0x1 },
-    BitArray { bits: 0x2 },
-    BitArray { bits: 0x4 },
-    BitArray { bits: 0x8 },
-    BitArray { bits: 0x10 },
-    BitArray { bits: 0x20 },
-    BitArray { bits: 0x40 },
-    BitArray { bits: 0x80 },
-    BitArray { bits: 0x100 },
-    BitArray { bits: 0x200 },
-    BitArray { bits: 0x400 },
-    BitArray { bits: 0x800 },
-    BitArray { bits: 0x1000 },
-    BitArray { bits: 0x2000 },
-    BitArray { bits: 0x4000 },
-    BitArray { bits: 0x8000 },
-    BitArray { bits: 0x10000 },
-    BitArray { bits: 0x20000 },
-    BitArray { bits: 0x40000 },
-    BitArray { bits: 0x80000 },
-    BitArray { bits: 0x100000 },
-    BitArray { bits: 0x200000 },
-    BitArray { bits: 0x400000 },
-    BitArray { bits: 0x800000 },
-    BitArray { bits: 0x1000000 },
-    BitArray { bits: 0x2000000 },
-    BitArray { bits: 0x4000000 },
-    BitArray { bits: 0x8000000 },
-    BitArray { bits: 0x10000000 },
-    BitArray { bits: 0x20000000 },
-    BitArray { bits: 0x40000000 },
-    BitArray { bits: 0x80000000 },
-    BitArray { bits: 0x100000000 },
-    BitArray { bits: 0x200000000 },
-    BitArray { bits: 0x400000000 },
-    BitArray { bits: 0x800000000 },
-    BitArray { bits: 0x1000000000 },
-    BitArray { bits: 0x2000000000 },
-    BitArray { bits: 0x4000000000 },
-    BitArray { bits: 0x8000000000 },
-    BitArray { bits: 0x10000000000 },
-    BitArray { bits: 0x20000000000 },
-    BitArray { bits: 0x40000000000 },
-    BitArray { bits: 0x80000000000 },
-    BitArray { bits: 0x100000000000 },
-    BitArray { bits: 0x200000000000 },
-    BitArray { bits: 0x400000000000 },
-    BitArray { bits: 0x800000000000 },
-    BitArray { bits: 0x1000000000000 },
-    BitArray { bits: 0x2000000000000 },
-    BitArray { bits: 0x4000000000000 },
-    BitArray { bits: 0x8000000000000 },
-    BitArray { bits: 0x10000000000000 },
-    BitArray { bits: 0x20000000000000 },
-    BitArray { bits: 0x40000000000000 },
-    BitArray { bits: 0x80000000000000 },
-    BitArray { bits: 0x100000000000000 },
-    BitArray { bits: 0x200000000000000 },
-    BitArray { bits: 0x400000000000000 },
-    BitArray { bits: 0x800000000000000 },
-    BitArray { bits: 0x1000000000000000 },
-    BitArray { bits: 0x2000000000000000 },
-    BitArray { bits: 0x4000000000000000 },
-    BitArray { bits: 0x8000000000000000 },
-    BitArray { bits: 0x0 },
-];
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct BitArray {
     pub bits: u64,
 }
@@ -101,6 +14,11 @@ impl BitArray {
     pub fn empty() -> BitArray {
         BitArray { bits: 0 }
     }
+
+    pub fn full() -> BitArray {
+        BitArray { bits: u64::MAX }
+    }
+
     pub fn new(bits: u64) -> BitArray {
         BitArray { bits }
     }
@@ -180,6 +98,105 @@ impl BitArray {
             }
         });
     }
+
+    //Translation
+    pub fn up(&self) -> BitArray {
+        BitArray { bits: self.bits << 8 }
+    }
+
+    pub fn down(&self) -> BitArray {
+        BitArray { bits: self.bits >> 8 }
+    }
+
+    pub fn right(&self) -> BitArray {
+        BitArray { bits: (self.bits & !COLLUMNS[7].bits) << 1 }
+    }
+
+    pub fn left(&self) -> BitArray {
+        BitArray { bits: (self.bits & !COLLUMNS[0].bits) >> 1 }
+    }
+
+    pub fn up_right(&self) -> BitArray {
+        BitArray { bits: (self.bits & !COLLUMNS[7].bits) << 9 }
+    }
+
+    pub fn up_left(&self) -> BitArray {
+        BitArray { bits: (self.bits & !COLLUMNS[0].bits) << 7 }
+    }
+
+    pub fn down_right(&self) -> BitArray {
+        BitArray { bits: (self.bits & !COLLUMNS[7].bits) >> 7 }
+    }
+
+    pub fn down_left(&self) -> BitArray {
+        BitArray { bits: (self.bits & !COLLUMNS[0].bits) >> 9 }
+    }
+
+    pub fn translate(&self, dx: i8, dy: i8) -> BitArray {
+        debug_assert!(dx.abs() <= 7 && dy.abs() <= 7, "Invalid translation: ({}, {})", dx, dy);
+        
+        let mask = if dx >= 0 { ACCUM_COLLUMNS[(7 - dx) as usize] } else { !ACCUM_COLLUMNS[(-dx) as usize - 1] };
+
+        let shift_sum = dx + dy * 8;
+        if shift_sum > 0 {
+            BitArray { bits: (*self & mask).bits << shift_sum }
+        }
+        else {
+            BitArray { bits: (*self & mask).bits >> -shift_sum }
+        }
+    }
+
+    pub fn pawn_moves<const WHITE: bool>(&self) -> BitArray {
+        if WHITE {
+            self.up_left() | self.up_right()
+        }
+        else {
+            self.down_left() | self.down_right()
+        }
+    }
+
+    //[TODO] benchmark this vs iterate with lookup table
+    pub fn knight_moves(&self) -> BitArray {
+        self.translate(2, 1) | self.translate(1, 2) | 
+        self.translate(-1, 2) | self.translate(-2, 1) |
+        self.translate(-2, -1) | self.translate(-1, -2) |
+        self.translate(1, -2) | self.translate(2, -1)
+    }
+
+    pub fn king_moves(&self) -> BitArray {
+        self.up() | self.down() | self.left() | self.right() |
+        self.up_left() | self.up_right() | self.down_left() | self.down_right()
+    }
+
+    pub fn diagonal_moves(&self) -> BitArray {
+        let mut moves = BitArray::empty();
+
+        let mut bb = *self;
+        while !bb.is_empty() {
+            moves |= bb;
+            bb = bb.up_left();
+        }
+
+        bb = *self;
+        while !bb.is_empty() {
+            moves |= bb;
+            bb = bb.up_right();
+        }
+
+        bb = *self;
+        while !bb.is_empty() {
+            moves |= bb;
+            bb = bb.down_left();
+        }
+
+        bb = *self;
+        while !bb.is_empty() {
+            moves |= bb;
+            bb = bb.down_right();
+        }
+
+        moves
+    }
 }
 
 //Bit operations
@@ -213,6 +230,12 @@ impl std::ops::BitXor for BitArray {
     }
 }
 
+impl std::ops::BitOrAssign for BitArray {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.bits |= rhs.bits;
+    }
+}
+
 impl std::ops::BitXorAssign for BitArray {
     fn bitxor_assign(&mut self, rhs: Self) {
         self.bits ^= rhs.bits;
@@ -243,6 +266,69 @@ impl std::ops::Shr<usize> for BitArray {
     fn shr(self, rhs: usize) -> BitArray {
         BitArray {
             bits: self.bits >> rhs,
+        }
+    }
+}
+
+
+//Unit tests
+#[cfg(test)]
+mod bit_array_tests {
+    use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
+    use rand::Rng;
+
+    #[test]
+    fn translation_test() {
+        let mut v = Vec::new();
+
+        v.push(super::BitArray::empty());
+        v.push(super::BitArray::full());
+
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+
+        for _ in 0..100 {
+            let mut bb = super::BitArray::empty();
+
+            for _ in 0..32 {
+                let square = super::Square::from_usize(rng.gen_range(0..64));
+                bb.set_bit(square);
+            }
+
+            v.push(bb);
+        }
+
+        for bb in v {
+            for dx in -7..=7 {
+                for dy in -7..=7 {
+                    println!("Translation: ({}, {})", dx, dy);
+                    bb.print();
+
+                    let translated = bb.translate(dx, dy);
+
+                    println!("Translated:");
+                    translated.print();
+
+                    
+                    let mut expected = bb;
+                    for _ in 0..dx {
+                        expected = expected.right();
+                    }
+                    for _ in 0..-dx {
+                        expected = expected.left();
+                    }
+                    for _ in 0..dy {
+                        expected = expected.up();
+                    }
+                    for _ in 0..-dy {
+                        expected = expected.down();
+                    }
+
+                    println!("Expected:");
+                    expected.print();
+
+                    assert_eq!(translated, expected, "Translation failed: ({}, {})", dx, dy);
+                }
+            }
         }
     }
 }

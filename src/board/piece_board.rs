@@ -1,5 +1,7 @@
 use std::ops::{Index, IndexMut};
 
+use colored::{Colorize, CustomColor};
+
 use crate::board::{color::Color, square::File};
 
 use super::{chess_move::ChessMove, piece_type::ColoredPieceType, square::Square};
@@ -64,7 +66,7 @@ impl PieceBoard {
         debug_assert!(self[m.start] == m.move_piece, "Invalid move: start piece is not the same as move piece");
         
         if m.is_castle() {
-            let (rook_start_file, rook_end_file) = if m.is_big_castle() {
+            let (rook_start_file, rook_end_file) = if m.is_long_castle() {
                 debug_assert!(self[m.start.left()].is_none(), "Invalid move: {} square is not empty", m.start.left().to_string());
                 debug_assert!(self[m.start.left().left()].is_none(), "Invalid move: {} square is not empty", m.start.left().left().to_string());
                 debug_assert!(self[m.start.left().left().left()].is_none(), "Invalid move: {} square is not empty", m.start.left().left().left().to_string());
@@ -119,11 +121,23 @@ impl PieceBoard {
 
                 let piece = self[square];
 
-                if piece == ColoredPieceType::None {
-                    s += &format!("{} ", square.to_smybol());
-                } else {
-                    s += &format!("{} ", piece.to_symbol());
+
+
+                let square_color = if square.is_light() { CustomColor::new(0, 0, 0)} else { CustomColor::new(25, 25, 25,)};
+                
+                if piece.is_none() {
+                    s += &format!("{}", "  ".on_custom_color(square_color));
                 }
+                else {
+                    let piece_color = match piece.color() {
+                        Color::White => CustomColor::new(220, 220, 220),
+                        Color::Black => CustomColor::new(200, 200, 200),
+                    };
+    
+    
+                    s += &format!("{}", format!("{} ", piece.to_symbol()).custom_color(piece_color).on_custom_color(square_color));
+                }
+
             }
             s += "\n";
         }

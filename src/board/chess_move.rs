@@ -46,11 +46,11 @@ impl ChessMove {
         self.promotion_piece != ColoredPieceType::None
     }
 
-    pub fn is_big_castle(&self) -> bool {
+    pub fn is_long_castle(&self) -> bool {
         self.move_piece.is_king() && self.start.file_index() == 2 + self.end.file_index()
     }
 
-    pub fn is_right_castle(&self) -> bool {
+    pub fn is_short_castle(&self) -> bool {
         self.move_piece.is_king() && self.start.file_index() + 2 == self.end.file_index()
     }
 
