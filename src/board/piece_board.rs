@@ -2,9 +2,9 @@ use std::ops::{Index, IndexMut};
 
 use colored::{Colorize, CustomColor};
 
-use crate::board::{color::Color, square::File};
+use crate::{board::{color::PlayerColor, square::File}, moves::chess_move::ChessMove};
 
-use super::{chess_move::ChessMove, piece_type::ColoredPieceType, square::Square};
+use super::{piece_type::ColoredPieceType, square::Square};
 
 pub struct PieceBoard {
     squares: [ColoredPieceType; 64],
@@ -93,8 +93,8 @@ impl PieceBoard {
         
         if m.is_en_passant() {
             let capture_square = match m.move_piece.color() {
-                Color::White => m.start.up(),
-                Color::Black => m.start.down(),
+                PlayerColor::White => m.start.up(),
+                PlayerColor::Black => m.start.down(),
             };
             
             debug_assert!(self[capture_square] == m.move_piece.opposite(), "Invalid move: en passant capture square is not a pawn");
@@ -106,17 +106,17 @@ impl PieceBoard {
     }
 
     pub fn print(&self) {
-        self.print_perspective(Color::White);
+        self.print_perspective(PlayerColor::White);
     }
-    pub fn print_perspective(&self, perspective: Color) {
+    pub fn print_perspective(&self, perspective: PlayerColor) {
         let mut s = String::new();
 
         for rank in (0..8).rev() {
             for file in 0..8 {
 
                 let square = match perspective {
-                    Color::White => Square::from_rank_file_index(rank, file),
-                    Color::Black => Square::from_rank_file_index(7 - rank, 7 - file),
+                    PlayerColor::White => Square::from_rank_file_index(rank, file),
+                    PlayerColor::Black => Square::from_rank_file_index(7 - rank, 7 - file),
                 };
 
                 let piece = self[square];
@@ -130,8 +130,8 @@ impl PieceBoard {
                 }
                 else {
                     let piece_color = match piece.color() {
-                        Color::White => CustomColor::new(220, 220, 220),
-                        Color::Black => CustomColor::new(200, 200, 200),
+                        PlayerColor::White => CustomColor::new(220, 220, 220),
+                        PlayerColor::Black => CustomColor::new(200, 200, 200),
                     };
     
     

@@ -140,7 +140,7 @@ impl Square {
         (*self as u8) % 8
     }
 
-    pub fn get_bitarray(&self) -> BitArray {
+    pub fn bit_array(&self) -> BitArray {
         debug_assert!(*self != Square::None, "Invalid square: None");
 
         BitArray { bits: 1 << (*self as u8) }
@@ -213,6 +213,17 @@ impl Square {
         assert!(file < 7, "Invalid file: {}", file);
 
         return Square::from_rank_file_index(rank, file + 1);
+    }
+
+    pub fn translate(&self, dx: i8, dy: i8) -> Square {
+        let rank = self.rank_index() as i8 + dy;
+        let file = self.file_index() as i8 + dx;
+
+        if rank < 0 || rank > 7 || file < 0 || file > 7 {
+            Square::None
+        } else {
+            Square::from_rank_file_index(rank as u8, file as u8)
+        }
     }
 }
 

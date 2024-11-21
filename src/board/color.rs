@@ -1,37 +1,37 @@
 use std::ops;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Color {
+pub enum PlayerColor {
     White,
     Black,
 }
 
-pub const ALL_COLORS: [Color; 2] = [Color::White, Color::Black];
+pub const ALL_COLORS: [PlayerColor; 2] = [PlayerColor::White, PlayerColor::Black];
 
-impl Color {
-    pub fn new(is_white: bool) -> Color {
+impl PlayerColor {
+    pub fn new(is_white: bool) -> PlayerColor {
         if is_white {
-            Color::White
+            PlayerColor::White
         }
         else {
-            Color::Black
+            PlayerColor::Black
         }
     }
     pub fn is_white(&self) -> bool {
-        *self == Color::White
+        *self == PlayerColor::White
     }
     pub fn is_black(&self) -> bool {
-        *self == Color::Black
+        *self == PlayerColor::Black
     }
 }
 
-impl ops::Not for Color {
-    type Output = Color;
+impl ops::Not for PlayerColor {
+    type Output = PlayerColor;
 
-    fn not(self) -> Color {
+    fn not(self) -> PlayerColor {
         match self {
-            Color::White => Color::Black,
-            Color::Black => Color::White,
+            PlayerColor::White => PlayerColor::Black,
+            PlayerColor::Black => PlayerColor::White,
         }
     }
 }

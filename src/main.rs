@@ -1,12 +1,15 @@
-use barschbot::board::{bit_array_lookup, chess_move::ChessMove, color::Color, piece_board, piece_type::ColoredPieceType, square::Square};
+use barschbot::{board::{bit_array_lookup, bit_board::{self, BitBoard}, color::PlayerColor, piece_board, piece_type::ColoredPieceType, square::Square}, game::game_state::{self, GameState}, moves::{self, chess_move::ChessMove}};
 fn main() {
-    let mut board = piece_board::PieceBoard::start_position();
+    let mut piece_board = piece_board::PieceBoard::start_position();
+    let mut bit_board = bit_board::BitBoard::from_piece_board(&piece_board);
+    let mut game_state = GameState::new();
 
-    board.print_perspective(Color::White);
+    piece_board.print();
 
-    board.make_move(ChessMove::new(Square::E2, Square::E4, ColoredPieceType::WhitePawn, ColoredPieceType::None));
+    let moves = moves::move_gen::generate_pseudo_legal_moves_bitboard(&bit_board, &piece_board, &game_state, PlayerColor::White);
 
-    board.print_perspective(Color::Black);
-
-    // bit_array_lookup::print_all_tables();
+    println!("Count: {}", moves.len());
+    for m in moves {
+        m.print();  
+    }
 }

@@ -85,18 +85,7 @@ impl BitArray {
     }
 
     pub fn iterate_set_bits(&self) -> impl Iterator<Item=u32> {
-        let mut value = self.bits;
-        return std::iter::from_fn(move || {
-            if value != 0 {
-                let index = value.trailing_zeros();
-                value ^= 1_u64 << index;
-                
-                Some(index)
-            }
-            else {
-                None
-            }
-        });
+        return iterate_set_bits(self.bits);
     }
 
     //Translation
@@ -196,6 +185,106 @@ impl BitArray {
         }
 
         moves
+    }
+}
+
+//Helper
+
+pub fn iterate_set_bits(mut value: u64) -> impl Iterator<Item=u32> {
+    return std::iter::from_fn(move || {
+        if value != 0 {
+            let index = value.trailing_zeros();
+            value ^= 1_u64 << index;
+            
+            Some(index)
+        }
+        else {
+            None
+        }
+    });
+}
+
+
+//Move generation
+pub fn gen_rook_moves(square: Square, allied: BitArray, opponent: BitArray) -> BitArray {
+    const DIRECTIONS: [(i8, i8); 4] = [(0, 1), (0, -1), (1, 0), (-1, 0)];
+
+    let mut moves = BitArray::empty();
+    let x = square.file_index() as i8;
+    let y = square.rank_index() as i8;
+    for (dx, dy) in DIRECTIONS {
+        let mut sx = x + dx;
+        let mut sy = y + dy;
+
+        while sx >= 0 && sx < 8 && sy >= 0 && sy < 8 {
+            let next = Square::from_rank_file_index(sy as u8, sx as u8);
+            if opponent.get_bit(next) {
+                moves.set_bit(next);
+                break;
+            }
+            else if allied.get_bit(next) {
+                break;
+            }
+            else {
+                moves.set_bit(next);
+            }
+
+            sx += dx;
+            sy += dy;
+        }
+    }
+
+    return moves;
+}
+
+pub fn gen_bishop_moves(square: Square, allied: BitArray, opponent: BitArray) -> BitArray {  
+    const DIRECTIONS: [(i8, i8); 4] = [(1, 1), (1, -1), (-1, 1), (-1, -1)];
+
+    let mut moves = BitArray::empty();
+    let x = square.file_index() as i8;
+    let y = square.rank_index() as i8;
+    for (dx, dy) in DIRECTIONS {
+        let mut sx = x + dx;
+        let mut sy = y + dy;
+
+        while sx >= 0 && sx < 8 && sy >= 0 && sy < 8 {
+            let next = Square::from_rank_file_index(sy as u8, sx as u8);
+            if opponent.get_bit(next) {
+                moves.set_bit(next);
+                break;
+            }
+            else if allied.get_bit(next) {
+                break;
+            }
+            else {
+                moves.set_bit(next);
+            }
+
+            sx += dx;
+            sy += dy;
+        }
+    }
+
+    return moves;
+}
+
+pub fn gen_queen_moves(square: Square, allied: BitArray, opponent: BitArray) -> BitArray {
+    return gen_rook_moves(square, allied, opponent) | gen_bishop_moves(square, allied, opponent);
+}
+
+pub fn order_bits(value: u64, mask: u64) -> u64 {
+    return bitintr::Pext::pext(value, mask); //650 ms
+
+    //return bitintr::Pdep::pdep(value, mask);
+    let mut ret = 0;
+    for i in iterate_set_bits(mask) {
+        ret = (ret << 1) | (value >> i) & 1;        
+    }
+
+    return ret; //650 ms
+
+    unsafe {
+        return core::arch::x86_64::_pext_u64(value, mask); //990 ms
     }
 }
 

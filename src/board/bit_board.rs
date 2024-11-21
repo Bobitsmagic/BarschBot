@@ -2,17 +2,17 @@ use core::panic;
 
 use crate::board::piece_type::PieceType;
 
-use super::{bit_array::BitArray, color::Color, piece_type::ColoredPieceType, square::Square};
+use super::{bit_array::BitArray, color::PlayerColor, piece_type::ColoredPieceType, square::{Square, VALID_SQUARES}};
 
 pub struct BitBoard {
-    white_piece: BitArray,
-    black_piece: BitArray,
+    pub white_piece: BitArray,
+    pub black_piece: BitArray,
 
-    pawn: BitArray,
-    knight: BitArray,
-    diagonal_slider: BitArray,
-    orthogonal_slider: BitArray, 
-    king: BitArray,
+    pub pawn: BitArray,
+    pub knight: BitArray,
+    pub diagonal_slider: BitArray,
+    pub orthogonal_slider: BitArray, 
+    pub king: BitArray,
 }
 
 impl BitBoard {
@@ -29,13 +29,26 @@ impl BitBoard {
         }
     }
 
+    pub fn from_piece_board(piece_board: &crate::board::piece_board::PieceBoard) -> BitBoard {
+        let mut bit_board = BitBoard::empty();
+
+        for square in VALID_SQUARES {
+            let pt = piece_board[square];
+            if pt != ColoredPieceType::None {
+                bit_board.set_piece(pt, square);
+            }
+        }
+
+        bit_board
+    }
+
     pub fn set_piece(&mut self, pt: ColoredPieceType, square: Square) {
         match pt.color() {
-            Color::White => {
+            PlayerColor::White => {
                 self.white_piece.set_bit(square);
                 self.black_piece.clear_bit(square);
             }
-            Color::Black => {
+            PlayerColor::Black => {
                 self.black_piece.set_bit(square);
                 self.white_piece.clear_bit(square);
             }
@@ -59,8 +72,8 @@ impl BitBoard {
 
     pub fn remove_piece(&mut self, pt: ColoredPieceType, square: Square) {
         match pt.color() {
-            Color::White => self.white_piece.clear_bit(square),
-            Color::Black => self.black_piece.clear_bit(square),
+            PlayerColor::White => self.white_piece.clear_bit(square),
+            PlayerColor::Black => self.black_piece.clear_bit(square),
         }
 
         debug_assert!((self.white_piece & self.black_piece).is_empty());
@@ -82,8 +95,8 @@ impl BitBoard {
     //[TODO] Benchmark flip_bit vs ^pos
     pub fn toggle_piece(&mut self, pt: ColoredPieceType, square: Square) {
         match pt.color() {
-            Color::White => self.white_piece.flip_bit(square),
-            Color::Black => self.black_piece.flip_bit(square),
+            PlayerColor::White => self.white_piece.flip_bit(square),
+            PlayerColor::Black => self.black_piece.flip_bit(square),
         }
 
         debug_assert!((self.white_piece & self.black_piece).is_empty());
@@ -107,11 +120,11 @@ impl BitBoard {
         debug_assert!(!(self.white_piece | self.black_piece).get_bit(end), "Target square is not empty");
         debug_assert!(pt != ColoredPieceType::None);
         
-        let mask = start.get_bitarray() | end.get_bitarray();
+        let mask = start.bit_array() | end.bit_array();
 
         match pt.color() {
-            Color::White => self.white_piece ^= mask,
-            Color::Black => self.black_piece ^= mask,
+            PlayerColor::White => self.white_piece ^= mask,
+            PlayerColor::Black => self.black_piece ^= mask,
         }
 
         debug_assert!((self.white_piece & self.black_piece).is_empty());
@@ -163,8 +176,8 @@ impl BitBoard {
     pub fn get_colored_piecetype(&self, square: Square) -> ColoredPieceType {
         let c_res = match (self.white_piece.get_bit(square), self.black_piece.get_bit(square)) {
             (false, false) => None,
-            (true, false) => Some(Color::White),
-            (false, true) => Some(Color::Black),
+            (true, false) => Some(PlayerColor::White),
+            (false, true) => Some(PlayerColor::Black),
             (true, true) => panic!("Bitboard is invalid"),
         };
 

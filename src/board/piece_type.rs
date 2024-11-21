@@ -1,4 +1,4 @@
-use super::color::Color;
+use super::color::PlayerColor;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PieceType {
@@ -60,9 +60,9 @@ pub const ALL_COLORED_PIECE_TYPES: [ColoredPieceType; 13] = [
 ];
 
 impl PieceType {
-    pub fn colored(self, color: Color) -> ColoredPieceType {
+    pub fn colored(self, color: PlayerColor) -> ColoredPieceType {
         match color {
-            Color::White => match self {
+            PlayerColor::White => match self {
                 PieceType::Pawn =>      ColoredPieceType::WhitePawn,
                 PieceType::Knight =>    ColoredPieceType::WhiteKnight,
                 PieceType::Bishop =>    ColoredPieceType::WhiteBishop,
@@ -71,7 +71,7 @@ impl PieceType {
                 PieceType::King =>      ColoredPieceType::WhiteKing,
                 PieceType::None =>      ColoredPieceType::None,
             },
-            Color::Black => match self {
+            PlayerColor::Black => match self {
                 PieceType::Pawn =>      ColoredPieceType::BlackPawn,
                 PieceType::Knight =>    ColoredPieceType::BlackKnight,
                 PieceType::Bishop =>    ColoredPieceType::BlackBishop,
@@ -171,7 +171,7 @@ impl ColoredPieceType {
             return ColoredPieceType::None;
         }
 
-        self.piece_type().colored(Color::Black)
+        self.piece_type().colored(PlayerColor::Black)
     }
 
     pub fn white(&self) -> ColoredPieceType {
@@ -179,24 +179,24 @@ impl ColoredPieceType {
             return ColoredPieceType::None;
         }
 
-        self.piece_type().colored(Color::White)
+        self.piece_type().colored(PlayerColor::White)
     }
 
-    pub fn color(&self) -> Color {
+    pub fn color(&self) -> PlayerColor {
         match self {
-            ColoredPieceType::WhitePawn => Color::White,
-            ColoredPieceType::WhiteKnight => Color::White,
-            ColoredPieceType::WhiteBishop => Color::White,
-            ColoredPieceType::WhiteRook => Color::White,
-            ColoredPieceType::WhiteQueen => Color::White,
-            ColoredPieceType::WhiteKing => Color::White,
+            ColoredPieceType::WhitePawn => PlayerColor::White,
+            ColoredPieceType::WhiteKnight => PlayerColor::White,
+            ColoredPieceType::WhiteBishop => PlayerColor::White,
+            ColoredPieceType::WhiteRook => PlayerColor::White,
+            ColoredPieceType::WhiteQueen => PlayerColor::White,
+            ColoredPieceType::WhiteKing => PlayerColor::White,
 
-            ColoredPieceType::BlackPawn => Color::Black,
-            ColoredPieceType::BlackKnight => Color::Black,
-            ColoredPieceType::BlackBishop => Color::Black,
-            ColoredPieceType::BlackRook => Color::Black,
-            ColoredPieceType::BlackQueen => Color::Black,
-            ColoredPieceType::BlackKing => Color::Black,
+            ColoredPieceType::BlackPawn => PlayerColor::Black,
+            ColoredPieceType::BlackKnight => PlayerColor::Black,
+            ColoredPieceType::BlackBishop => PlayerColor::Black,
+            ColoredPieceType::BlackRook => PlayerColor::Black,
+            ColoredPieceType::BlackQueen => PlayerColor::Black,
+            ColoredPieceType::BlackKing => PlayerColor::Black,
 
             ColoredPieceType::None => panic!("Invalid piece type: None"),
         }
