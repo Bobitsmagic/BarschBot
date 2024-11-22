@@ -1,11 +1,12 @@
-use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup, bit_board::BitBoard, color::PlayerColor, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, square::{File, Rank}}, game::game_state::GameState};
+use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup, bit_board::BitBoard, color::PlayerColor, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, square::{File, Rank}}, game::game_flags::GameFlags};
 
 use super::chess_move::ChessMove;
 
-pub fn generate_pseudo_legal_moves_bitboard(board: &BitBoard, piece_board: &PieceBoard, game_state: &GameState, moving_color: PlayerColor) -> Vec<ChessMove> {
+pub fn generate_pseudo_legal_moves_bitboard(board: &BitBoard, piece_board: &PieceBoard, game_state: &GameFlags) -> Vec<ChessMove> {
     let mut moves = Vec::new();
 
     let occupied = board.white_piece | board.black_piece;
+    let moving_color = game_state.active_color;
 
     let empty = !occupied;
     let allied = match moving_color {

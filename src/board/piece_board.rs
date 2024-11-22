@@ -4,7 +4,7 @@ use colored::{Colorize, CustomColor};
 
 use crate::{board::{color::PlayerColor, square::File}, moves::chess_move::ChessMove};
 
-use super::{piece_type::ColoredPieceType, square::Square};
+use super::{dynamic_state::DynamicState, piece_type::ColoredPieceType, square::Square};
 
 pub struct PieceBoard {
     squares: [ColoredPieceType; 64],
@@ -48,66 +48,11 @@ impl PieceBoard {
         
         return pb;
     }
-
-
-    pub fn set_piece(&mut self, pt: ColoredPieceType, s: Square) {
-        self[s] = pt;
-    }
-    pub fn remove_piece(&mut self, s: Square) {
-        self[s] = ColoredPieceType::None
-    }
-    pub fn move_piece(&mut self, start: Square, end: Square) {
-        self[end] = self[start];
-        self[start] = ColoredPieceType::None;
-    }
     
-    pub fn make_move(&mut self, m: ChessMove) {
-        debug_assert!(m.start != m.end, "Invalid move: start == end");
-        debug_assert!(self[m.start] == m.move_piece, "Invalid move: start piece is not the same as move piece");
-        
-        if m.is_castle() {
-            let (rook_start_file, rook_end_file) = if m.is_long_castle() {
-                debug_assert!(self[m.start.left()].is_none(), "Invalid move: {} square is not empty", m.start.left().to_string());
-                debug_assert!(self[m.start.left().left()].is_none(), "Invalid move: {} square is not empty", m.start.left().left().to_string());
-                debug_assert!(self[m.start.left().left().left()].is_none(), "Invalid move: {} square is not empty", m.start.left().left().left().to_string());
-                
-                (File::A, File::D)
-            }   
-            else {
-                debug_assert!(self[m.start.right()].is_none(), "Invalid move: {} square is not empty", m.start.right().to_string());
-                debug_assert!(self[m.start.right().right()].is_none(), "Invalid move: {} square is not empty", m.start.right().right().to_string());
-
-                (File::H, File::F)
-            };
-            
-            let rank = m.start.rank();
-            let rook_start = Square::from_rank_file(rank, rook_start_file);
-            let rook_end = Square::from_rank_file(rank, rook_end_file);   
-            
-            self[rook_end] = self[rook_start];
-            self[rook_start] = ColoredPieceType::None;
-        }
-        
-        self[m.end] = m.move_piece;
-        self[m.start] = ColoredPieceType::None;
-        
-        if m.is_en_passant() {
-            let capture_square = match m.move_piece.color() {
-                PlayerColor::White => m.start.up(),
-                PlayerColor::Black => m.start.down(),
-            };
-            
-            debug_assert!(self[capture_square] == m.move_piece.opposite(), "Invalid move: en passant capture square is not a pawn");
-            
-            self[capture_square] = ColoredPieceType::None;
-        } else if m.is_promotion() {
-            self[m.end] = m.promotion_piece;
-        }        
-    }
-
     pub fn print(&self) {
         self.print_perspective(PlayerColor::White);
     }
+
     pub fn print_perspective(&self, perspective: PlayerColor) {
         let mut s = String::new();
 
@@ -120,8 +65,6 @@ impl PieceBoard {
                 };
 
                 let piece = self[square];
-
-
 
                 let square_color = if square.is_light() { CustomColor::new(0, 0, 0)} else { CustomColor::new(25, 25, 25,)};
                 
@@ -143,6 +86,20 @@ impl PieceBoard {
         }
 
         println!("{}", s);
+    }
+}
+
+impl DynamicState for PieceBoard {
+    fn empty() -> Self {
+        PieceBoard::empty()
+    }
+
+    fn add_piece(&mut self, pt: ColoredPieceType, s: Square) {
+        self[s] = pt;
+    }
+
+    fn remove_piece(&mut self, _: ColoredPieceType, s: Square) {
+        self[s] = ColoredPieceType::None;
     }
 }
 

@@ -1,8 +1,8 @@
 use core::panic;
 
-use crate::board::piece_type::PieceType;
+use crate::{board::piece_type::PieceType, moves::chess_move::ChessMove};
 
-use super::{bit_array::BitArray, color::PlayerColor, piece_type::ColoredPieceType, square::{Square, VALID_SQUARES}};
+use super::{bit_array::BitArray, color::PlayerColor, dynamic_state::DynamicState, piece_type::ColoredPieceType, square::{Square, VALID_SQUARES}};
 
 pub struct BitBoard {
     pub white_piece: BitArray,
@@ -35,14 +35,14 @@ impl BitBoard {
         for square in VALID_SQUARES {
             let pt = piece_board[square];
             if pt != ColoredPieceType::None {
-                bit_board.set_piece(pt, square);
+                bit_board.add_piece(pt, square);
             }
         }
 
         bit_board
     }
 
-    pub fn set_piece(&mut self, pt: ColoredPieceType, square: Square) {
+    pub fn add_piece(&mut self, pt: ColoredPieceType, square: Square) {
         match pt.color() {
             PlayerColor::White => {
                 self.white_piece.set_bit(square);
@@ -186,5 +186,20 @@ impl BitBoard {
         } 
 
         return ColoredPieceType::None;
+    }
+}
+
+//[TODO] Implement custom make_move function with toggle piece
+impl DynamicState for BitBoard {
+    fn empty() -> Self {
+        BitBoard::empty()
+    }
+
+    fn add_piece(&mut self, pt: ColoredPieceType, s: Square) {
+        self.add_piece(pt, s);
+    }
+
+    fn remove_piece(&mut self, pt: ColoredPieceType, s: Square) {
+        self.remove_piece(pt, s);
     }
 }
