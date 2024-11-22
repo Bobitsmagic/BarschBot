@@ -276,16 +276,16 @@ pub fn order_bits(value: u64, mask: u64) -> u64 {
     return bitintr::Pext::pext(value, mask); //650 ms
 
     //return bitintr::Pdep::pdep(value, mask);
-    let mut ret = 0;
-    for i in iterate_set_bits(mask) {
-        ret = (ret << 1) | (value >> i) & 1;        
-    }
+    // let mut ret = 0;
+    // for i in iterate_set_bits(mask) {
+    //     ret = (ret << 1) | (value >> i) & 1;        
+    // }
 
-    return ret; //650 ms
+    // return ret; //650 ms
 
-    unsafe {
-        return core::arch::x86_64::_pext_u64(value, mask); //990 ms
-    }
+    // unsafe {
+    //     return core::arch::x86_64::_pext_u64(value, mask); //990 ms
+    // }
 }
 
 //Bit operations

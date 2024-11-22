@@ -1,6 +1,6 @@
 use core::panic;
 
-use crate::{board::piece_type::PieceType, moves::chess_move::ChessMove};
+use crate::board::piece_type::PieceType;
 
 use super::{bit_array::BitArray, color::PlayerColor, dynamic_state::DynamicState, piece_type::ColoredPieceType, square::{Square, VALID_SQUARES}};
 

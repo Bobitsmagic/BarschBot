@@ -2,7 +2,7 @@ use std::ops::{Index, IndexMut};
 
 use colored::{Colorize, CustomColor};
 
-use crate::{board::{color::PlayerColor, square::File}, moves::chess_move::ChessMove};
+use crate::board::color::PlayerColor;
 
 use super::{dynamic_state::DynamicState, piece_type::ColoredPieceType, square::Square};
 

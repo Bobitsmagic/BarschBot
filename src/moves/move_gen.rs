@@ -1,4 +1,4 @@
-use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup, bit_board::BitBoard, color::PlayerColor, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, square::{File, Rank}}, game::game_flags::GameFlags};
+use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup, bit_board::BitBoard, color::PlayerColor, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}}, game::game_flags::GameFlags};
 
 use super::chess_move::ChessMove;
 
