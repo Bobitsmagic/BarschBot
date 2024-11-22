@@ -1,9 +1,10 @@
-use crate::{board::dynamic_state::DynamicState, moves::chess_move::ChessMove};
+use crate::{board::{dynamic_state::DynamicState, piece_board::PieceBoard, zobrist_hash::ZobristHash}, moves::chess_move::ChessMove};
 
 use super::{board_state::BoardState, game_flags::GameFlags};
 
 pub struct GameState {
     pub board_state: BoardState,
+    pub zobrist_hash: ZobristHash,
     pub move_stack: Vec<ChessMove>,
     pub flag_stack: Vec<GameFlags>,
 }
@@ -14,6 +15,7 @@ impl GameState {
             board_state: BoardState::empty(),
             move_stack: Vec::new(),
             flag_stack: vec![GameFlags::start_flags()],
+            zobrist_hash: ZobristHash::empty(),
         }
     }
 
@@ -22,6 +24,7 @@ impl GameState {
             board_state: BoardState::start_position(),
             move_stack: Vec::new(),
             flag_stack: vec![GameFlags::start_flags()],
+            zobrist_hash: ZobristHash::from_position(&PieceBoard::start_position(), GameFlags::start_flags()),
         }
     }
 
@@ -29,13 +32,23 @@ impl GameState {
         self.board_state.make_move(m);
         self.move_stack.push(m);
         let mut new_flags = (*self.flag_stack.last().unwrap()).clone();
+
+        self.zobrist_hash.make_move(m);
+        self.zobrist_hash.toggle_flags(new_flags); //Remove old flags
         new_flags.make_move(m);
+        self.zobrist_hash.toggle_flags(new_flags); //Add new flags
+
         self.flag_stack.push(new_flags);
     }
 
     pub fn undo_move(&mut self) {
         let m = self.move_stack.pop().unwrap();
         self.board_state.undo_move(m);
-        self.flag_stack.pop();
+        self.zobrist_hash.undo_move(m);
+
+        let top_flag = self.flag_stack.pop().unwrap();
+
+        self.zobrist_hash.toggle_flags(top_flag); //Remove latest
+        self.zobrist_hash.toggle_flags(*self.flag_stack.last().unwrap()); //Add old flags
     }
 }
