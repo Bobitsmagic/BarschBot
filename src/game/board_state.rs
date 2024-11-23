@@ -1,5 +1,6 @@
-use crate::{board::{bit_board::BitBoard, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, square::Square}, moves::chess_move::ChessMove};
+use crate::{board::{bit_board::BitBoard, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::Square}, moves::chess_move::ChessMove};
 
+#[derive(Clone)]
 pub struct BoardState {
     pub piece_board: PieceBoard,
     pub bit_board: BitBoard,
@@ -11,6 +12,10 @@ impl BoardState {
             piece_board: PieceBoard::start_position(),
             bit_board: BitBoard::from_piece_board(&PieceBoard::start_position()),
         }
+    }
+
+    pub fn is_in_check(&self, color: PlayerColor) -> bool {
+        return self.bit_board.is_in_check(color);        
     }
 }
 

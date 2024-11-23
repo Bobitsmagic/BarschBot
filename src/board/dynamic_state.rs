@@ -1,4 +1,4 @@
-use crate::{board::{color::PlayerColor, piece_type::PieceType, square::File}, moves::chess_move::ChessMove};
+use crate::{board::{player_color::PlayerColor, piece_type::PieceType, square::File}, moves::chess_move::ChessMove};
 
 use super::{piece_type::ColoredPieceType, square::Square};
 

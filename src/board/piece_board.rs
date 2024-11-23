@@ -2,10 +2,11 @@ use std::ops::{Index, IndexMut};
 
 use colored::{Colorize, CustomColor};
 
-use crate::board::color::PlayerColor;
+use crate::board::player_color::PlayerColor;
 
 use super::{dynamic_state::DynamicState, piece_type::ColoredPieceType, square::Square};
 
+#[derive(Clone)]
 pub struct PieceBoard {
     squares: [ColoredPieceType; 64],
 }

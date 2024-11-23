@@ -1,4 +1,4 @@
-use crate::{board::{dynamic_state::DynamicState, piece_board::PieceBoard, zobrist_hash::ZobristHash}, moves::chess_move::ChessMove};
+use crate::{board::{dynamic_state::DynamicState, piece_board::PieceBoard, zobrist_hash::ZobristHash}, moves::{chess_move::ChessMove, move_gen}};
 
 use super::{board_state::BoardState, game_flags::GameFlags};
 
@@ -50,5 +50,9 @@ impl GameState {
 
         self.zobrist_hash.toggle_flags(top_flag); //Remove latest
         self.zobrist_hash.toggle_flags(*self.flag_stack.last().unwrap()); //Add old flags
+    }
+
+    pub fn gen_legal_moves(&self) -> Vec<ChessMove> {
+        return move_gen::gen_legal_moves_bitboard(&self.board_state, self.flag_stack.last().unwrap());
     }
 }

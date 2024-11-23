@@ -1,9 +1,33 @@
-use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup, bit_board::BitBoard, color::PlayerColor, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}}, game::game_flags::GameFlags};
+use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup, bit_board::BitBoard, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor}, game::{board_state::BoardState, game_flags::GameFlags}};
 
 use super::chess_move::ChessMove;
 
-pub fn generate_pseudo_legal_moves_bitboard(board: &BitBoard, piece_board: &PieceBoard, game_state: &GameFlags) -> Vec<ChessMove> {
+pub fn gen_legal_moves_bitboard(board_state: &BoardState, game_state: &GameFlags) -> Vec<ChessMove> {
+    let moves = gen_pseudo_legal_moves_bitboard(board_state, game_state);
+    return filter_legal_moves_bitboard(moves, board_state);
+}
+
+pub fn filter_legal_moves_bitboard(moves: Vec<ChessMove>, board_state: &BoardState) -> Vec<ChessMove> {
+    let mut legal_moves = Vec::new();
+
+    for m in moves {
+        let mut board_state = board_state.clone();
+        
+        board_state.make_move(m);
+
+        if !board_state.is_in_check(m.move_piece.color()) {
+            legal_moves.push(m);
+        }
+    }
+
+    return legal_moves;
+}
+
+pub fn gen_pseudo_legal_moves_bitboard(board_state: &BoardState, game_state: &GameFlags) -> Vec<ChessMove> {
     let mut moves = Vec::new();
+
+    let board = &board_state.bit_board;
+    let piece_board = &board_state.piece_board;
 
     let occupied = board.white_piece | board.black_piece;
     let moving_color = game_state.active_color;

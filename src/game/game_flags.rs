@@ -1,4 +1,4 @@
-use crate::{board::{color::PlayerColor, piece_type::ColoredPieceType, square::Square}, moves::chess_move::ChessMove};
+use crate::{board::{player_color::PlayerColor, piece_type::ColoredPieceType, square::Square}, moves::chess_move::ChessMove};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GameFlags {
