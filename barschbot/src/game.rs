@@ -38,6 +38,7 @@ impl GameState {
 
 pub struct Game {
     board_history: HashSet<u64>,
+    second_board_history: HashSet<u64>,
     board_stack: Vec<BitBoard>,
     move_stack: Vec<ChessMove>,
     dmc_stack: Vec<u32>,
@@ -68,8 +69,12 @@ impl  Game {
         let mut white_pawns_bitboard = 0;
         let mut black_pawns_bitboard = 0;
 
-        return Game { board_history: HashSet::new(), board_stack: Vec::new(), move_stack: Vec::new(), board, dmc_stack, 
+        return Game { board_history: HashSet::new(), second_board_history: HashSet::new(), board_stack: Vec::new(), move_stack: Vec::new(), board, dmc_stack, 
             cached_moves: ArrayVec::new(), moves_generated: false }
+    }
+
+    pub fn last_move(&self) -> ChessMove {
+        return *self.move_stack.last().unwrap();
     }
 
     pub fn from_board(board: BitBoard) -> Self {
@@ -80,7 +85,7 @@ impl  Game {
         let mut white_pawns_bitboard = 0;
         let mut black_pawns_bitboard = 0;
 
-        return Game { board_history: HashSet::new(), board_stack: Vec::new(), move_stack: Vec::new(), board, dmc_stack, 
+        return Game { board_history: HashSet::new(), second_board_history: HashSet::new(), board_stack: Vec::new(), move_stack: Vec::new(), board, dmc_stack, 
             cached_moves: ArrayVec::new(), moves_generated: false }
     }
 
@@ -128,7 +133,11 @@ impl  Game {
         //update stacks
         self.dmc_stack.push(dmc);
         self.board_stack.push(self.board);
-        self.board_history.insert(self.board.get_zoberist_hash());
+
+        let hash = self.board.get_zoberist_hash();
+        if !self.board_history.insert(self.board.get_zoberist_hash()) {
+            self.second_board_history.insert(hash);
+        }
         self.move_stack.push(m);
 
         //make move
@@ -143,7 +152,11 @@ impl  Game {
 
         self.board = self.board_stack.pop().unwrap();
 
-        self.board_history.remove(&self.board.get_zoberist_hash());
+        let hash = self.board.get_zoberist_hash();
+        if !self.second_board_history.remove(&hash) {
+            self.board_history.remove(&hash);
+        }
+
         self.move_stack.pop();
 
         self.moves_generated = false;
@@ -188,6 +201,10 @@ impl  Game {
         return *self.dmc_stack.last().unwrap();
     }
 
+    pub fn move_depth(&self) -> u32 {
+        return self.move_stack.len() as u32;
+    }
+
     //[TODO] insuff material
     pub fn get_game_state(&mut self) -> GameState {
         if self.get_legal_moves().len() == 0 {
@@ -205,12 +222,16 @@ impl  Game {
             }
         }   
 
-        if self.board_history.contains(&self.board.get_zoberist_hash()) {
+        if self.second_board_history.contains(&self.board.get_zoberist_hash()) {
             return GameState::Repetition;
         }
 
         if self.fifty_move_counter() >= 100 {
             return GameState::FiftyMove;
+        }
+
+        if self.board.insufficient_material() {
+            return GameState::InsuffMaterial;
         }
 
         return GameState::Undecided;

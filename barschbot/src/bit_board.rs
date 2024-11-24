@@ -1829,4 +1829,43 @@ impl BitBoard {
     
         println!("]");
     }
+    
+    pub fn insufficient_material(&self) -> bool {
+        let white = self.white_pieces.count_ones();
+        let black = self.black_pieces.count_ones();
+
+        if white + black == 2 {
+            return true;
+        }
+
+        if self.pawns.count_ones() != 0 {
+            return false;
+        }
+
+        if white + black == 3 {
+            if self.orthogonal_sliders == 0 {
+                return true;
+            }
+        }
+
+        if white + black == 4 {
+            if self.orthogonal_sliders == 0 &&
+                self.diagonal_sliders.count_ones() == 2 && 
+                self.white_pieces.count_ones() == 2 {
+                
+                let mut colors = Vec::new();
+
+                for s in bitboard_helper::iterate_set_bits(self.diagonal_sliders) {
+                    colors.push(Square::from_u8(s as u8).is_light());
+                }
+
+                if colors[0] == colors[1] {
+                    return true;
+                }
+            }
+        } 
+
+        return false;
+
+    }
 }

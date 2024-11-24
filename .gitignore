@@ -16,3 +16,4 @@ Cargo.lock
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 *.bin
+/.VSCodeCounter/2024-11-22_02-49-19

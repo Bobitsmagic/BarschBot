@@ -4,6 +4,10 @@ use bit_board::BitBoard;
 use chess_move::ChessMove;
 //use dataset::EvalBoards;
 use game::Game;
+use game::GameState;
+use rand::Rng;
+use rand::SeedableRng;
+use visualizer::Visualizer;
 
 //use game::Game;
 use std::time::Instant;
@@ -17,6 +21,7 @@ use crate::endgame_table::EndgameTable;
 use crate::karpfen_bot::KarpfenBot;
 use crate::opening_book::OpeningBook;
 use rayon::prelude::*;
+use rand_chacha::ChaCha8Rng;
 
 mod zoberist_hash;
 
@@ -53,6 +58,10 @@ const FEN_PATH: &str = "C:\\Users\\hmart\\Documents\\GitHub\\BarschBot\\data\\Fe
 
 //use std::env;
 fn main() {
+    calc_rand_game_distr();
+
+    return;
+
     /* 
     let dataset = EvalBoards::load("C:\\Users\\hmart\\Documents\\GitHub\\BarschBot\\data\\chessData.csv");
     
@@ -263,6 +272,69 @@ fn check_all_perft_board() {
     }
 }
 
+fn calc_rand_game_distr() {
+    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    let mut results = [0; 6];
+
+    let mut vis = Visualizer::new();
+    const COUNT: u64 = 100_000;
+    for _ in 0..COUNT {
+        let res = play_random_game(&mut rng, &mut vis);
+
+        let index = match res {
+            GameState::WhiteCheckmate => 0,
+            GameState::BlackCheckmate => 1,
+            GameState::FiftyMove => 2,
+            GameState::Stalemate => 3,
+            GameState::Repetition => 4,
+            GameState::InsuffMaterial => 5,
+
+            _ => usize::MAX
+        };
+
+        results[index] += 1;
+    }
+
+    println!("White wins: {} Black wins: {} 50 moves: {} Stalemate: {} Repetition: {} InsuffMaterial: {}", results[0], results[1], results[2], results[3], results[4], results[5]);
+
+    println!("White wins: {:0.1}%", results[0] as f64 / COUNT as f64 * 100.0);
+    println!("Black wins: {:0.1}%", results[1] as f64 / COUNT as f64 * 100.0);
+    println!("50 Move:    {:0.1}%", results[2] as f64 / COUNT as f64 * 100.0);
+    println!("Stalemate:  {:0.1}%", results[3] as f64 / COUNT as f64 * 100.0);
+    println!("Repetition: {:0.1}%", results[4] as f64 / COUNT as f64 * 100.0);
+    println!("InsuffMat:  {:0.1}%", results[5] as f64 / COUNT as f64 * 100.0);
+}
+
+fn play_random_game(rng: &mut ChaCha8Rng, renderer: &mut Visualizer) -> GameState {
+    let mut game = Game::get_start_position();
+
+    while game.get_game_state() == GameState::Undecided {
+        let ml = game.get_legal_moves();
+        let bmove = ml[rng.gen_range(0..ml.len())];
+
+        game.make_move(bmove);
+
+
+        // println!("Count: {}", game.move_depth());
+
+        //sleep 100ms
+        // std::thread::sleep(std::time::Duration::from_millis(1));        
+    }
+
+
+    if (game.get_game_state() == GameState::WhiteCheckmate || game.get_game_state() == GameState::BlackCheckmate)  && game.move_depth() > 500 {
+        renderer.render_board(&game.get_board().type_field, game.last_move(), false);
+        // println!("White wins");
+        std::thread::sleep(std::time::Duration::from_millis(2000));        
+    }
+    
+
+    // println!("Game ended: {}", game.get_game_state().to_string());s
+
+
+
+    return game.get_game_state();
+}
 
 fn check_all_perft_game() {
     println!("Checking all fens");

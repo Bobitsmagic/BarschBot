@@ -179,6 +179,10 @@ impl Square {
         return (*self) as u8 % 8;
     }
 
+    pub fn is_light(&self) -> bool {
+        return self.rank() % 2 == self.file() % 2;
+    }
+
     pub fn is_orthogonal_to(&self, other: Square) -> bool {
         return self.file() == other.file() || 
             self.rank() == other.rank();
