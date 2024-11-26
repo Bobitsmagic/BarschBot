@@ -17,7 +17,7 @@ pub fn benchmark_fens() {
         let fen = PERFT_FENS[p];
 
         println!("Testing fen: {}", fen);
-        let max_depth = MAX_DEPTH[p] + 1;
+        let max_depth = MAX_DEPTH[p];
     
         let d_time = std::time::Instant::now();
             

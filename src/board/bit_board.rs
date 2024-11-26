@@ -2,7 +2,7 @@ use core::panic;
 
 use crate::board::piece_type::PieceType;
 
-use super::{bit_array::BitArray, bit_array_lookup::{DIAGONAL_MOVES, KING_MOVES, KNIGHT_MOVES, ORTHOGONAL_MOVES}, dynamic_state::DynamicState, piece_type::ColoredPieceType, player_color::PlayerColor, square::{Square, VALID_SQUARES}};
+use super::{bit_array::BitArray, bit_array_lookup::{DIAGONAL_MOVES, IN_BETWEEN_TABLE, KING_MOVES, KNIGHT_MOVES, ORTHOGONAL_MOVES}, dynamic_state::DynamicState, piece_type::ColoredPieceType, player_color::PlayerColor, square::{Square, VALID_SQUARES}};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BitBoard {
@@ -171,10 +171,7 @@ impl BitBoard {
         };
 
         let occupied = self.white_piece | self.black_piece;
-
-        let kx = target_square.file() as i8;
-        let ky = target_square.rank() as i8;
-
+        
         //Knights
         if !(self.knight & opponent & KNIGHT_MOVES[target_square as usize]).is_empty() {
             return true;
@@ -183,33 +180,16 @@ impl BitBoard {
         // println!("King square: {:?}", king_square);
         //Sliders
         let diagonal_sliders = self.diagonal_slider & opponent & DIAGONAL_MOVES[target_square as usize];
-        let orthogonal_sliders = self.orthogonal_slider & opponent & ORTHOGONAL_MOVES[target_square as usize];
-        let sliders = diagonal_sliders | orthogonal_sliders;
-
-        for attacker in sliders.iterate_squares() {
-            let fx = attacker.file() as i8;
-            let fy = attacker.rank() as i8;
-
-            let dx = (attacker.file() as i8 - target_square.file() as i8).signum();
-            let dy = (attacker.rank() as i8 - target_square.rank() as i8).signum();
-
-            let mut x = kx + dx;
-            let mut y = ky + dy;
-
-            let mut blocked = false;
-            while !(x == fx && y == fy) {
-                let square = Square::from_rank_file_index(y as u8, x as u8);
-
-                if occupied.get_bit(square) {
-                    blocked = true;
-                    break;
-                }
-
-                x += dx;
-                y += dy;    
+        for attacker in diagonal_sliders.iterate_squares() {
+            let between = IN_BETWEEN_TABLE[attacker as usize][target_square as usize];
+            if (between & occupied).is_empty() {
+                return true;
             }
-
-            if !blocked {
+        }
+        let orthogonal_sliders = self.orthogonal_slider & opponent & ORTHOGONAL_MOVES[target_square as usize];
+        for attacker in orthogonal_sliders.iterate_squares() {
+            let between = IN_BETWEEN_TABLE[attacker as usize][target_square as usize];
+            if (between & occupied).is_empty() {
                 return true;
             }
         }

@@ -1,11 +1,8 @@
-use barschbot::board::square::{EN_PASSANT_SQUARES, VALID_SQUARES};
+use barschbot::board::square::EN_PASSANT_SQUARES;
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 pub fn main() {
-    const N: usize = 64;
-    let mut array = [0_u64; 64];
-
     let mut rng = ChaCha8Rng::from_seed([0; 32]);
 
     let en_passant = gen_en_passant(&mut rng);

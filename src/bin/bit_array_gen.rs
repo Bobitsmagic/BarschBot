@@ -1,6 +1,6 @@
-use std::{fs::File, io::{self, Write}};
+use std::{fs::File, io::Write};
 
-use barschbot::board::{bit_array::{self, gen_rook_moves, BitArray}, bit_array_lookup, square::{Square, VALID_SQUARES}};
+use barschbot::board::{bit_array::{self, BitArray}, bit_array_lookup, square::{Square, VALID_SQUARES}};
 
 pub fn main() {
     // gen_bishop_move_table();
@@ -36,6 +36,7 @@ pub fn print_all_tables() {
     s += &bit_array_to_string("BISHOP_BLOCKER_MASK", &bishop_blocker_mask);
     s += &move_table_to_string("ROOK_MOVE_TABLE", &rook_move_table);
     s += &move_table_to_string("BISHOP_MOVE_TABLE", &bishop_move_table);
+    s += &in_between_table_to_string();
 
     //Write to text file
     let mut file = File::create("generated_files/lookup.rs").unwrap();
@@ -86,6 +87,37 @@ pub fn move_table_to_string(name: &str, table: &[Vec<BitArray>]) -> String {
     }
 
     s += &format!("];\n");
+
+    return s;
+}
+
+pub fn in_between_table_to_string() -> String{
+    let table = gen_in_between_table();
+
+    let mut s = String::new();
+    s += "pub const IN_BETWEEN_TABLE: [[BitArray; 64]; 64] = [\n";
+
+    for (i, row) in table.iter().enumerate() {
+        s += "\t[";
+
+        for (j, bit_array) in row.iter().enumerate() {
+            s += &format!("BitArray {{ bits: 0x{:016x}}}", bit_array.bits);
+
+            if j < row.len() - 1 {
+                s += ", ";
+            }
+        }
+
+        s += "]";
+
+        if i < table.len() - 1 {
+            s += ",\n";
+        } else {
+            s += "\n";
+        }
+    }
+
+    s += "];\n";
 
     return s;
 }
@@ -299,4 +331,41 @@ pub fn gen_bishop_move_table() -> [Vec<BitArray>; 64] {
     // println!("Max length: {}", ret.iter().map(|v| v.len()).max().unwrap());
 
     ret
+}
+
+pub fn gen_in_between_table() -> [[BitArray; 64]; 64] {
+    let mut result = [[BitArray::empty(); 64]; 64];
+
+    for x1 in 0_i8..8 {
+        for y1 in 0_i8..8 {
+            for x2 in 0_i8..8 {
+                for y2 in 0_i8..8 {
+                    let dx = x2 - x1;
+                    let dy = y2 - y1;
+
+                    //Orhtogonal or diagonal
+                    if dx == 0 || dy == 0 || dx.abs() == dy.abs() {
+                        let dx = dx.signum();
+                        let dy = dy.signum();
+
+                        let mut in_between = BitArray::empty();
+                        let mut x = x1 + dx;
+                        let mut y = y1 + dy;
+
+
+                        while x != x2 || y != y2 {
+                            in_between.set_bit(Square::from_rank_file_index(y as u8, x as u8));
+
+                            x += dx.signum();
+                            y += dy.signum();
+                        }
+
+                        result[(x1 + y1 * 8) as usize][(x2 + y2 * 8) as usize] = in_between;
+                    }
+                }
+            }
+        }
+    }
+    
+    return result;
 }

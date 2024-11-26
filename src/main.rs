@@ -1,4 +1,4 @@
-use barschbot::{board::{piece_type::ColoredPieceType, square::Square}, game::game_state::GameState, moves::{chess_move::ChessMove, move_gen}};
+use barschbot::{board::{piece_type::ColoredPieceType, square::Square}, game::game_state::GameState, moves::{chess_move::ChessMove, pseudo_move_gen}};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 fn main() {

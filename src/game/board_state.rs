@@ -61,7 +61,7 @@ mod tests {
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha8Rng;
 
-    use crate::{board::square::VALID_SQUARES, game::game_flags::GameFlags, moves::move_gen};
+    use crate::{board::square::VALID_SQUARES, game::game_flags::GameFlags, moves::pseudo_move_gen};
 
     use super::*;
 
@@ -84,7 +84,7 @@ mod tests {
         
         let mut rng = ChaCha8Rng::seed_from_u64(0);
         for _ in 0..30 {
-            let moves = move_gen::gen_legal_moves_bitboard(&board_state, &game_flags);
+            let moves = pseudo_move_gen::gen_legal_moves_bitboard(&board_state, &game_flags);
             if moves.is_empty() {
                 break;
             }
@@ -117,7 +117,7 @@ mod tests {
         
         let mut rng = ChaCha8Rng::seed_from_u64(1);
         for i in 0..60 {
-            let moves = move_gen::gen_legal_moves_bitboard(&board_state, &game_flags);
+            let moves = pseudo_move_gen::gen_legal_moves_bitboard(&board_state, &game_flags);
             if moves.is_empty() {
                 break;
             }
