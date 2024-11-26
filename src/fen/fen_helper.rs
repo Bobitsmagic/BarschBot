@@ -1,4 +1,4 @@
-use crate::{board::{dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::Square}, game::{self, game_flags::GameFlags}};
+use crate::{board::{dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::Square}, game::game_flags::GameFlags};
 
 pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
     let parts = fen.split(" ").collect::<Vec<_>>();

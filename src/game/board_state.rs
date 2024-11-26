@@ -58,12 +58,10 @@ impl DynamicState for BoardState {
 
 #[cfg(test)]
 mod tests {
-    use std::thread::panicking;
-
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha8Rng;
 
-    use crate::{board::square::VALID_SQUARES, game::game_flags::{self, GameFlags}, moves::move_gen};
+    use crate::{board::square::VALID_SQUARES, game::game_flags::GameFlags, moves::move_gen};
 
     use super::*;
 

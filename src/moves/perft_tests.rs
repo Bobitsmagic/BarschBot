@@ -31,6 +31,60 @@ pub fn benchmark_fens() {
     println!("Total time: {}", start_time.elapsed().as_secs_f64());
 }
 
+// Small results move gen v1
+// Testing fen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 
+// Finished depth: 6
+//         Time: 12.43 s
+//         Pos per second: 9.58e6
+// Testing fen: r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -
+// Finished depth: 5
+//         Time: 18.81 s
+//         Pos per second: 1.03e7
+// Testing fen: 8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -
+// Finished depth: 7
+//         Time: 20.97 s
+//         Pos per second: 8.52e6
+// Testing fen: r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1
+// Finished depth: 6
+//         Time: 73.65 s
+//         Pos per second: 9.59e6
+// Testing fen: rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8
+// Finished depth: 5
+//         Time: 8.74 s
+//         Pos per second: 1.03e7
+// Testing fen: r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10
+// Finished depth: 5
+//         Time: 15.75 s
+//         Pos per second: 1.04e7
+// Total time: 150.3429325
+
+// Big results move gen v1
+// Testing fen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+// Finished depth: 7
+//         Time: 330.26 s
+//         Pos per second: 9.68e6
+// Testing fen: r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -
+// Finished depth: 6
+//         Time: 793.66 s
+//         Pos per second: 1.01e7
+// Testing fen: 8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -
+// Finished depth: 8
+//         Time: 340.57 s
+//         Pos per second: 8.84e6
+// Testing fen: r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1
+// Finished depth: 7
+//         Time: 2868.15 s
+//         Pos per second: 9.49e6
+// Testing fen: rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8
+// Finished depth: 6
+//         Time: 297.92 s
+//         Pos per second: 1.02e7
+// Testing fen: r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10
+// Finished depth: 6
+//         Time: 645.12 s
+//         Pos per second: 1.07e7
+// Total time: 5275.6835755
+
 fn count_positions(game_state: &mut GameState, depth: u8) -> u64 {
     if depth == 0 {
         return 1;
@@ -60,7 +114,7 @@ mod tests {
     }
 
     use core::panic;
-    use std::{collections::HashMap, result};
+    use std::collections::HashMap;
 
     use super::*;
     use crate::{fen::fen_helper, game::game_state::GameState, moves::uci_move::UciMove};
