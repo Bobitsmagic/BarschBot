@@ -2,6 +2,7 @@ use crate::game::game_flags::GameFlags;
 
 use super::{player_color::PlayerColor, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, square::{Square, VALID_SQUARES}};
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct ZobristHash {
     pub hash: u64,
 }

@@ -6,7 +6,7 @@ use crate::board::player_color::PlayerColor;
 
 use super::{dynamic_state::DynamicState, piece_type::ColoredPieceType, square::Square};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PieceBoard {
     squares: [ColoredPieceType; 64],
 }

@@ -1,6 +1,6 @@
-use crate::{board::{player_color::PlayerColor, piece_type::ColoredPieceType, square::Square}, moves::chess_move::ChessMove};
+use crate::{board::{bit_board::BitBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::Square}, moves::chess_move::ChessMove};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GameFlags {
     pub active_color: PlayerColor,
     pub white_queen_side_castle: bool,
@@ -22,7 +22,18 @@ impl GameFlags {
         }
     }
 
-    pub fn make_move(&mut self, m: ChessMove) {
+    pub fn empty_flags() -> GameFlags {
+        GameFlags {
+            active_color: PlayerColor::White,
+            white_queen_side_castle: false,
+            white_king_side_castle: false,
+            black_queen_side_castle: false,
+            black_king_side_castle: false,
+            en_passant_square: Square::None,
+        }
+    }
+
+    pub fn make_move(&mut self, m: ChessMove, board: &BitBoard) {
         self.active_color = !self.active_color;
 
         match m.move_piece {
@@ -37,23 +48,37 @@ impl GameFlags {
             _ => (),
         } 
         
-        if m.move_piece.is_rook() {
-            match m.start {
-                Square::A1 => self.white_queen_side_castle = false,
-                Square::H1 => self.white_king_side_castle = false,
-                Square::A8 => self.black_queen_side_castle = false,
-                Square::H8 => self.black_king_side_castle = false,
-                _ => (),
-            }
+        match m.start {
+            Square::A1 => self.white_queen_side_castle = false,
+            Square::H1 => self.white_king_side_castle = false,
+            Square::A8 => self.black_queen_side_castle = false,
+            Square::H8 => self.black_king_side_castle = false,
+            _ => (),
         }
 
-        if m.move_piece.is_pawn() && m.start.rank_index().abs_diff(m.end.rank_index()) == 2 {
+        match m.end {
+            Square::A1 => self.white_queen_side_castle = false,
+            Square::H1 => self.white_king_side_castle = false,
+            Square::A8 => self.black_queen_side_castle = false,
+            Square::H8 => self.black_king_side_castle = false,
+            _ => (),
+        }
+        
+
+        if m.move_piece.is_pawn() && m.start.rank_index().abs_diff(m.end.rank_index()) == 2 
+            && board.pawn_has_neighbour(m.move_piece.color(), m.end) {
+
             self.en_passant_square = match m.move_piece.color() {
-                PlayerColor::White => m.start.down(),
-                PlayerColor::Black => m.start.up(),
+                PlayerColor::White => m.end.down(),
+                PlayerColor::Black => m.end.up(),
             };
         } else {
             self.en_passant_square = Square::None;
         }
+    }
+    
+    pub fn print(&self) {
+        println!("Active color: {:?}, White queen side castle: {}, White king side castle: {}, Black queen side castle: {}, Black king side castle: {}, En passant square: {:?}", 
+            self.active_color, self.white_queen_side_castle, self.white_king_side_castle, self.black_queen_side_castle, self.black_king_side_castle, self.en_passant_square)
     }
 }

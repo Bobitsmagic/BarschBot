@@ -1,5 +1,7 @@
 use crate::board::{piece_type::ColoredPieceType, square::Square};
 
+use super::uci_move::UciMove;
+
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,7 +62,31 @@ impl ChessMove {
         self.move_piece.is_king() && self.start.file_index().abs_diff(self.end.file_index()) == 2
     }
 
+    pub fn uci_move(&self) -> UciMove {
+        UciMove {
+            start: self.start,
+            end: self.end,
+            promotion_piece: self.promotion_piece.piece_type(),
+        }
+    }
+
     pub fn print(&self) {
-        println!("{}{}{}", self.move_piece.to_char(), self.start.to_string(), self.end.to_string());
+        let mut s = String::new();
+        s += &self.move_piece.to_char().to_string();
+        s += &self.start.to_string();
+
+        if self.is_direct_capture() {
+            s += "x";
+        } else {
+            s += "-";
+        }
+
+        if self.is_direct_capture() {
+            s += &self.captured_piece.to_char().to_string();
+        }
+
+        s += &self.end.to_string(); 
+        
+        println!("{}", s);
     }
 }

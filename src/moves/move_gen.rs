@@ -1,9 +1,9 @@
-use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup, bit_board::BitBoard, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor}, game::{board_state::BoardState, game_flags::GameFlags}};
+use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup, bit_board::BitBoard, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, square::{File, Rank, Square}}, game::{board_state::{self, BoardState}, game_flags::GameFlags}};
 
 use super::chess_move::ChessMove;
 
-pub fn gen_legal_moves_bitboard(board_state: &BoardState, game_state: &GameFlags) -> Vec<ChessMove> {
-    let moves = gen_pseudo_legal_moves_bitboard(board_state, game_state);
+pub fn gen_legal_moves_bitboard(board_state: &BoardState, game_flags: &GameFlags) -> Vec<ChessMove> {
+    let moves = gen_pseudo_legal_moves_bitboard(board_state, game_flags);
     return filter_legal_moves_bitboard(moves, board_state);
 }
 
@@ -16,21 +16,22 @@ pub fn filter_legal_moves_bitboard(moves: Vec<ChessMove>, board_state: &BoardSta
         board_state.make_move(m);
 
         if !board_state.is_in_check(m.move_piece.color()) {
+
             legal_moves.push(m);
-        }
+        }        
     }
 
     return legal_moves;
 }
 
-pub fn gen_pseudo_legal_moves_bitboard(board_state: &BoardState, game_state: &GameFlags) -> Vec<ChessMove> {
+pub fn gen_pseudo_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> Vec<ChessMove> {
     let mut moves = Vec::new();
 
     let board = &board_state.bit_board;
     let piece_board = &board_state.piece_board;
 
     let occupied = board.white_piece | board.black_piece;
-    let moving_color = game_state.active_color;
+    let moving_color = flags.active_color;
 
     let empty = !occupied;
     let allied = match moving_color {
@@ -56,26 +57,26 @@ pub fn gen_pseudo_legal_moves_bitboard(board_state: &BoardState, game_state: &Ga
     };
     
     //Captures
-    let pawn_left_attacks = opponent & pawns.translate(-1, dy);
-    for target_square in pawn_left_attacks.iterate_squares() {
-        let start_square = target_square.translate(1, dy);
-        moves.push(ChessMove::new(start_square, target_square, pawn_pt, piece_board[target_square]));
+    let pawn_targets = opponent | (if flags.en_passant_square != Square::None { flags.en_passant_square.bit_array() } else { BitArray::empty() });
 
-        debug_assert!(piece_board[target_square] != ColoredPieceType::None);
-        debug_assert!(piece_board[target_square].color() != moving_color);
+    let pawn_left_attacks = pawn_targets & pawns.translate(-1, dy);
+    for target_square in pawn_left_attacks.iterate_squares() {
+        let start_square = target_square.translate(1, -dy);
+        add_pawn_move(&mut moves, start_square, target_square, pawn_pt, piece_board);
     }
     
-    let pawn_right_attacks = opponent & pawns.translate(1, dy);
+    let pawn_right_attacks = pawn_targets & pawns.translate(1, dy);
     for target_square in pawn_right_attacks.iterate_squares() {
-        let start_square = target_square.translate(-1, dy);
-        moves.push(ChessMove::new(start_square, target_square, pawn_pt, piece_board[target_square]));
+        let start_square = target_square.translate(-1, -dy);
+        add_pawn_move(&mut moves, start_square, target_square, pawn_pt, piece_board);
     }
 
     //Pushes
     let pawn_pushes = empty & pawns.translate(0, dy);
     for target_square in pawn_pushes.iterate_squares() {
         let start_square = target_square.translate(0, -dy);
-        moves.push(ChessMove::new(start_square, target_square, pawn_pt, piece_board[target_square]));
+
+        add_pawn_move(&mut moves, start_square, target_square, pawn_pt, piece_board);
     }
 
     let pawn_double_pushes = double_push_rank & empty & pawn_pushes.translate(0, dy);
@@ -136,17 +137,44 @@ pub fn gen_pseudo_legal_moves_bitboard(board_state: &BoardState, game_state: &Ga
     };
 
     let (king_side, queen_side) = match moving_color {
-        PlayerColor::White => (game_state.white_king_side_castle, game_state.white_queen_side_castle),
-        PlayerColor::Black => (game_state.black_king_side_castle, game_state.black_queen_side_castle),
+        PlayerColor::White => (flags.white_king_side_castle, flags.white_queen_side_castle),
+        PlayerColor::Black => (flags.black_king_side_castle, flags.black_queen_side_castle),
     };
 
-    if queen_side && (occupied & queen_side_blocker).is_empty() {
-        moves.push(ChessMove::new(king_square, king_square.translate(-2, 0), PieceType::King.colored(moving_color), ColoredPieceType::None));
+    if !board_state.square_attacked(king_square, !moving_color) { 
+        if queen_side && (occupied & queen_side_blocker).is_empty() {
+            if king_square.file() == File::A {
+                println!("Alarm");
+                board_state.piece_board.print();    
+                println!("Qeen side {}", queen_side);
+                flags.print();
+            }
+            if !board_state.square_attacked(king_square.left(), !moving_color) {
+                moves.push(ChessMove::new(king_square, king_square.translate(-2, 0), PieceType::King.colored(moving_color), ColoredPieceType::None));
+            }
+        }
+    
+        if king_side && (occupied & king_side_blocker).is_empty() {
+            if !board_state.square_attacked(king_square.right(), !moving_color) {
+                moves.push(ChessMove::new(king_square, king_square.translate(2, 0), PieceType::King.colored(moving_color), ColoredPieceType::None));
+            }
+        }
     }
 
-    if king_side && (occupied & king_side_blocker).is_empty() {
-        moves.push(ChessMove::new(king_square, king_square.translate(2, 0), PieceType::King.colored(moving_color), ColoredPieceType::None));
-    }
 
     return moves;
+}
+
+fn add_pawn_move(list: &mut Vec<ChessMove>, start_square: Square, target_square: Square, pt: ColoredPieceType, piece_board: &PieceBoard) {
+    let captured_piece = piece_board[target_square];
+
+    if target_square.rank() == Rank::R1 || target_square.rank() == Rank::R8 {
+        list.push(ChessMove::new_pawn(start_square, target_square, pt, captured_piece, PieceType::Queen.colored(pt.color())));
+        list.push(ChessMove::new_pawn(start_square, target_square, pt, captured_piece, PieceType::Rook.colored(pt.color())));
+        list.push(ChessMove::new_pawn(start_square, target_square, pt, captured_piece, PieceType::Bishop.colored(pt.color())));
+        list.push(ChessMove::new_pawn(start_square, target_square, pt, captured_piece, PieceType::Knight.colored(pt.color())));
+    } else {
+        list.push(ChessMove::new(start_square, target_square, pt, captured_piece));
+    }
+
 }

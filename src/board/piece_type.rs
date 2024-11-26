@@ -103,6 +103,26 @@ impl PieceType {
 }
 
 impl ColoredPieceType {
+    pub fn from_char(c: char) -> ColoredPieceType {
+        match c {
+            'P' => ColoredPieceType::WhitePawn,
+            'N' => ColoredPieceType::WhiteKnight,
+            'B' => ColoredPieceType::WhiteBishop,
+            'R' => ColoredPieceType::WhiteRook,
+            'Q' => ColoredPieceType::WhiteQueen,
+            'K' => ColoredPieceType::WhiteKing,
+
+            'p' => ColoredPieceType::BlackPawn,
+            'n' => ColoredPieceType::BlackKnight,
+            'b' => ColoredPieceType::BlackBishop,
+            'r' => ColoredPieceType::BlackRook,
+            'q' => ColoredPieceType::BlackQueen,
+            'k' => ColoredPieceType::BlackKing,
+
+            _ => ColoredPieceType::None,
+        }
+    }
+
     pub fn to_char(&self) -> char {
         match self {
             ColoredPieceType::WhitePawn => 'P',

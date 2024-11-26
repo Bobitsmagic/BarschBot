@@ -4,7 +4,7 @@ use crate::board::piece_type::PieceType;
 
 use super::{bit_array::BitArray, bit_array_lookup::{DIAGONAL_MOVES, KING_MOVES, KNIGHT_MOVES, ORTHOGONAL_MOVES}, dynamic_state::DynamicState, piece_type::ColoredPieceType, player_color::PlayerColor, square::{Square, VALID_SQUARES}};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct BitBoard {
     pub white_piece: BitArray,
     pub black_piece: BitArray,
@@ -41,6 +41,17 @@ impl BitBoard {
         }
 
         bit_board
+    }
+
+    pub fn pawn_has_neighbour(&self, color: PlayerColor, square: Square) -> bool {
+        let opponents = match color {
+            PlayerColor::White => self.black_piece,
+            PlayerColor::Black => self.white_piece,
+        };
+
+        let mask = square.bit_array();
+
+        return !(self.pawn & opponents & (mask.translate(1, 0) | mask.translate(-1, 0))).is_empty();
     }
 
     pub fn add_piece(&mut self, pt: ColoredPieceType, square: Square) {
@@ -153,41 +164,43 @@ impl BitBoard {
         (color & self.king).iterate_squares().next().unwrap()
     }
 
-    pub fn is_in_check(&self, color: PlayerColor) -> bool {
-        let opponent = match color {
-            PlayerColor::White => self.black_piece,
-            PlayerColor::Black => self.white_piece,
+    pub fn square_is_attacked_by(&self, target_square: Square, opponent_color: PlayerColor) -> bool {
+        let opponent = match opponent_color {
+            PlayerColor::White => self.white_piece,
+            PlayerColor::Black => self.black_piece,
         };
 
         let occupied = self.white_piece | self.black_piece;
 
-        let king_square = self.king_position(color);
-        let kx = king_square.file() as i8;
-        let ky = king_square.rank() as i8;
+        let kx = target_square.file() as i8;
+        let ky = target_square.rank() as i8;
 
         //Knights
-        if !(self.knight & opponent & KNIGHT_MOVES[king_square as usize]).is_empty() {
+        if !(self.knight & opponent & KNIGHT_MOVES[target_square as usize]).is_empty() {
             return true;
         }
 
+        // println!("King square: {:?}", king_square);
         //Sliders
-        let diagonal_sliders = self.diagonal_slider & opponent & DIAGONAL_MOVES[king_square as usize];
-        let orthogonal_sliders = self.orthogonal_slider & opponent & ORTHOGONAL_MOVES[king_square as usize];
+        let diagonal_sliders = self.diagonal_slider & opponent & DIAGONAL_MOVES[target_square as usize];
+        let orthogonal_sliders = self.orthogonal_slider & opponent & ORTHOGONAL_MOVES[target_square as usize];
         let sliders = diagonal_sliders | orthogonal_sliders;
 
         for attacker in sliders.iterate_squares() {
             let fx = attacker.file() as i8;
             let fy = attacker.rank() as i8;
 
-            let dx = (attacker.file() as i8 - king_square.file() as i8).signum();
-            let dy = (attacker.rank() as i8 - king_square.rank() as i8).signum();
+            let dx = (attacker.file() as i8 - target_square.file() as i8).signum();
+            let dy = (attacker.rank() as i8 - target_square.rank() as i8).signum();
 
             let mut x = kx + dx;
             let mut y = ky + dy;
 
             let mut blocked = false;
-            while x != fx && y != fy {
-                if occupied.get_bit(Square::from_rank_file_index(y as u8, x as u8)) {
+            while !(x == fx && y == fy) {
+                let square = Square::from_rank_file_index(y as u8, x as u8);
+
+                if occupied.get_bit(square) {
                     blocked = true;
                     break;
                 }
@@ -202,24 +215,27 @@ impl BitBoard {
         }
 
         //Pawns
-        let dy = match color {
-            PlayerColor::White => 1,
-            PlayerColor::Black => -1,
+        let dy = match opponent_color {
+            PlayerColor::White => -1,
+            PlayerColor::Black => 1,
         };
 
-        let king_bit = king_square.bit_array();
+        let king_bit = target_square.bit_array();
         let king_pawn_attack = king_bit.translate(-1, dy) | king_bit.translate(1, dy);
         if !(self.pawn & opponent & king_pawn_attack).is_empty() {
             return true;
         }
         
         //King
-        let king_moves = KING_MOVES[king_square as usize];
+        let king_moves = KING_MOVES[target_square as usize];
         if !(self.king & opponent & king_moves).is_empty() {
             return true;
         }
 
         return false;
+    }
+    pub fn is_in_check(&self, color: PlayerColor) -> bool {
+        return self.square_is_attacked_by(self.king_position(color), !color);
     }
 
     pub fn get_piecetype(&self, square: Square) -> PieceType {

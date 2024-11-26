@@ -36,3 +36,12 @@ impl ops::Not for PlayerColor {
     }
 }
 
+impl ToString for PlayerColor {
+    fn to_string(&self) -> String {
+        match self {
+            PlayerColor::White => "w".to_string(),
+            PlayerColor::Black => "b".to_string(),
+        }
+    }
+}
+

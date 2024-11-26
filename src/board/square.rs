@@ -68,7 +68,6 @@ impl ToString for Square {
         else {
             "None".to_string()
         }
-
     }
 }
 
@@ -95,6 +94,37 @@ impl Square {
         } else {
             panic!("Invalid square index: {}", index);
         }
+    }
+
+    pub fn from_str(s: &str) -> Square {
+        let file = s.chars().nth(0).unwrap();
+        let rank = s.chars().nth(1).unwrap();
+
+        let file = match file {
+            'a' => File::A,
+            'b' => File::B,
+            'c' => File::C,
+            'd' => File::D,
+            'e' => File::E,
+            'f' => File::F,
+            'g' => File::G,
+            'h' => File::H,
+            _ => panic!("Invalid file: {}", file)
+        };
+
+        let rank = match rank {
+            '1' => Rank::R1,
+            '2' => Rank::R2,
+            '3' => Rank::R3,
+            '4' => Rank::R4,
+            '5' => Rank::R5,
+            '6' => Rank::R6,
+            '7' => Rank::R7,
+            '8' => Rank::R8,
+            _ => panic!("Invalid rank: {}", rank)
+        };
+
+        Square::from_rank_file(rank, file)
     }
 
     //Methods

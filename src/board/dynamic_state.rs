@@ -32,12 +32,14 @@ pub trait DynamicState {
         
         if m.is_en_passant() {
             let capture_square = match m.move_piece.color() {
-                PlayerColor::White => m.start.up(),
-                PlayerColor::Black => m.start.down(),
+                PlayerColor::White => m.end.down(),
+                PlayerColor::Black => m.end.up(),
             };
             
             self.remove_piece(m.move_piece.opposite(), capture_square);
-        } else if m.is_promotion() {
+        }
+        
+        if m.is_promotion() {
             self.add_piece(m.promotion_piece, m.end);
         }
         else {
@@ -63,24 +65,26 @@ pub trait DynamicState {
             self.add_piece(PieceType::Rook.colored(m.move_piece.color()), rook_start);
         }
         
-        if m.is_direct_capture() {
-            self.add_piece(m.captured_piece, m.end);
-        }
-
-        self.remove_piece(m.move_piece, m.end);
-        
-        if m.is_en_passant() {
-            let capture_square = match m.move_piece.color() {
-                PlayerColor::White => m.start.up(),
-                PlayerColor::Black => m.start.down(),
-            };
-            
-            self.add_piece(m.move_piece.opposite(), capture_square);
-        } else if m.is_promotion() {
+        if m.is_promotion() {
             self.remove_piece(m.promotion_piece, m.end);
         }
         else {
-            self.add_piece(m.move_piece, m.start);
+            self.remove_piece(m.move_piece, m.end);
         }
+
+        if m.is_direct_capture() {
+            self.add_piece(m.captured_piece, m.end);
+        }
+        
+        if m.is_en_passant() {
+            let capture_square = match m.move_piece.color() {
+                PlayerColor::White => m.end.down(),
+                PlayerColor::Black => m.end.up(),
+            };
+            
+            self.add_piece(m.move_piece.opposite(), capture_square);
+        }
+        
+        self.add_piece(m.move_piece, m.start);
     }
 }

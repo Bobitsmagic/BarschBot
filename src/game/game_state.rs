@@ -1,7 +1,10 @@
-use crate::{board::{dynamic_state::DynamicState, piece_board::PieceBoard, zobrist_hash::ZobristHash}, moves::{chess_move::ChessMove, move_gen}};
+
+
+use crate::{board::{dynamic_state::DynamicState, piece_board::PieceBoard, player_color::PlayerColor, zobrist_hash::ZobristHash}, fen::fen_helper, moves::{chess_move::ChessMove, move_gen}};
 
 use super::{board_state::BoardState, game_flags::GameFlags};
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct GameState {
     pub board_state: BoardState,
     pub zobrist_hash: ZobristHash,
@@ -28,6 +31,25 @@ impl GameState {
         }
     }
 
+    pub fn get_flags(&self) -> GameFlags {
+        return *self.flag_stack.last().unwrap();
+    }
+
+    pub fn active_color(&self) -> PlayerColor {
+        return self.flag_stack.last().unwrap().active_color;
+    }
+
+    pub fn from_fen(fen: &str) -> GameState {
+        let (pb, flags) = fen_helper::from_fen(fen);
+
+        GameState {
+            board_state: BoardState::from_piece_board(&pb),
+            move_stack: Vec::new(),
+            flag_stack: vec![flags],
+            zobrist_hash: ZobristHash::from_position(&pb, flags),
+        }
+    }
+
     pub fn make_move(&mut self, m: ChessMove) {
         self.board_state.make_move(m);
         self.move_stack.push(m);
@@ -35,7 +57,7 @@ impl GameState {
 
         self.zobrist_hash.make_move(m);
         self.zobrist_hash.toggle_flags(new_flags); //Remove old flags
-        new_flags.make_move(m);
+        new_flags.make_move(m, &self.board_state.bit_board);
         self.zobrist_hash.toggle_flags(new_flags); //Add new flags
 
         self.flag_stack.push(new_flags);
