@@ -186,6 +186,10 @@ impl BitArray {
 
         moves
     }
+    
+    pub fn is_full(&self) -> bool {
+        self.bits == u64::MAX
+    }
 }
 
 //Helper
@@ -194,7 +198,9 @@ pub fn iterate_set_bits(mut value: u64) -> impl Iterator<Item=u32> {
     return std::iter::from_fn(move || {
         if value != 0 {
             let index = value.trailing_zeros();
-            value ^= 1_u64 << index;
+            value = bitintr::Blsr::blsr(value);
+            // value &= value - 1;
+            // value ^= 1_u64 << index;
             
             Some(index)
         }
@@ -274,7 +280,7 @@ pub fn gen_queen_moves(square: Square, allied: BitArray, opponent: BitArray) -> 
 
 pub fn order_bits(value: u64, mask: u64) -> u64 {
     return bitintr::Pext::pext(value, mask); //650 ms
-
+    
     //return bitintr::Pdep::pdep(value, mask);
     // let mut ret = 0;
     // for i in iterate_set_bits(mask) {
@@ -306,6 +312,12 @@ impl std::ops::BitAnd for BitArray {
         BitArray {
             bits: self.bits & rhs.bits,
         }
+    }
+}
+
+impl std::ops::BitAndAssign for BitArray {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.bits &= rhs.bits;
     }
 }
 

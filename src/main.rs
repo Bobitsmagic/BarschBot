@@ -1,31 +1,10 @@
-use barschbot::{board::{piece_type::ColoredPieceType, square::Square}, game::game_state::GameState, moves::{chess_move::ChessMove, pseudo_move_gen}};
+use barschbot::game::game_state::GameState;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 fn main() {
-    let mut game_state = GameState::start_position();
+    let mut game_state = GameState::from_fen("8/2p5/1P1p4/K5kr/1R6/4p3/6P1/8 w - -");
 
     let moves = game_state.gen_legal_moves();
-
-
-
-    game_state.make_move(moves[12]);
-
-    game_state.board_state.piece_board.print();
-
-    let moves = game_state.gen_legal_moves();
-
-    game_state.make_move(moves[13]);
-
-    game_state.board_state.piece_board.print();
-
-    let moves = game_state.gen_legal_moves();
-    for m in moves.iter() {
-        m.print();
-    }
-    
-    game_state.make_move(moves[0]);
-
-    game_state.board_state.piece_board.print();
 }
 
 fn test_random_moves() {

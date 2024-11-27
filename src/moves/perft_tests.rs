@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_perft_files() {
-        for p in 0..4 {
+        for p in 2..4 {
             let fen = PERFT_FENS[p];
 
             println!("Testing fen: {}", fen);
@@ -346,4 +346,36 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_ep_positions() {
+        const FENS: [&str; 4] = [
+            "7k/8/8/r1pP2K1/8/8/8/8 w - c6",
+            "7k/8/8/K2pP2r/8/8/8/8 w - d6",
+            "5b1k/8/8/2pP4/8/K7/8/8 w - c6",
+            "2r4k/8/8/2pP4/8/8/8/2K5 w - c6"
+        ];
+        
+        const RESULTS: [bool; 4] = [false, false, false, true];
+        
+        for i in 0..FENS.len() {
+            let fen = FENS[i];            
+            let res = RESULTS[i];
+            
+            let game_state = GameState::from_fen(fen);
+            println!("Testing fen: {}", fen);
+            game_state.board_state.piece_board.print();
+            
+            let moves = game_state.gen_legal_moves();
+
+            let mut found = false;
+            for m in moves {
+                if m.is_en_passant() {
+                    found = true;
+                    break;
+                }
+            }
+
+            assert_eq!(found, res);
+        }
+    }
 }

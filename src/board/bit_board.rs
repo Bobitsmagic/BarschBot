@@ -164,6 +164,61 @@ impl BitBoard {
         (color & self.king).iterate_squares().next().unwrap()
     }
 
+    pub fn square_is_attacked_through_king(&self, target_square: Square, opponent_color: PlayerColor) -> bool {
+        let opponent = match opponent_color {
+            PlayerColor::White => self.white_piece,
+            PlayerColor::Black => self.black_piece,
+        };
+        let allied = match opponent_color {
+            PlayerColor::White => self.black_piece,
+            PlayerColor::Black => self.white_piece,
+        };
+
+        let occupied = (self.white_piece | self.black_piece) & !(self.king & allied);
+        
+        //Knights
+        if !(self.knight & opponent & KNIGHT_MOVES[target_square as usize]).is_empty() {
+            return true;
+        }
+
+        // println!("King square: {:?}", king_square);
+        //Sliders
+        let diagonal_sliders = self.diagonal_slider & opponent & DIAGONAL_MOVES[target_square as usize];
+        for attacker in diagonal_sliders.iterate_squares() {
+            let between = IN_BETWEEN_TABLE[attacker as usize][target_square as usize];
+            if (between & occupied).is_empty() {
+                return true;
+            }
+        }
+        let orthogonal_sliders = self.orthogonal_slider & opponent & ORTHOGONAL_MOVES[target_square as usize];
+        for attacker in orthogonal_sliders.iterate_squares() {
+            let between = IN_BETWEEN_TABLE[attacker as usize][target_square as usize];
+            if (between & occupied).is_empty() {
+                return true;
+            }
+        }
+
+        //Pawns
+        let dy = match opponent_color {
+            PlayerColor::White => -1,
+            PlayerColor::Black => 1,
+        };
+
+        let king_bit = target_square.bit_array();
+        let king_pawn_attack = king_bit.translate(-1, dy) | king_bit.translate(1, dy);
+        if !(self.pawn & opponent & king_pawn_attack).is_empty() {
+            return true;
+        }
+        
+        //King
+        let king_moves = KING_MOVES[target_square as usize];
+        if !(self.king & opponent & king_moves).is_empty() {
+            return true;
+        }
+
+        return false;
+    }
+
     pub fn square_is_attacked_by(&self, target_square: Square, opponent_color: PlayerColor) -> bool {
         let opponent = match opponent_color {
             PlayerColor::White => self.white_piece,
@@ -171,7 +226,7 @@ impl BitBoard {
         };
 
         let occupied = self.white_piece | self.black_piece;
-        
+
         //Knights
         if !(self.knight & opponent & KNIGHT_MOVES[target_square as usize]).is_empty() {
             return true;

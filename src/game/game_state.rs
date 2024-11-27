@@ -1,6 +1,6 @@
 
 
-use crate::{board::{dynamic_state::DynamicState, piece_board::PieceBoard, player_color::PlayerColor, zobrist_hash::ZobristHash}, fen::fen_helper, moves::{chess_move::ChessMove, pseudo_move_gen}};
+use crate::{board::{dynamic_state::DynamicState, piece_board::PieceBoard, player_color::PlayerColor, zobrist_hash::ZobristHash}, fen::fen_helper, moves::{chess_move::ChessMove, move_gen, pseudo_move_gen}};
 
 use super::{board_state::BoardState, game_flags::GameFlags};
 
@@ -33,6 +33,10 @@ impl GameState {
 
     pub fn get_flags(&self) -> GameFlags {
         return *self.flag_stack.last().unwrap();
+    }
+
+    pub fn last_move(&self) -> Option<ChessMove> {
+        return self.move_stack.last().cloned();
     }
 
     pub fn active_color(&self) -> PlayerColor {
@@ -75,6 +79,7 @@ impl GameState {
     }
 
     pub fn gen_legal_moves(&self) -> Vec<ChessMove> {
-        return pseudo_move_gen::gen_legal_moves_bitboard(&self.board_state, self.flag_stack.last().unwrap());
+        return move_gen::gen_legal_moves_bitboard(&self.board_state, &self.get_flags());
+        // return pseudo_move_gen::gen_legal_moves_bitboard(&self.board_state, self.flag_stack.last().unwrap());
     }
 }

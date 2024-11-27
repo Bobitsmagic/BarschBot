@@ -1,9 +1,20 @@
-# To do
+# Notes
 
 ## Benchmarking
 
+- `cargo rustc --bin benchmark --release -- -C target-cpu=native`
+
+## History
+
+- Initial: 151 s
+- InBetweenTable: 137 s
+- Blsr iterator: 150 s
+- Check, Pin mask: 100 s
+
+
 ### Algorithmic
 
+- `blsr` for BitArray iterator
 - `pext` for slider
 - move list with `ArrayVec<(BitArray, Square)>`
   - iterator for usage
