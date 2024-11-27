@@ -135,6 +135,18 @@ impl BitArray {
         }
     }
 
+    pub fn translate_vertical(&self, dy: i8) -> BitArray {
+        debug_assert!(dy.abs() <= 7, "Invalid translation: ({}, {})", 0, dy);
+        
+        let shift_sum = dy * 8;
+        if shift_sum > 0 {
+            BitArray { bits: self.bits << shift_sum }
+        }
+        else {
+            BitArray { bits: self.bits >> -shift_sum }
+        }
+    }
+
     pub fn pawn_moves<const WHITE: bool>(&self) -> BitArray {
         if WHITE {
             self.up_left() | self.up_right()
@@ -278,6 +290,18 @@ pub fn gen_queen_moves(square: Square, allied: BitArray, opponent: BitArray) -> 
     return gen_rook_moves(square, allied, opponent) | gen_bishop_moves(square, allied, opponent);
 }
 
+pub fn gen_rook_moves_pext(square: Square, occupied: BitArray) -> BitArray {
+    let index = order_bits(occupied.bits, ROOK_BLOCKER_MASK[square as usize].bits);
+
+    return ROOK_MOVE_TABLE[square as usize][index as usize];
+}
+
+pub fn gen_bishop_moves_pext(square: Square, occupied: BitArray) -> BitArray {
+    let index = order_bits(occupied.bits, BISHOP_BLOCKER_MASK[square as usize].bits);
+
+    return BISHOP_MOVE_TABLE[square as usize][index as usize];
+}
+
 pub fn order_bits(value: u64, mask: u64) -> u64 {
     return bitintr::Pext::pext(value, mask); //650 ms
     
@@ -376,7 +400,11 @@ impl std::ops::Shr<usize> for BitArray {
 #[cfg(test)]
 mod bit_array_tests {
     use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
-    use rand::Rng;
+    use rand::{Rng, RngCore};
+
+    use crate::board::{bit_array::{gen_bishop_moves, gen_bishop_moves_pext, BitArray}, square::{Square, VALID_SQUARES}};
+
+    use super::{gen_rook_moves, gen_rook_moves_pext};
 
     #[test]
     fn translation_test() {
@@ -429,6 +457,86 @@ mod bit_array_tests {
 
                     assert_eq!(translated, expected, "Translation failed: ({}, {})", dx, dy);
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn bishop_move_gen_test() {
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+
+        for _ in 0..100 {
+            
+            let mut allied = BitArray::empty();
+            let mut opponent = BitArray::empty();
+
+            for x in 0..8 {
+                for y in 0..8 {
+                    let square = Square::from_rank_file_index(y, x);
+                    if rng.gen_bool(0.1) {
+                        allied.set_bit(square);
+                    } else if rng.gen_bool(0.1) {
+                        opponent.set_bit(square);
+                    }
+                }
+            }
+            
+            for s in VALID_SQUARES {
+                let m1 = gen_bishop_moves(s, allied, opponent);
+                let m2 = gen_bishop_moves_pext(s, allied | opponent) & !allied;
+                
+                if m1 != m2 {
+                    println!("Allied:");
+                    allied.print();
+                    println!("Opponent:");
+                    opponent.print();
+                    println!("Square: {}", s.to_string());
+                    println!("gen_moves:");
+                    m1.print();
+                    println!("gen_moves_pext:");
+                    m2.print();
+                    panic!();
+                }                
+            }
+        }
+    }
+
+    #[test]
+    fn rook_move_gen_test() {
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+
+        for _ in 0..100 {
+            
+            let mut allied = BitArray::empty();
+            let mut opponent = BitArray::empty();
+
+            for x in 0..8 {
+                for y in 0..8 {
+                    let square = Square::from_rank_file_index(y, x);
+                    if rng.gen_bool(0.1) {
+                        allied.set_bit(square);
+                    } else if rng.gen_bool(0.1) {
+                        opponent.set_bit(square);
+                    }
+                }
+            }
+            
+            for s in VALID_SQUARES {
+                let m1 = gen_rook_moves(s, allied, opponent);
+                let m2 = gen_rook_moves_pext(s, allied | opponent) & !allied;
+                
+                if m1 != m2 {
+                    println!("Allied:");
+                    allied.print();
+                    println!("Opponent:");
+                    opponent.print();
+                    println!("Square: {}", s.to_string());
+                    println!("gen_moves:");
+                    m1.print();
+                    println!("gen_moves_pext:");
+                    m2.print();
+                    panic!();
+                }                
             }
         }
     }

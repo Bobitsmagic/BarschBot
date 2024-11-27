@@ -41,7 +41,7 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
     //Captures
     let mut ep_bit = if flags.en_passant_square != Square::None { flags.en_passant_square.bit_array() } else { BitArray::empty() };
 
-    ep_bit &= !pin_mask.diag.translate(0, dy); //The ep pawn can not be diagonally pinned
+    ep_bit &= !pin_mask.diag.translate_vertical(dy); //The ep pawn can not be diagonally pinned
 
 
     let row_index = match moving_color {
@@ -58,11 +58,11 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
         if (between & occupied).count_bits() == 2 {
             let intersection = between & occupied;
 
-            ep_bit &= !intersection.translate(0, dy);
+            ep_bit &= !intersection.translate_vertical(dy);
         }
     }
 
-    let pawn_targets = (opponent | ep_bit) & pin_mask.check | (ep_bit & pin_mask.check.translate(0, dy));
+    let pawn_targets = (opponent | ep_bit) & pin_mask.check | (ep_bit & pin_mask.check.translate_vertical(dy));
 
     let attack_pawns = pawns & !pin_mask.ortho; //Pawns that can attack
 
@@ -103,7 +103,7 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
     //Pinned pawns
     let orthogonal_pinned_pawns = pushable_pawns & pin_mask.ortho;
 
-    let pinned_pushes = empty & orthogonal_pinned_pawns.translate(0, dy) & pin_mask.ortho & pin_mask.check;
+    let pinned_pushes = empty & orthogonal_pinned_pawns.translate_vertical(dy) & pin_mask.ortho & pin_mask.check;
     for target_square in pinned_pushes.iterate_squares() {
         let start_square = target_square.translate(0, -dy);
 
@@ -112,7 +112,7 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
 
     //Not pinned pawns
     let not_pinned_pawns = pushable_pawns & !pin_mask.ortho ;
-    let not_pinned_pushes = empty & not_pinned_pawns.translate(0, dy) & pin_mask.check;
+    let not_pinned_pushes = empty & not_pinned_pawns.translate_vertical(dy) & pin_mask.check;
     for target_square in not_pinned_pushes.iterate_squares() {
         let start_square = target_square.translate(0, -dy);
 
@@ -123,7 +123,7 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
     let double_mask = pin_mask.check & double_push_rank & empty;
 
     let pinned_double_pushes = double_mask & 
-        ((pushable_pawns & pin_mask.ortho).translate(0, dy) & empty).translate(0, dy) & pin_mask.ortho; //Stay on pin
+        ((pushable_pawns & pin_mask.ortho).translate_vertical(dy) & empty).translate_vertical(dy) & pin_mask.ortho; //Stay on pin
 
     for target_square in pinned_double_pushes.iterate_squares() {
         let start_square = target_square.translate(0, -2 * dy);
@@ -131,7 +131,7 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
     }
 
     let not_pinned_double_pushes = double_mask & 
-        ((pushable_pawns & !pin_mask.ortho).translate(0, dy) & empty).translate(0, dy);
+        ((pushable_pawns & !pin_mask.ortho).translate_vertical(dy) & empty).translate_vertical(dy);
     for target_square in not_pinned_double_pushes.iterate_squares() {
         let start_square = target_square.translate(0, -2 * dy);
         moves.push(ChessMove::new(start_square, target_square, pawn_pt, piece_board[target_square]));
@@ -153,7 +153,7 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
     let pinned_diagonal_sliders = diagonal_sliders & pin_mask.diag;
     for square in pinned_diagonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        let moveset = bit_array::gen_bishop_moves(square, allied, opponent) & pin_mask.diag  & pin_mask.check; //Stay on pin
+        let moveset = bit_array::gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.diag  & pin_mask.check; //Stay on pin
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(square, target_square, pt, piece_board[target_square]));
         }
@@ -162,7 +162,7 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
     let not_pinned_diagonal_sliders = diagonal_sliders & !pin_mask.diag;
     for square in not_pinned_diagonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        let moveset = bit_array::gen_bishop_moves(square, allied, opponent) & pin_mask.check;
+        let moveset = bit_array::gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.check;
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(square, target_square, pt, piece_board[target_square]));
         }
@@ -174,7 +174,7 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
     let pinned_orthogonal_sliders = orthogonal_sliders & pin_mask.ortho;
     for square in pinned_orthogonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        let moveset = bit_array::gen_rook_moves(square, allied, opponent) & pin_mask.ortho & pin_mask.check; //Stay on pin
+        let moveset = bit_array::gen_rook_moves_pext(square, occupied) & !allied & pin_mask.ortho & pin_mask.check; //Stay on pin
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(square, target_square, pt, piece_board[target_square]));
         }
@@ -183,7 +183,7 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
     let not_pinned_orthogonal_sliders = orthogonal_sliders & !pin_mask.ortho;
     for square in not_pinned_orthogonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        let moveset = bit_array::gen_rook_moves(square, allied, opponent) & pin_mask.check;
+        let moveset = bit_array::gen_rook_moves_pext(square, occupied) & !allied & pin_mask.check;
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(square, target_square, pt, piece_board[target_square]));
         }
@@ -204,12 +204,12 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
 
     let queen_side_blocker = match moving_color {
         PlayerColor::White => QUEEN_SIDE_SQUARES,
-        PlayerColor::Black => QUEEN_SIDE_SQUARES.translate(0, 7),
+        PlayerColor::Black => QUEEN_SIDE_SQUARES.translate_vertical(7),
     };
 
     let king_side_blocker = match moving_color {
         PlayerColor::White => KING_SIDE_SQUARES,
-        PlayerColor::Black => KING_SIDE_SQUARES.translate(0, 7),
+        PlayerColor::Black => KING_SIDE_SQUARES.translate_vertical(7),
     };
 
     let (king_side, queen_side) = match moving_color {

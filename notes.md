@@ -10,7 +10,8 @@
 - InBetweenTable: 137 s
 - Blsr iterator: 150 s
 - Check, Pin mask: 100 s
-
+- Pext slider gen: 100 s
+- Vertical translation: 
 
 ### Algorithmic
 

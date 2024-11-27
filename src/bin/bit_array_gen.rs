@@ -1,6 +1,6 @@
 use std::{fs::File, io::Write};
 
-use barschbot::board::{bit_array::{self, BitArray}, bit_array_lookup, square::{Square, VALID_SQUARES}};
+use barschbot::board::{bit_array::{self, order_bits, BitArray}, bit_array_lookup::{self, SQUARES}, square::{Square, VALID_SQUARES}};
 
 pub fn main() {
     // gen_bishop_move_table();
@@ -248,10 +248,10 @@ pub fn gen_rook_blocker_mask() -> [BitArray; 64] {
         let sy = s.rank_index() as u8;
 
         for i in 1..7 {
-            let square = Square::from_rank_file_index(i, sy);
+            let square = Square::from_rank_file_index(sy, i);
             blocker_mask.set_bit(square);
 
-            let square = Square::from_rank_file_index(sx, i);
+            let square = Square::from_rank_file_index(i, sx);
             blocker_mask.set_bit(square);
         }
 
@@ -284,17 +284,30 @@ pub fn gen_rook_move_table() -> [Vec<BitArray>; 64] {
 
         let mask = rook_blocker_mask[s as usize];
 
+        // println!("Mask");
+        // mask.print();
+
         let bit_count = mask.count_bits();
 
         for index in 0..(1_u64 << bit_count) {
             let blocker = bitintr::Pdep::pdep(index, mask.bits);
 
+            let idx = order_bits(blocker, mask.bits);
+            
+            assert_eq!(idx, index);
+            
             let moves = bit_array::gen_rook_moves(s, BitArray::empty(), BitArray::new(blocker));
+            
+            // println!("Blocker: ");
+            // BitArray::new(blocker).print();
+            // moves.print();
 
             move_set.push(moves);
         }
 
         ret[s as usize] = move_set;
+
+        // panic!();
     }
 
     // println!("Final length: {}", ret.iter().map(|v| v.len()).sum::<usize>());
@@ -315,10 +328,14 @@ pub fn gen_bishop_move_table() -> [Vec<BitArray>; 64] {
 
         let bit_count = mask.count_bits();
         for index in 0..(1_u64 << bit_count) {
-            let b_value = bitintr::Pdep::pdep(index, mask.bits);
-            let blocker = BitArray::new(b_value);
+            let blocker = bitintr::Pdep::pdep(index, mask.bits);
+            
 
-            let moves = bit_array::gen_bishop_moves(s, BitArray::empty(), blocker);
+            let idx = order_bits(blocker, mask.bits);
+
+            assert_eq!(idx, index);
+
+            let moves = bit_array::gen_bishop_moves(s, BitArray::empty(), BitArray::new(blocker));
 
             move_set.push(moves);
         }
