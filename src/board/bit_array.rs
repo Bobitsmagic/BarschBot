@@ -1,45 +1,88 @@
-use std::u64;
+
+use crate::board::square::VALID_SQUARES;
 
 use super::{bit_array_lookup::*, square::Square};
 
+pub trait BitArray {
+    fn set_bit(&mut self, square: Square);
+    fn clear_bit(&mut self, square: Square);
+    fn get_bit(self, square: Square) -> bool;
+    fn flip_bit(&mut self, square: Square);
 
+    fn translate(self, dx: i8, dy: i8) -> Self;
+    fn translate_vertical(self, dy: i8) -> Self;
+    fn left(self) -> Self;
+    fn right(self) -> Self;
+    fn up(self) -> Self;
+    fn down(self) -> Self;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct BitArray {
-    pub bits: u64,
+    fn iterate_set_bit_fields(self) -> impl Iterator<Item=u64>;
+    fn iterate_set_bits_indices(self) -> impl Iterator<Item=u32>;
+    fn iterate_squares(self) -> impl Iterator<Item=Square>;
+
+    fn to_square(self) -> Square;
+
+    fn print(self);
 }
 
-impl BitArray {
-    //Constructor
-    pub fn empty() -> BitArray {
-        BitArray { bits: 0 }
+impl BitArray for u64 {
+    fn set_bit(&mut self, square: Square) {
+        *self |= 1 << square as u8;
+    }
+    fn clear_bit(&mut self, square: Square) {
+        *self &= !(1 << square as u8);
+    }
+    fn flip_bit(&mut self, square: Square) {
+        *self ^= 1 << square as u8;
     }
 
-    pub fn full() -> BitArray {
-        BitArray { bits: u64::MAX }
+    fn get_bit(self, square: Square) -> bool {
+        (self & (1 << square as u8)) != 0
     }
 
-    pub fn new(bits: u64) -> BitArray {
-        BitArray { bits }
+    fn to_square(self) -> Square {
+        debug_assert!(self.count_ones() == 1, "Invalid bitboard: {}", self);
+        VALID_SQUARES[self.trailing_zeros() as usize]
     }
-    
-    //Accessors
-    pub fn get_bit(&self, square: Square) -> bool {
-        self.get_bit_index(square as u8)
-    }
-    pub fn get_bit_index(&self, index: u8) -> bool {
-        (self.bits & (1 << index)) != 0
-    }
-    pub fn count_bits(&self) -> u8 {
-        self.bits.count_ones() as u8
-    }
-    pub fn to_square(&self) -> Square {
-        debug_assert!(self.bits.count_ones() == 1, "Invalid bitboard: {}", self.bits);
 
-        let index = self.bits.trailing_zeros();
-        return Square::from_u8(index as u8);
+    fn translate(self, dx: i8, dy: i8) -> u64 {
+        debug_assert!(dx.abs() <= 7 && dy.abs() <= 7, "Invalid translation: ({}, {})", dx, dy);
+        
+        let mask = if dx >= 0 { ACCUM_COLLUMNS[(7 - dx) as usize] } else { !ACCUM_COLLUMNS[(-dx) as usize - 1] };
+
+        let shift_sum = dx + dy * 8;
+        if shift_sum > 0 {
+            (self & mask) << shift_sum
+        }
+        else {
+            (self & mask) >> -shift_sum
+        }
     }
-    pub fn print(&self) {
+
+    fn translate_vertical(self, dy: i8) -> u64 {
+        let shift_sum = dy * 8;
+        if shift_sum > 0 {
+            self << shift_sum
+        }
+        else {
+            self >> -shift_sum
+        }
+    }
+
+    fn left(self) -> u64 {
+        (self & !ACCUM_COLLUMNS[0]) >> 1
+    }
+    fn right(self) -> u64 {
+        (self << 1) & !ACCUM_COLLUMNS[0]
+    }
+    fn up(self) -> u64 {
+        self << 8
+    }
+    fn down(self) -> u64 {
+        self >> 8
+    }
+
+    fn print(self) {
         let mut s = String::new();
 
         for rank in (0..8).rev() {
@@ -53,181 +96,50 @@ impl BitArray {
         println!("{}", s);
     }
 
-    //Mut methods
-    pub fn set_bit(&mut self, square: Square) {
-        self.set_bit_index(square as u8);
-    }
-    pub fn set_bit_index(&mut self, index: u8) {
-        self.bits |= 1 << index;
-    }
-
-    pub fn clear_bit(&mut self, square: Square) {
-        self.clear_bit_index(square as u8);
-    }
-    pub fn clear_bit_index(&mut self, index: u8) {
-        self.bits &= !(1 << index);
-    }
-
-    pub fn flip_bit(&mut self, square: Square) {
-        self.flip_bit_index(square as u8);
+    fn iterate_set_bit_fields(mut self) -> impl Iterator<Item=u64> {
+        return std::iter::from_fn(move || {
+            if self != 0 {
+                let value = self & (!self + 1);
+                self = bitintr::Blsr::blsr(self);
+                // value &= value - 1;
+                // value ^= 1_u64 << index;
+                
+                Some(value)
+            }
+            else {
+                None
+            }
+        });
     }
 
-    pub fn flip_bit_index(&mut self, index: u8) {
-        self.bits ^= 1 << index;
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.bits == 0
-    }
-
-    pub fn iterate_squares(&self) -> impl Iterator<Item=Square> {
-        self.iterate_set_bits().map(|v| Square::from_usize(v as usize))
-    }
-
-    pub fn iterate_set_bits(&self) -> impl Iterator<Item=u32> {
-        return iterate_set_bits(self.bits);
-    }
-
-    //Translation
-    pub fn up(&self) -> BitArray {
-        BitArray { bits: self.bits << 8 }
-    }
-
-    pub fn down(&self) -> BitArray {
-        BitArray { bits: self.bits >> 8 }
-    }
-
-    pub fn right(&self) -> BitArray {
-        BitArray { bits: (self.bits & !COLLUMNS[7].bits) << 1 }
-    }
-
-    pub fn left(&self) -> BitArray {
-        BitArray { bits: (self.bits & !COLLUMNS[0].bits) >> 1 }
-    }
-
-    pub fn up_right(&self) -> BitArray {
-        BitArray { bits: (self.bits & !COLLUMNS[7].bits) << 9 }
-    }
-
-    pub fn up_left(&self) -> BitArray {
-        BitArray { bits: (self.bits & !COLLUMNS[0].bits) << 7 }
-    }
-
-    pub fn down_right(&self) -> BitArray {
-        BitArray { bits: (self.bits & !COLLUMNS[7].bits) >> 7 }
-    }
-
-    pub fn down_left(&self) -> BitArray {
-        BitArray { bits: (self.bits & !COLLUMNS[0].bits) >> 9 }
-    }
-
-    pub fn translate(&self, dx: i8, dy: i8) -> BitArray {
-        debug_assert!(dx.abs() <= 7 && dy.abs() <= 7, "Invalid translation: ({}, {})", dx, dy);
-        
-        let mask = if dx >= 0 { ACCUM_COLLUMNS[(7 - dx) as usize] } else { !ACCUM_COLLUMNS[(-dx) as usize - 1] };
-
-        let shift_sum = dx + dy * 8;
-        if shift_sum > 0 {
-            BitArray { bits: (*self & mask).bits << shift_sum }
-        }
-        else {
-            BitArray { bits: (*self & mask).bits >> -shift_sum }
-        }
-    }
-
-    pub fn translate_vertical(&self, dy: i8) -> BitArray {
-        debug_assert!(dy.abs() <= 7, "Invalid translation: ({}, {})", 0, dy);
-        
-        let shift_sum = dy * 8;
-        if shift_sum > 0 {
-            BitArray { bits: self.bits << shift_sum }
-        }
-        else {
-            BitArray { bits: self.bits >> -shift_sum }
-        }
-    }
-
-    pub fn pawn_moves<const WHITE: bool>(&self) -> BitArray {
-        if WHITE {
-            self.up_left() | self.up_right()
-        }
-        else {
-            self.down_left() | self.down_right()
-        }
-    }
-
-    //[TODO] benchmark this vs iterate with lookup table
-    pub fn knight_moves(&self) -> BitArray {
-        self.translate(2, 1) | self.translate(1, 2) | 
-        self.translate(-1, 2) | self.translate(-2, 1) |
-        self.translate(-2, -1) | self.translate(-1, -2) |
-        self.translate(1, -2) | self.translate(2, -1)
-    }
-
-    pub fn king_moves(&self) -> BitArray {
-        self.up() | self.down() | self.left() | self.right() |
-        self.up_left() | self.up_right() | self.down_left() | self.down_right()
-    }
-
-    pub fn diagonal_moves(&self) -> BitArray {
-        let mut moves = BitArray::empty();
-
-        let mut bb = *self;
-        while !bb.is_empty() {
-            moves |= bb;
-            bb = bb.up_left();
-        }
-
-        bb = *self;
-        while !bb.is_empty() {
-            moves |= bb;
-            bb = bb.up_right();
-        }
-
-        bb = *self;
-        while !bb.is_empty() {
-            moves |= bb;
-            bb = bb.down_left();
-        }
-
-        bb = *self;
-        while !bb.is_empty() {
-            moves |= bb;
-            bb = bb.down_right();
-        }
-
-        moves
+    fn iterate_set_bits_indices(mut self) -> impl Iterator<Item=u32> {
+        return std::iter::from_fn(move || {
+            if self != 0 {
+                let index = self.trailing_zeros();
+                self = bitintr::Blsr::blsr(self);
+                // value &= value - 1;
+                // value ^= 1_u64 << index;
+                
+                Some(index)
+            }
+            else {
+                None
+            }
+        });
     }
     
-    pub fn is_full(&self) -> bool {
-        self.bits == u64::MAX
+    fn iterate_squares(self) -> impl Iterator<Item=Square> {
+        self.iterate_set_bits_indices().map(|v| Square::from_usize(v as usize))
     }
 }
 
-//Helper
-
-pub fn iterate_set_bits(mut value: u64) -> impl Iterator<Item=u32> {
-    return std::iter::from_fn(move || {
-        if value != 0 {
-            let index = value.trailing_zeros();
-            value = bitintr::Blsr::blsr(value);
-            // value &= value - 1;
-            // value ^= 1_u64 << index;
-            
-            Some(index)
-        }
-        else {
-            None
-        }
-    });
-}
 
 
 //Move generation
-pub fn gen_rook_moves(square: Square, allied: BitArray, opponent: BitArray) -> BitArray {
+pub fn gen_rook_moves(square: Square, allied: u64, opponent: u64) -> u64 {
     const DIRECTIONS: [(i8, i8); 4] = [(0, 1), (0, -1), (1, 0), (-1, 0)];
 
-    let mut moves = BitArray::empty();
+    let mut moves = 0;
     let x = square.file_index() as i8;
     let y = square.rank_index() as i8;
     for (dx, dy) in DIRECTIONS {
@@ -255,10 +167,10 @@ pub fn gen_rook_moves(square: Square, allied: BitArray, opponent: BitArray) -> B
     return moves;
 }
 
-pub fn gen_bishop_moves(square: Square, allied: BitArray, opponent: BitArray) -> BitArray {  
+pub fn gen_bishop_moves(square: Square, allied: u64, opponent: u64) -> u64 {  
     const DIRECTIONS: [(i8, i8); 4] = [(1, 1), (1, -1), (-1, 1), (-1, -1)];
 
-    let mut moves = BitArray::empty();
+    let mut moves = 0;
     let x = square.file_index() as i8;
     let y = square.rank_index() as i8;
     for (dx, dy) in DIRECTIONS {
@@ -286,18 +198,18 @@ pub fn gen_bishop_moves(square: Square, allied: BitArray, opponent: BitArray) ->
     return moves;
 }
 
-pub fn gen_queen_moves(square: Square, allied: BitArray, opponent: BitArray) -> BitArray {
+pub fn gen_queen_moves(square: Square, allied: u64, opponent: u64) -> u64 {
     return gen_rook_moves(square, allied, opponent) | gen_bishop_moves(square, allied, opponent);
 }
 
-pub fn gen_rook_moves_pext(square: Square, occupied: BitArray) -> BitArray {
-    let index = order_bits(occupied.bits, ROOK_BLOCKER_MASK[square as usize].bits);
+pub fn gen_rook_moves_pext(square: Square, occupied: u64) -> u64 {
+    let index = order_bits(occupied, ROOK_BLOCKER_MASK[square as usize]);
 
     return ROOK_MOVE_TABLE[square as usize][index as usize];
 }
 
-pub fn gen_bishop_moves_pext(square: Square, occupied: BitArray) -> BitArray {
-    let index = order_bits(occupied.bits, BISHOP_BLOCKER_MASK[square as usize].bits);
+pub fn gen_bishop_moves_pext(square: Square, occupied: u64) -> u64 {
+    let index = order_bits(occupied, BISHOP_BLOCKER_MASK[square as usize]);
 
     return BISHOP_MOVE_TABLE[square as usize][index as usize];
 }
@@ -318,105 +230,27 @@ pub fn order_bits(value: u64, mask: u64) -> u64 {
     // }
 }
 
-//Bit operations
-impl std::ops::BitOr for BitArray {
-    type Output = BitArray;
-
-    fn bitor(self, rhs: BitArray) -> BitArray {
-        BitArray {
-            bits: self.bits | rhs.bits,
-        }
-    }
-}
-
-impl std::ops::BitAnd for BitArray {
-    type Output = BitArray;
-
-    fn bitand(self, rhs: BitArray) -> BitArray {
-        BitArray {
-            bits: self.bits & rhs.bits,
-        }
-    }
-}
-
-impl std::ops::BitAndAssign for BitArray {
-    fn bitand_assign(&mut self, rhs: Self) {
-        self.bits &= rhs.bits;
-    }
-}
-
-impl std::ops::BitXor for BitArray {
-    type Output = BitArray;
-
-    fn bitxor(self, rhs: BitArray) -> BitArray {
-        BitArray {
-            bits: self.bits ^ rhs.bits,
-        }
-    }
-}
-
-impl std::ops::BitOrAssign for BitArray {
-    fn bitor_assign(&mut self, rhs: Self) {
-        self.bits |= rhs.bits;
-    }
-}
-
-impl std::ops::BitXorAssign for BitArray {
-    fn bitxor_assign(&mut self, rhs: Self) {
-        self.bits ^= rhs.bits;
-    }
-}
-
-impl std::ops::Not for BitArray {
-    type Output = BitArray;
-
-    fn not(self) -> BitArray {
-        BitArray { bits: !self.bits }
-    }
-}
-
-impl std::ops::Shl<usize> for BitArray {
-    type Output = BitArray;
-
-    fn shl(self, rhs: usize) -> BitArray {
-        BitArray {
-            bits: self.bits << rhs,
-        }
-    }
-}
-
-impl std::ops::Shr<usize> for BitArray {
-    type Output = BitArray;
-
-    fn shr(self, rhs: usize) -> BitArray {
-        BitArray {
-            bits: self.bits >> rhs,
-        }
-    }
-}
-
-
 //Unit tests
 #[cfg(test)]
 mod bit_array_tests {
     use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
-    use rand::{Rng, RngCore};
+    use rand::Rng;
 
-    use crate::board::{bit_array::{gen_bishop_moves, gen_bishop_moves_pext, BitArray}, square::{Square, VALID_SQUARES}};
+    use crate::board::{bit_array::{gen_bishop_moves, gen_bishop_moves_pext}, square::{Square, VALID_SQUARES}};
 
-    use super::{gen_rook_moves, gen_rook_moves_pext};
+    use super::{gen_rook_moves, gen_rook_moves_pext, BitArray};
 
     #[test]
     fn translation_test() {
         let mut v = Vec::new();
 
-        v.push(super::BitArray::empty());
-        v.push(super::BitArray::full());
+        v.push(0);
+        v.push(u64::MAX);
 
         let mut rng = ChaCha8Rng::seed_from_u64(0);
 
         for _ in 0..100 {
-            let mut bb = super::BitArray::empty();
+            let mut bb = 0;
 
             for _ in 0..32 {
                 let square = super::Square::from_usize(rng.gen_range(0..64));
@@ -429,31 +263,36 @@ mod bit_array_tests {
         for bb in v {
             for dx in -7..=7 {
                 for dy in -7..=7 {
-                    println!("Translation: ({}, {})", dx, dy);
-                    bb.print();
+                    // println!("Translation: ({}, {})", dx, dy);
+                    // bb.print();
 
                     let translated = bb.translate(dx, dy);
 
-                    println!("Translated:");
-                    translated.print();
+                    // println!("Translated:");
+                    // translated.print();
 
                     
                     let mut expected = bb;
                     for _ in 0..dx {
                         expected = expected.right();
+                        // println!("Right");
                     }
                     for _ in 0..-dx {
                         expected = expected.left();
+                        // println!("Left");
+                        // expected.print();
                     }
                     for _ in 0..dy {
                         expected = expected.up();
+                        // println!("Up");
                     }
                     for _ in 0..-dy {
                         expected = expected.down();
+                        // println!("Down");
                     }
 
-                    println!("Expected:");
-                    expected.print();
+                    // println!("Expected:");
+                    // expected.print();
 
                     assert_eq!(translated, expected, "Translation failed: ({}, {})", dx, dy);
                 }
@@ -467,8 +306,8 @@ mod bit_array_tests {
 
         for _ in 0..100 {
             
-            let mut allied = BitArray::empty();
-            let mut opponent = BitArray::empty();
+            let mut allied = 0;
+            let mut opponent = 0;
 
             for x in 0..8 {
                 for y in 0..8 {
@@ -507,8 +346,8 @@ mod bit_array_tests {
 
         for _ in 0..100 {
             
-            let mut allied = BitArray::empty();
-            let mut opponent = BitArray::empty();
+            let mut allied = 0;
+            let mut opponent = 0;
 
             for x in 0..8 {
                 for y in 0..8 {

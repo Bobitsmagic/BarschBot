@@ -2,7 +2,7 @@ use barschbot::game::game_state::GameState;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 fn main() {
-    let mut game_state = GameState::from_fen("8/2p5/1P1p4/K5kr/1R6/4p3/6P1/8 w - -");
+    let mut game_state = GameState::from_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq -");
 
     let moves = game_state.gen_legal_moves();
 }

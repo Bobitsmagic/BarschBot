@@ -1,5 +1,3 @@
-use crate::board::bit_array::BitArray;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Square {
     A1, B1, C1, D1, E1, F1, G1, H1, 
@@ -176,10 +174,10 @@ impl Square {
         (*self as u8) % 8
     }
 
-    pub fn bit_array(&self) -> BitArray {
+    pub fn bit_array(&self) -> u64 {
         debug_assert!(*self != Square::None, "Invalid square: None");
 
-        BitArray { bits: 1 << (*self as u8) }
+        1_u64 << (*self as u8)
     }
 
     pub fn is_light(&self) -> bool {

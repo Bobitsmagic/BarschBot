@@ -1,9 +1,9 @@
-use crate::board::{bit_array::BitArray, bit_array_lookup::{DIAGONAL_MOVES, IN_BETWEEN_TABLE, KNIGHT_MOVES, ORTHOGONAL_MOVES, PAWN_MOVES_BLACK, PAWN_MOVES_WHITE}, bit_board::BitBoard, player_color::PlayerColor};
+use crate::board::{bit_array::BitArray, bit_array_lookup::{DIAGONAL_MOVES, IN_BETWEEN_TABLE, KNIGHT_MOVES, ORTHOGONAL_MOVES, PAWN_MOVES_BLACK, PAWN_MOVES_WHITE}, bit_board::BitBoard, player_color::PlayerColor, square::{Square, VALID_SQUARES}};
 
 pub struct CheckPinMask {
-    pub check: BitArray,
-    pub ortho: BitArray,
-    pub diag: BitArray,
+    pub check: u64,
+    pub ortho: u64,
+    pub diag: u64,
 }
 
 impl CheckPinMask {
@@ -14,39 +14,39 @@ impl CheckPinMask {
         };
         
         let occupied = board.white_piece | board.black_piece;
-        let mut check_mask = BitArray::full();
+        let mut check_mask = u64::MAX;
         let king_square = board.king_position(color);
 
         //Diagonal slider
-        let mut diagonal_mask = BitArray::empty();
+        let mut diagonal_mask = 0;
         let diagonal_attackers = board.diagonal_slider & opposing_pieces & DIAGONAL_MOVES[king_square as usize];
-        for attacker in diagonal_attackers.iterate_set_bits() {
+        for attacker in diagonal_attackers.iterate_set_bits_indices() {
             let between = IN_BETWEEN_TABLE[attacker as usize][king_square as usize];
-
-            match (between & occupied).count_bits() {
+            
+            match (between & occupied).count_ones() {
                 0 => { //Check
-                    check_mask &= between | BitArray::new(1_u64 << attacker);
+                    check_mask &= between | (1_u64 << attacker);
                 }
                 1 => { //Pin
                     diagonal_mask |= between;
-                    diagonal_mask |= BitArray::new(1_u64 << attacker);
+                    diagonal_mask.set_bit(VALID_SQUARES[attacker as usize]);
                 }
                 _ => {}
             }
         }
 
         //Orthogonal slider
-        let mut orthogonal_mask = BitArray::empty();
+        let mut orthogonal_mask = 0;
         let orhtogonal_attacker = board.orthogonal_slider & opposing_pieces & ORTHOGONAL_MOVES[king_square as usize];
-        for attacker in orhtogonal_attacker.iterate_set_bits() {
+        for attacker in orhtogonal_attacker.iterate_set_bits_indices() {
             let between = IN_BETWEEN_TABLE[attacker as usize][king_square as usize];
-            match (between & occupied).count_bits() {
+            match (between & occupied).count_ones() {
                 0 => { //Check
-                    check_mask &= between | BitArray::new(1_u64 << attacker);
+                    check_mask &= between | (1_u64 << attacker);
                 }
                 1 => { //Pin
                     orthogonal_mask |= between;
-                    orthogonal_mask |= BitArray::new(1_u64 << attacker);
+                    orthogonal_mask.set_bit(VALID_SQUARES[attacker as usize]);
                 }
                 _ => {}
             }
@@ -54,8 +54,8 @@ impl CheckPinMask {
 
         //Knights
         let knights= board.knight & opposing_pieces & KNIGHT_MOVES[king_square as usize];
-        if !knights.is_empty() {
-            debug_assert!(knights.count_bits() != 2);
+        if knights != 0 {
+            debug_assert!(knights.count_ones() != 2);
             
             check_mask &= knights;
         }
@@ -66,8 +66,8 @@ impl CheckPinMask {
             PlayerColor::Black => PAWN_MOVES_BLACK[king_square as usize],
         };
         
-        if !pawn_moves.is_empty() {
-            debug_assert!(pawn_moves.count_bits() != 2);
+        if pawn_moves != 0 {
+            debug_assert!(pawn_moves.count_ones() != 2);
 
             check_mask &= pawn_moves;
         }
@@ -78,5 +78,16 @@ impl CheckPinMask {
             diag: diagonal_mask,
             check: check_mask,
         };
+    }
+
+    pub fn print(&self) {
+        println!("Check mask:");
+        self.check.print();
+
+        println!("Orthogonal pin mask:");
+        self.ortho.print();
+
+        println!("Diagonal pin mask:");
+        self.diag.print();
     }
 }

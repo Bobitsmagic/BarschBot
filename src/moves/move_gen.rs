@@ -22,9 +22,11 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
         PlayerColor::Black => board.white_piece,
     };
 
+    // piece_board.print();
+
     let pin_mask = CheckPinMask::pins_on(moving_color, board);
 
-    // pin_mask.check.print();
+    // pin_mask.print();
 
     //Pawns
     let pawns = board.pawn & allied;
@@ -39,7 +41,7 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
     };
     
     //Captures
-    let mut ep_bit = if flags.en_passant_square != Square::None { flags.en_passant_square.bit_array() } else { BitArray::empty() };
+    let mut ep_bit = if flags.en_passant_square != Square::None { flags.en_passant_square.bit_array() } else { 0 };
 
     ep_bit &= !pin_mask.diag.translate_vertical(dy); //The ep pawn can not be diagonally pinned
 
@@ -55,7 +57,7 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
 
     for attacker in hz_attacker.iterate_squares() {
         let between = IN_BETWEEN_TABLE[attacker as usize][king_square as usize];
-        if (between & occupied).count_bits() == 2 {
+        if (between & occupied).count_ones() == 2 {
             let intersection = between & occupied;
 
             ep_bit &= !intersection.translate_vertical(dy);
@@ -199,8 +201,8 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
     }
 
     //Castling
-    const QUEEN_SIDE_SQUARES: BitArray = BitArray { bits: 14 }; //B1, C1, D1
-    const KING_SIDE_SQUARES: BitArray = BitArray { bits: 96 }; //F1, G1
+    const QUEEN_SIDE_SQUARES: u64 = 14 ; //B1, C1, D1
+    const KING_SIDE_SQUARES: u64 = 96; //F1, G1
 
     let queen_side_blocker = match moving_color {
         PlayerColor::White => QUEEN_SIDE_SQUARES,
@@ -218,15 +220,15 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
     };
 
     //Not currently in check
-    if pin_mask.check.is_full() { 
-        if queen_side && (occupied & queen_side_blocker).is_empty() {
+    if pin_mask.check == u64::MAX { 
+        if queen_side && (occupied & queen_side_blocker) == 0 {
             if !board_state.square_attacked(king_square.left(), !moving_color) && 
                !board_state.square_attacked(king_square.left().left(), !moving_color) {
                 moves.push(ChessMove::new(king_square, king_square.translate(-2, 0), PieceType::King.colored(moving_color), ColoredPieceType::None));
             }
         }
     
-        if king_side && (occupied & king_side_blocker).is_empty() {
+        if king_side && (occupied & king_side_blocker) == 0{
             if !board_state.square_attacked(king_square.right(), !moving_color) &&
                !board_state.square_attacked(king_square.right().right(), !moving_color) {
                 moves.push(ChessMove::new(king_square, king_square.translate(2, 0), PieceType::King.colored(moving_color), ColoredPieceType::None));

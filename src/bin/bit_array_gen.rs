@@ -43,13 +43,13 @@ pub fn print_all_tables() {
     file.write_all(s.as_bytes()).unwrap();
 }
 
-pub fn bit_array_to_string(name: &str, bit_array_array: &[BitArray]) -> String {
+pub fn bit_array_to_string(name: &str, bit_array_array: &[u64]) -> String {
     let length = bit_array_array.len();
     
-    let mut s = format!("pub const {}: [BitArray; {}] = [", name, length);
+    let mut s = format!("pub const {}: [u64; {}] = [", name, length);
 
     for (i, bit_array) in bit_array_array.iter().enumerate() {
-        s += &format!("\tBitArray {{ bits: 0x{:016x}}}", bit_array.bits);
+        s += &format!("\tu64 {{ bits: 0x{:016x}}}", bit_array);
 
         if i < length - 1 {
             s += &format!(",\n");
@@ -63,14 +63,14 @@ pub fn bit_array_to_string(name: &str, bit_array_array: &[BitArray]) -> String {
     return s;
 }
 
-pub fn move_table_to_string(name: &str, table: &[Vec<BitArray>]) -> String {
-    let mut s = format!("pub const {}: [&[BitArray]; 64] = [", name);
+pub fn move_table_to_string(name: &str, table: &[Vec<u64>]) -> String {
+    let mut s = format!("pub const {}: [&[u64]; 64] = [", name);
 
     for (i, vec) in table.iter().enumerate() {
         s += &format!("\t&[");
 
         for (j, bit_array) in vec.iter().enumerate() {
-            s += &format!("BitArray {{ bits: 0x{:016x}}}", bit_array.bits);
+            s += &format!("u64 {{ bits: 0x{:016x}}}", bit_array);
 
             if j < vec.len() - 1 {
                 s += &format!(", ");
@@ -95,13 +95,13 @@ pub fn in_between_table_to_string() -> String{
     let table = gen_in_between_table();
 
     let mut s = String::new();
-    s += "pub const IN_BETWEEN_TABLE: [[BitArray; 64]; 64] = [\n";
+    s += "pub const IN_BETWEEN_TABLE: [[u64; 64]; 64] = [\n";
 
     for (i, row) in table.iter().enumerate() {
         s += "\t[";
 
         for (j, bit_array) in row.iter().enumerate() {
-            s += &format!("BitArray {{ bits: 0x{:016x}}}", bit_array.bits);
+            s += &format!("u64 {{ bits: 0x{:016x}}}", bit_array);
 
             if j < row.len() - 1 {
                 s += ", ";
@@ -122,19 +122,19 @@ pub fn in_between_table_to_string() -> String{
     return s;
 }
 
-pub fn gen_pawn_move_masks() -> ([BitArray; 64], [BitArray; 64]) {
-    let mut white_moves = [BitArray::empty(); 64];
-    let mut black_moves = [BitArray::empty(); 64];
+pub fn gen_pawn_move_masks() -> ([u64; 64], [u64; 64]) {
+    let mut white_moves = [0; 64];
+    let mut black_moves = [0; 64];
 
     for s in VALID_SQUARES {
-        let mut white_move = BitArray::empty();
-        let mut black_move = BitArray::empty();
+        let mut white_move = 0;
+        let mut black_move = 0;
 
-        white_move |= s.bit_array().up_left();
-        white_move |= s.bit_array().up_right();
+        white_move |= s.bit_array().up().left();
+        white_move |= s.bit_array().up().right();
 
-        black_move |= s.bit_array().down_left();
-        black_move |= s.bit_array().down_right();
+        black_move |= s.bit_array().down().left();
+        black_move |= s.bit_array().down().right();
 
         white_moves[s as usize] = white_move;
         black_moves[s as usize] = black_move;
@@ -143,11 +143,11 @@ pub fn gen_pawn_move_masks() -> ([BitArray; 64], [BitArray; 64]) {
     (white_moves, black_moves)
 }
 
-pub fn gen_knight_move_mask() -> [BitArray; 64] {
-    let mut moves = [BitArray::empty(); 64];
+pub fn gen_knight_move_mask() -> [u64; 64] {
+    let mut moves = [0; 64];
 
     for s in VALID_SQUARES {
-        let mut move_set = BitArray::empty();
+        let mut move_set = 0;
 
         move_set |= s.bit_array().translate(2, 1);
         move_set |= s.bit_array().translate(2, -1);
@@ -165,21 +165,21 @@ pub fn gen_knight_move_mask() -> [BitArray; 64] {
     moves
 }
 
-pub fn gen_king_move_mask() -> [BitArray; 64] {
-    let mut moves = [BitArray::empty(); 64];
+pub fn gen_king_move_mask() -> [u64; 64] {
+    let mut moves = [0; 64];
 
     for s in VALID_SQUARES {
-        let mut move_set = BitArray::empty();
+        let mut move_set = 0;
 
         move_set |= s.bit_array().up();
         move_set |= s.bit_array().down();
         move_set |= s.bit_array().left();
         move_set |= s.bit_array().right();
 
-        move_set |= s.bit_array().up_left();
-        move_set |= s.bit_array().up_right();
-        move_set |= s.bit_array().down_left();
-        move_set |= s.bit_array().down_right();
+        move_set |= s.bit_array().up().left();
+        move_set |= s.bit_array().up().right();
+        move_set |= s.bit_array().down().left();
+        move_set |= s.bit_array().down().right();
 
         moves[s as usize] = move_set;
     }
@@ -187,11 +187,11 @@ pub fn gen_king_move_mask() -> [BitArray; 64] {
     moves
 }
 
-pub fn gen_diagonal_move_mask() -> [BitArray; 64] {
-    let mut moves = [BitArray::empty(); 64];
+pub fn gen_diagonal_move_mask() -> [u64; 64] {
+    let mut moves = [0; 64];
 
     for s in VALID_SQUARES {
-        let mut move_set = BitArray::empty();
+        let mut move_set = 0;
 
         for i in 1..8 {
             move_set |= s.bit_array().translate(i, i);
@@ -206,11 +206,11 @@ pub fn gen_diagonal_move_mask() -> [BitArray; 64] {
     moves
 }
 
-pub fn gen_orthogonal_move_mask() -> [BitArray; 64] {
-    let mut moves = [BitArray::empty(); 64];
+pub fn gen_orthogonal_move_mask() -> [u64; 64] {
+    let mut moves = [0; 64];
 
     for s in VALID_SQUARES {
-        let mut move_set = BitArray::empty();
+        let mut move_set = 0;
 
         for i in 1..8 {
             move_set |= s.bit_array().translate(i, 0);
@@ -225,8 +225,8 @@ pub fn gen_orthogonal_move_mask() -> [BitArray; 64] {
     moves
 }
 
-pub fn gen_queen_move_mask() -> [BitArray; 64] {
-    let mut moves = [BitArray::empty(); 64];
+pub fn gen_queen_move_mask() -> [u64; 64] {
+    let mut moves = [0; 64];
 
     let orthogonal_moves = gen_orthogonal_move_mask();
     let diagonal_moves = gen_diagonal_move_mask();
@@ -238,11 +238,11 @@ pub fn gen_queen_move_mask() -> [BitArray; 64] {
     moves
 }
 
-pub fn gen_rook_blocker_mask() -> [BitArray; 64] {
-    let mut mask = [BitArray::empty(); 64];
+pub fn gen_rook_blocker_mask() -> [u64; 64] {
+    let mut mask = [0; 64];
 
     for s in VALID_SQUARES {
-        let mut blocker_mask = BitArray::empty();
+        let mut blocker_mask = 0;
 
         let sx = s.file_index() as u8;
         let sy = s.rank_index() as u8;
@@ -261,10 +261,10 @@ pub fn gen_rook_blocker_mask() -> [BitArray; 64] {
     mask
 }
 
-pub fn gen_bishop_blocker_mask() -> [BitArray; 64] {
+pub fn gen_bishop_blocker_mask() -> [u64; 64] {
     let moves = gen_diagonal_move_mask();
 
-    let mut mask = [BitArray::empty(); 64];
+    let mut mask = [0; 64];
 
     let boarder = bit_array_lookup::ROWS[0] | bit_array_lookup::ROWS[7] | bit_array_lookup::COLLUMNS[0] | bit_array_lookup::COLLUMNS[7];
 
@@ -275,7 +275,7 @@ pub fn gen_bishop_blocker_mask() -> [BitArray; 64] {
     mask
 }
 
-pub fn gen_rook_move_table() -> [Vec<BitArray>; 64] {
+pub fn gen_rook_move_table() -> [Vec<u64>; 64] {
     let mut ret = [const { Vec::new() }; 64];
 
     let rook_blocker_mask = gen_rook_blocker_mask();
@@ -287,19 +287,19 @@ pub fn gen_rook_move_table() -> [Vec<BitArray>; 64] {
         // println!("Mask");
         // mask.print();
 
-        let bit_count = mask.count_bits();
+        let bit_count = mask.count_ones();
 
         for index in 0..(1_u64 << bit_count) {
-            let blocker = bitintr::Pdep::pdep(index, mask.bits);
+            let blocker = bitintr::Pdep::pdep(index, mask);
 
-            let idx = order_bits(blocker, mask.bits);
+            let idx = order_bits(blocker, mask);
             
             assert_eq!(idx, index);
             
-            let moves = bit_array::gen_rook_moves(s, BitArray::empty(), BitArray::new(blocker));
+            let moves = bit_array::gen_rook_moves(s, 0, blocker);
             
             // println!("Blocker: ");
-            // BitArray::new(blocker).print();
+            // (blocker).print();
             // moves.print();
 
             move_set.push(moves);
@@ -317,7 +317,7 @@ pub fn gen_rook_move_table() -> [Vec<BitArray>; 64] {
     ret
 }
 
-pub fn gen_bishop_move_table() -> [Vec<BitArray>; 64] {
+pub fn gen_bishop_move_table() -> [Vec<u64>; 64] {
     let mut ret = [const { Vec::new() }; 64];
 
     let bishop_blocker_mask = gen_bishop_blocker_mask();
@@ -326,16 +326,16 @@ pub fn gen_bishop_move_table() -> [Vec<BitArray>; 64] {
 
         let mask = bishop_blocker_mask[s as usize];
 
-        let bit_count = mask.count_bits();
+        let bit_count = mask.count_ones();
         for index in 0..(1_u64 << bit_count) {
-            let blocker = bitintr::Pdep::pdep(index, mask.bits);
+            let blocker = bitintr::Pdep::pdep(index, mask);
             
 
-            let idx = order_bits(blocker, mask.bits);
+            let idx = order_bits(blocker, mask);
 
             assert_eq!(idx, index);
 
-            let moves = bit_array::gen_bishop_moves(s, BitArray::empty(), BitArray::new(blocker));
+            let moves = bit_array::gen_bishop_moves(s, 0, (blocker));
 
             move_set.push(moves);
         }
@@ -350,8 +350,8 @@ pub fn gen_bishop_move_table() -> [Vec<BitArray>; 64] {
     ret
 }
 
-pub fn gen_in_between_table() -> [[BitArray; 64]; 64] {
-    let mut result = [[BitArray::empty(); 64]; 64];
+pub fn gen_in_between_table() -> [[u64; 64]; 64] {
+    let mut result = [[0; 64]; 64];
 
     for x1 in 0_i8..8 {
         for y1 in 0_i8..8 {
@@ -365,7 +365,7 @@ pub fn gen_in_between_table() -> [[BitArray; 64]; 64] {
                         let dx = dx.signum();
                         let dy = dy.signum();
 
-                        let mut in_between = BitArray::empty();
+                        let mut in_between = 0;
                         let mut x = x1 + dx;
                         let mut y = y1 + dy;
 

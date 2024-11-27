@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_perft_files() {
-        for p in 2..4 {
+        for p in 1..4 {
             let fen = PERFT_FENS[p];
 
             println!("Testing fen: {}", fen);

@@ -1,5 +1,19 @@
 # Notes
 
+## UI
+
+- Rendering
+- Move making
+- Files and Ranks
+- Flip for black view
+- Undo move
+- Multithreaded rendering
+
+## Barschbot
+
+- Endgame table with undo_move enumeration
+- Opening book with lichess database
+
 ## Benchmarking
 
 - `cargo rustc --bin benchmark --release -- -C target-cpu=native`
@@ -11,7 +25,8 @@
 - Blsr iterator: 150 s
 - Check, Pin mask: 100 s
 - Pext slider gen: 100 s
-- Vertical translation: 
+- Vertical translation: 100 s
+- BitArray trait: 95 s
 
 ### Algorithmic
 
@@ -21,6 +36,7 @@
   - iterator for usage
   - custom iterator for captures only
 - dynamic attack board
+- const expr `<const WHITE: bool>`
 
 ### Refactors
 

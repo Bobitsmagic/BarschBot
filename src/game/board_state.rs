@@ -1,4 +1,4 @@
-use crate::{board::{bit_board::BitBoard, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::Square}, moves::chess_move::ChessMove};
+use crate::{board::{bit_board::BitBoard, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::{Square, VALID_SQUARES}}, moves::chess_move::ChessMove};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BoardState {
@@ -24,6 +24,20 @@ impl BoardState {
 
     pub fn square_attacked(&self, s: Square, opponent_color: PlayerColor) -> bool {
         return self.bit_board.square_is_attacked_by(s, opponent_color);
+    }
+
+    pub fn check_integrity(&self) -> bool {
+        for s in VALID_SQUARES {
+            if self.piece_board[s] != self.bit_board.get_colored_piecetype(s) {
+                println!("{:?}", s);
+                println!("  {:?}", self.piece_board[s]);
+                println!("  {:?}", self.bit_board.get_colored_piecetype(s));
+
+                return false;
+            }
+        }
+
+        return true;
     }
 }
 
@@ -61,7 +75,7 @@ mod tests {
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha8Rng;
 
-    use crate::{board::square::VALID_SQUARES, game::game_flags::GameFlags, moves::pseudo_move_gen};
+    use crate::{board::square::VALID_SQUARES, game::game_flags::GameFlags, moves::{move_gen}};
 
     use super::*;
 
@@ -84,7 +98,7 @@ mod tests {
         
         let mut rng = ChaCha8Rng::seed_from_u64(0);
         for _ in 0..30 {
-            let moves = pseudo_move_gen::gen_legal_moves_bitboard(&board_state, &game_flags);
+            let moves = move_gen::gen_legal_moves_bitboard(&board_state, &game_flags);
             if moves.is_empty() {
                 break;
             }
@@ -117,7 +131,7 @@ mod tests {
         
         let mut rng = ChaCha8Rng::seed_from_u64(1);
         for i in 0..60 {
-            let moves = pseudo_move_gen::gen_legal_moves_bitboard(&board_state, &game_flags);
+            let moves = move_gen::gen_legal_moves_bitboard(&board_state, &game_flags);
             if moves.is_empty() {
                 break;
             }
