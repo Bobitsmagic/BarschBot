@@ -27,6 +27,7 @@
 - Pext slider gen: 100 s
 - Vertical translation: 100 s
 - BitArray trait: 95 s
+- ArrayVec: 86 s
 
 ### Algorithmic
 

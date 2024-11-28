@@ -1,9 +1,13 @@
+use arrayvec::ArrayVec;
+
 use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup::{self, IN_BETWEEN_TABLE, ORTHOGONAL_MOVES, ROWS}, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, square::{Rank, Square}}, game::{board_state::BoardState, game_flags::GameFlags}, moves::check_pin_mask::CheckPinMask};
 
 use super::chess_move::ChessMove;
 
-pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> Vec<ChessMove> {
-    let mut moves = Vec::new();
+pub type MoveVector = ArrayVec<ChessMove, 200>;
+
+pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> MoveVector {
+    let mut moves = ArrayVec::new();
 
     let board = &board_state.bit_board;
     let piece_board = &board_state.piece_board;
@@ -55,7 +59,7 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
     //Horizontal ep pin
     let hz_attacker = ROWS[row_index] & board.orthogonal_slider & opponent & ORTHOGONAL_MOVES[king_square as usize];
 
-    for attacker in hz_attacker.iterate_squares() {
+    for attacker in hz_attacker.iterate_set_bits_indices() {
         let between = IN_BETWEEN_TABLE[attacker as usize][king_square as usize];
         if (between & occupied).count_ones() == 2 {
             let intersection = between & occupied;
@@ -239,7 +243,7 @@ pub fn gen_legal_moves_bitboard(board_state: &BoardState, flags: &GameFlags) -> 
     return moves;
 }
 
-fn add_pawn_move(list: &mut Vec<ChessMove>, start_square: Square, target_square: Square, pt: ColoredPieceType, piece_board: &PieceBoard) {
+fn add_pawn_move(list: &mut MoveVector, start_square: Square, target_square: Square, pt: ColoredPieceType, piece_board: &PieceBoard) {
     let captured_piece = piece_board[target_square];
 
     if target_square.rank() == Rank::R1 || target_square.rank() == Rank::R8 {

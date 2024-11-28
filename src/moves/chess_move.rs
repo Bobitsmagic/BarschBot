@@ -13,6 +13,18 @@ pub struct ChessMove {
     pub promotion_piece: ColoredPieceType,
 }
 
+impl Default for ChessMove {
+    fn default() -> Self {
+        ChessMove {
+            start: Square::A1,
+            end: Square::A1,
+            move_piece: ColoredPieceType::None,
+            captured_piece: ColoredPieceType::None,
+            promotion_piece: ColoredPieceType::None,
+        }
+    }
+}
+
 impl ChessMove {
     pub fn new(start: Square, end: Square, move_piece: ColoredPieceType, captured_piece: ColoredPieceType) -> ChessMove {
         ChessMove {

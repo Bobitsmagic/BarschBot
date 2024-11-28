@@ -86,11 +86,16 @@ pub fn benchmark_fens() {
 // Total time: 5275.6835755
 
 fn count_positions(game_state: &mut GameState, depth: u8) -> u64 {
+    let moves = game_state.gen_legal_moves();
+    
     if depth == 0 {
         return 1;
     }
     
-    let moves = game_state.gen_legal_moves();
+    if depth == 1 {
+        return moves.len() as u64;
+    }
+        
     let mut count = 0;
     for m in moves {
         game_state.make_move(m);
