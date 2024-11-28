@@ -20,6 +20,8 @@
 
 ## History
 
+Position counting
+
 - Initial: 151 s
 - InBetweenTable: 137 s
 - Blsr iterator: 150 s
@@ -28,6 +30,12 @@
 - Vertical translation: 100 s
 - BitArray trait: 95 s
 - ArrayVec: 86 s
+- Move iterator 110 s
+
+Move counting
+
+- ArrayVec: 12.1 s
+- Move Iterator 8.3 s
 
 ### Algorithmic
 
@@ -38,6 +46,7 @@
   - custom iterator for captures only
 - dynamic attack board
 - const expr `<const WHITE: bool>`
+- AttackBits for kingmoves
 
 ### Refactors
 

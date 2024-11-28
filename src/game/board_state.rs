@@ -98,7 +98,7 @@ mod tests {
         
         let mut rng = ChaCha8Rng::seed_from_u64(0);
         for _ in 0..30 {
-            let moves = move_gen::gen_legal_moves_bitboard(&board_state, &game_flags);
+            let moves = move_gen::gen_legal_moves(&board_state, &game_flags);
             if moves.is_empty() {
                 break;
             }
@@ -131,7 +131,7 @@ mod tests {
         
         let mut rng = ChaCha8Rng::seed_from_u64(1);
         for i in 0..60 {
-            let moves = move_gen::gen_legal_moves_bitboard(&board_state, &game_flags);
+            let moves = move_gen::gen_legal_moves(&board_state, &game_flags);
             if moves.is_empty() {
                 break;
             }

@@ -34,6 +34,8 @@ impl Default for ChessMove {
 
 impl ChessMove {
     pub fn new(start: Square, end: Square, move_piece: ColoredPieceType, captured_piece: ColoredPieceType) -> ChessMove {
+        debug_assert!(move_piece != ColoredPieceType::None);
+
         ChessMove {
             start,
             end,

@@ -2,7 +2,7 @@ use std::ops::{Index, IndexMut};
 
 use colored::{Colorize, CustomColor};
 
-use crate::board::player_color::PlayerColor;
+use crate::{board::player_color::PlayerColor, moves::chess_move::ChessMove};
 
 use super::{dynamic_state::DynamicState, piece_type::ColoredPieceType, square::Square};
 
@@ -87,6 +87,10 @@ impl PieceBoard {
         }
 
         println!("{}", s);
+    }
+    
+    pub fn get_move(&self, start: Square, target: Square) -> ChessMove {
+        ChessMove::new(start, target, self[start], self[target])
     }
 }
 
