@@ -80,6 +80,6 @@ impl GameState {
 
     pub fn gen_legal_moves(&self) -> MoveVector {
         return move_gen::gen_legal_moves_bitboard(&self.board_state, &self.get_flags());
-        // return pseudo_move_gen::gen_legal_moves_bitboard(&self.board_state, self.flag_stack.last().unwrap());
+        // return pseudo_move_gen::gen_legal_moves_bitboard(&self.board_state, &self.get_flags());
     }
 }

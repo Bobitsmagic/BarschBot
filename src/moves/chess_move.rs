@@ -3,6 +3,13 @@ use crate::board::{piece_type::ColoredPieceType, square::Square};
 use super::uci_move::UciMove;
 
 
+pub const NULL_MOVE: ChessMove = ChessMove {
+    start: Square::A1,
+    end: Square::A1,
+    move_piece: ColoredPieceType::None,
+    captured_piece: ColoredPieceType::None,
+    promotion_piece: ColoredPieceType::None,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ChessMove {

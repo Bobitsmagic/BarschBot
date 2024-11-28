@@ -4,3 +4,4 @@ pub mod uci_move;
 pub mod perft_tests;
 pub mod move_gen;
 pub mod check_pin_mask;
+pub mod move_iterator;
