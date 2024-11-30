@@ -1,4 +1,4 @@
-use crate::board::{piece_type::ColoredPieceType, square::Square};
+use crate::board::{piece_type::{ColoredPieceType, PieceType}, square::Square};
 
 use super::uci_move::UciMove;
 
@@ -35,6 +35,7 @@ impl Default for ChessMove {
 impl ChessMove {
     pub fn new(start: Square, end: Square, move_piece: ColoredPieceType, captured_piece: ColoredPieceType) -> ChessMove {
         debug_assert!(move_piece != ColoredPieceType::None);
+        debug_assert!(captured_piece.piece_type() != PieceType::King);
 
         ChessMove {
             start,
@@ -46,6 +47,8 @@ impl ChessMove {
     }
 
     pub fn new_pawn(start: Square, end: Square, move_piece: ColoredPieceType, captured_piece: ColoredPieceType, promotion_piece: ColoredPieceType) -> ChessMove {
+        debug_assert!(captured_piece.piece_type() != PieceType::King);
+
         ChessMove {
             start,
             end,

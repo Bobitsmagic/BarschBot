@@ -1,6 +1,6 @@
 use core::panic;
 
-use crate::{board::{piece_board::PieceBoard, piece_type::PieceType}, game::board_state};
+use crate::{board::{piece_board::PieceBoard, piece_type::PieceType}, game::board_state, moves::slider_gen::{gen_bishop_moves_kogge, gen_rook_moves_kogge}};
 
 use super::{bit_array::{self, BitArray}, bit_array_lookup::{DIAGONAL_MOVES, IN_BETWEEN_TABLE, KING_MOVES, KNIGHT_MOVES, ORTHOGONAL_MOVES}, dynamic_state::DynamicState, piece_type::ColoredPieceType, player_color::PlayerColor, square::{Square, VALID_SQUARES}};
 
@@ -185,14 +185,14 @@ impl BitBoard {
 
         //Sliders
         let diagonal_sliders = self.diagonal_slider & opponent;
-        attacked_bits |= bit_array::gen_bishop_rays_kogge(diagonal_sliders, occupied);
+        attacked_bits |= gen_bishop_moves_kogge(diagonal_sliders, 0, occupied);
         // for attacker in diagonal_sliders.iterate_squares() {
         //     let bits = bit_array::gen_bishop_moves_pext(attacker, occupied);
         //     attacked_bits |= bits;
         // }
 
         let orthogonal_sliders = self.orthogonal_slider & opponent;
-        attacked_bits |= bit_array::gen_rook_rays_kogge(orthogonal_sliders, occupied);
+        attacked_bits |= gen_rook_moves_kogge(orthogonal_sliders, 0, occupied);
         // for attacker in orthogonal_sliders.iterate_squares() {
         //     let bits = bit_array::gen_rook_moves_pext(attacker, occupied);
         //     attacked_bits |= bits;

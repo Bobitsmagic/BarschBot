@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 
-use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, square::{File, Rank, Square}}, game::{board_state::BoardState, game_flags::GameFlags}};
+use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, square::{File, Rank, Square}}, game::{board_state::BoardState, game_flags::GameFlags}, moves::slider_gen::{gen_bishop_moves, gen_rook_moves}};
 use super::{chess_move::ChessMove, move_gen::MoveVector};
 pub fn gen_legal_moves_bitboard(board_state: &BoardState, game_flags: &GameFlags) -> MoveVector {
     let moves = gen_pseudo_legal_moves_bitboard(board_state, game_flags);
@@ -82,7 +82,7 @@ pub fn gen_pseudo_legal_moves_bitboard(board_state: &BoardState, flags: &GameFla
     let diagonal_sliders = board.diagonal_slider & allied;
     for square in diagonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        let moveset = bit_array::gen_bishop_moves(square, allied, opponent);
+        let moveset = gen_bishop_moves(square, allied, opponent);
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(square, target_square, pt, piece_board[target_square]));
         }
@@ -91,7 +91,7 @@ pub fn gen_pseudo_legal_moves_bitboard(board_state: &BoardState, flags: &GameFla
     let orthogonal_sliders = board.orthogonal_slider & allied;
     for square in orthogonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        let moveset = bit_array::gen_rook_moves(square, allied, opponent);
+        let moveset = gen_rook_moves(square, allied, opponent);
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(square, target_square, pt, piece_board[target_square]));
         }

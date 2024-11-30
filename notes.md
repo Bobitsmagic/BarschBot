@@ -43,21 +43,31 @@ Depth + 1
 - Attacked bits: 331 s
 - Knogge gen for AttackedBits: 299 s
 - Knogge gen for MoveGen: 295 s
+- PHF slider: 384 s
 
 ### Algorithmic
+
+Todo
+
+- dynamic attack board
+- const expr `<const WHITE: bool>`
+
+Done
 
 - `blsr` for BitArray iterator
 - `pext` for slider
 - move list with `ArrayVec<(BitArray, Square)>`
   - iterator for usage
   - custom iterator for captures only
-- dynamic attack board
-- const expr `<const WHITE: bool>`
 - AttackBits for kingmoves
 - Perfect hashtable
 
 ### Refactors
 
-- `u8` vs  `i8`
-- `BitArray` vs `u64`
+Todo
+
 - `Square` vs `i8`
+- `u8` vs  `i8`
+
+Done
+- `BitArray` vs `u64`

@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 
-use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup::{self, IN_BETWEEN_TABLE, ORTHOGONAL_MOVES, ROWS}, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, square::{Rank, Square}}, fen, game::{board_state::BoardState, game_flags::GameFlags}, moves::check_pin_mask::CheckPinMask};
+use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup::{self, IN_BETWEEN_TABLE, ORTHOGONAL_MOVES, ROWS}, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, square::{Rank, Square}}, fen, game::{board_state::BoardState, game_flags::GameFlags}, moves::{check_pin_mask::CheckPinMask, slider_gen::{gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_bishop_phf, gen_rook_moves_kogge, gen_rook_moves_pext, gen_rook_phf}}};
 
 use super::{chess_move::ChessMove, move_iterator::MoveIterator};
 
@@ -40,7 +40,7 @@ pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> 
         PlayerColor::Black => -1,
     };
     
-    let double_push_rank = match moving_color {
+    let double_push_destination_rank = match moving_color {
         PlayerColor::White => bit_array_lookup::ROWS[3],
         PlayerColor::Black => bit_array_lookup::ROWS[4],
     };
@@ -107,7 +107,7 @@ pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> 
     moves.add_pawn_push(not_pinned_pushes);
 
     //Double pushes
-    let double_mask = pin_mask.check & double_push_rank & empty;
+    let double_mask = pin_mask.check & double_push_destination_rank & empty;
 
     let pinned_double_pushes = double_mask & 
         ((pushable_pawns & pin_mask.ortho).translate_vertical(dy) & empty).translate_vertical(dy) & pin_mask.ortho; //Stay on pin
@@ -130,13 +130,13 @@ pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> 
 
     let pinned_diagonal_sliders = diagonal_sliders & pin_mask.diag;
     for square in pinned_diagonal_sliders.iterate_squares() {
-        let moveset = bit_array::gen_bishop_rays_kogge(square.bit_array(), occupied) & !allied & pin_mask.diag  & pin_mask.check; //Stay on pin
+        let moveset = gen_bishop_moves_kogge(square.bit_array(), allied, opponent) & pin_mask.diag  & pin_mask.check; //Stay on pin
         moves.add_move(square, moveset);
     }
 
     let not_pinned_diagonal_sliders = diagonal_sliders & !pin_mask.diag;
     for square in not_pinned_diagonal_sliders.iterate_squares() {
-        let moveset = bit_array::gen_bishop_rays_kogge(square.bit_array(), occupied) & !allied & pin_mask.check;
+        let moveset = gen_bishop_moves_kogge(square.bit_array(), allied, opponent) & pin_mask.check;
         moves.add_move(square, moveset);
     }
 
@@ -145,13 +145,13 @@ pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> 
 
     let pinned_orthogonal_sliders = orthogonal_sliders & pin_mask.ortho;
     for square in pinned_orthogonal_sliders.iterate_squares() {
-        let moveset = bit_array::gen_rook_rays_kogge(square.bit_array(), occupied) & !allied & pin_mask.ortho & pin_mask.check; //Stay on pin
+        let moveset = gen_rook_moves_kogge(square.bit_array(), allied, opponent) & pin_mask.ortho & pin_mask.check; //Stay on pin
         moves.add_move(square, moveset);
     }
 
     let not_pinned_orthogonal_sliders = orthogonal_sliders & !pin_mask.ortho;
     for square in not_pinned_orthogonal_sliders.iterate_squares() {
-        let moveset = bit_array::gen_rook_rays_kogge(square.bit_array(), occupied) & !allied & pin_mask.check;
+        let moveset = gen_rook_moves_kogge(square.bit_array(), allied, opponent) & pin_mask.check;
         moves.add_move(square, moveset);
     }
 
@@ -355,7 +355,7 @@ pub fn gen_legal_moves(board_state: &BoardState, flags: &GameFlags) -> MoveVecto
     let pinned_diagonal_sliders = diagonal_sliders & pin_mask.diag;
     for square in pinned_diagonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        let moveset = bit_array::gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.diag  & pin_mask.check; //Stay on pin
+        let moveset = gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.diag  & pin_mask.check; //Stay on pin
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(square, target_square, pt, piece_board[target_square]));
         }
@@ -364,7 +364,7 @@ pub fn gen_legal_moves(board_state: &BoardState, flags: &GameFlags) -> MoveVecto
     let not_pinned_diagonal_sliders = diagonal_sliders & !pin_mask.diag;
     for square in not_pinned_diagonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        let moveset = bit_array::gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.check;
+        let moveset = gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.check;
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(square, target_square, pt, piece_board[target_square]));
         }
@@ -376,7 +376,7 @@ pub fn gen_legal_moves(board_state: &BoardState, flags: &GameFlags) -> MoveVecto
     let pinned_orthogonal_sliders = orthogonal_sliders & pin_mask.ortho;
     for square in pinned_orthogonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        let moveset = bit_array::gen_rook_moves_pext(square, occupied) & !allied & pin_mask.ortho & pin_mask.check; //Stay on pin
+        let moveset = gen_rook_moves_pext(square, occupied) & !allied & pin_mask.ortho & pin_mask.check; //Stay on pin
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(square, target_square, pt, piece_board[target_square]));
         }
@@ -385,7 +385,7 @@ pub fn gen_legal_moves(board_state: &BoardState, flags: &GameFlags) -> MoveVecto
     let not_pinned_orthogonal_sliders = orthogonal_sliders & !pin_mask.ortho;
     for square in not_pinned_orthogonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        let moveset = bit_array::gen_rook_moves_pext(square, occupied) & !allied & pin_mask.check;
+        let moveset = gen_rook_moves_pext(square, occupied) & !allied & pin_mask.check;
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(square, target_square, pt, piece_board[target_square]));
         }
