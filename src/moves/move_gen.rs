@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 
-use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup::{self, IN_BETWEEN_TABLE, ORTHOGONAL_MOVES, ROWS}, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, square::{Rank, Square}}, game::{board_state::BoardState, game_flags::GameFlags}, moves::check_pin_mask::CheckPinMask};
+use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup::{self, IN_BETWEEN_TABLE, ORTHOGONAL_MOVES, ROWS}, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, square::{Rank, Square}}, fen, game::{board_state::BoardState, game_flags::GameFlags}, moves::check_pin_mask::CheckPinMask};
 
 use super::{chess_move::ChessMove, move_iterator::MoveIterator};
 
@@ -10,6 +10,8 @@ pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> 
     let mut moves = MoveIterator::new();
 
     let board = &board_state.bit_board;
+
+    // println!("{}", fen::fen_helper::to_fen(&board_state.piece_board, flags));
 
     let occupied = board.white_piece | board.black_piece;
     let moving_color = flags.active_color;
@@ -118,7 +120,6 @@ pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> 
 
     //Knights
     let knights = board.knight & allied & !pin_mask.diag & !pin_mask.ortho;
-    let knight_pt = PieceType::Knight.colored(moving_color);
     for square in knights.iterate_squares() {
         let moveset = bit_array_lookup::KNIGHT_MOVES[square as usize] & !allied & pin_mask.check;
         moves.add_move(square, moveset);
@@ -129,13 +130,13 @@ pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> 
 
     let pinned_diagonal_sliders = diagonal_sliders & pin_mask.diag;
     for square in pinned_diagonal_sliders.iterate_squares() {
-        let moveset = bit_array::gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.diag  & pin_mask.check; //Stay on pin
+        let moveset = bit_array::gen_bishop_rays_kogge(square.bit_array(), occupied) & !allied & pin_mask.diag  & pin_mask.check; //Stay on pin
         moves.add_move(square, moveset);
     }
 
     let not_pinned_diagonal_sliders = diagonal_sliders & !pin_mask.diag;
     for square in not_pinned_diagonal_sliders.iterate_squares() {
-        let moveset = bit_array::gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.check;
+        let moveset = bit_array::gen_bishop_rays_kogge(square.bit_array(), occupied) & !allied & pin_mask.check;
         moves.add_move(square, moveset);
     }
 
@@ -144,56 +145,55 @@ pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> 
 
     let pinned_orthogonal_sliders = orthogonal_sliders & pin_mask.ortho;
     for square in pinned_orthogonal_sliders.iterate_squares() {
-        let moveset = bit_array::gen_rook_moves_pext(square, occupied) & !allied & pin_mask.ortho & pin_mask.check; //Stay on pin
+        let moveset = bit_array::gen_rook_rays_kogge(square.bit_array(), occupied) & !allied & pin_mask.ortho & pin_mask.check; //Stay on pin
         moves.add_move(square, moveset);
     }
 
     let not_pinned_orthogonal_sliders = orthogonal_sliders & !pin_mask.ortho;
     for square in not_pinned_orthogonal_sliders.iterate_squares() {
-        let moveset = bit_array::gen_rook_moves_pext(square, occupied) & !allied & pin_mask.check;
+        let moveset = bit_array::gen_rook_rays_kogge(square.bit_array(), occupied) & !allied & pin_mask.check;
         moves.add_move(square, moveset);
     }
 
     //King moves
     let king_square = (board.king & allied).to_square();
-    let moveset = bit_array_lookup::KING_MOVES[king_square as usize] & !allied;
-    for target_square in moveset.iterate_squares() {
-        if !board_state.bit_board.square_is_attacked_through_king(target_square, !moving_color) {
-            moves.add_move(king_square, target_square.bit_array());
-        }
-    }
+    let king_moves = bit_array_lookup::KING_MOVES[king_square as usize] & !allied;
 
     //Castling
-    const QUEEN_SIDE_SQUARES: u64 = 14 ; //B1, C1, D1
-    const KING_SIDE_SQUARES: u64 = 96; //F1, G1
+    const QUEEN_SIDE_BLOCKER: u64 = 14 ; //B1, C1, D1
+    const KING_SIDE_BLOCKER: u64 = 96; //F1, G1
 
-    let queen_side_blocker = match moving_color {
-        PlayerColor::White => QUEEN_SIDE_SQUARES,
-        PlayerColor::Black => QUEEN_SIDE_SQUARES.translate_vertical(7),
+    let translation = match moving_color {
+        PlayerColor::White => 0,
+        PlayerColor::Black => 7,
     };
 
-    let king_side_blocker = match moving_color {
-        PlayerColor::White => KING_SIDE_SQUARES,
-        PlayerColor::Black => KING_SIDE_SQUARES.translate_vertical(7),
-    };
+    let queen_side_blocker = QUEEN_SIDE_BLOCKER.translate_vertical(translation);
+    let king_side_blocker = KING_SIDE_BLOCKER.translate_vertical(translation);
+
+    const QUEEN_SIDE_SQUARES: u64 = 12; //C1, D1
+
+    let queen_side_squares = QUEEN_SIDE_SQUARES.translate_vertical(translation);
 
     let (king_side, queen_side) = match moving_color {
         PlayerColor::White => (flags.white_king_side_castle, flags.white_queen_side_castle),
         PlayerColor::Black => (flags.black_king_side_castle, flags.black_queen_side_castle),
     };
+    
+    let attacked_squares = board_state.bit_board.attacked_bits_through_king(!moving_color);
+
+    moves.add_move(king_square, king_moves & !attacked_squares);
 
     //Not currently in check
     if pin_mask.check == u64::MAX { 
         if queen_side && (occupied & queen_side_blocker) == 0 {
-            if !board_state.square_attacked(king_square.left(), !moving_color) && 
-               !board_state.square_attacked(king_square.left().left(), !moving_color) {
+            if (queen_side_squares & attacked_squares) == 0 {
                 moves.add_move(king_square, king_square.translate(-2, 0).bit_array());
             }
         }
     
-        if king_side && (occupied & king_side_blocker) == 0{
-            if !board_state.square_attacked(king_square.right(), !moving_color) &&
-               !board_state.square_attacked(king_square.right().right(), !moving_color) {
+        if king_side && (occupied & king_side_blocker) == 0 {
+            if (king_side_blocker & attacked_squares) == 0 {
                 moves.add_move(king_square, king_square.translate(2, 0).bit_array());
             }
         }

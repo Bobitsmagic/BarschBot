@@ -44,6 +44,28 @@ pub const ACCUM_COLLUMNS: [u64; 8] = [
     0xFFFFFFFFFFFFFFFF,
 ];
 
+pub const RIGHT_MOVE_MASK: [u64; 8] = [
+    0xffffffffffffffff,
+    0xfefefefefefefefe,
+    0xfcfcfcfcfcfcfcfc,
+    0xf8f8f8f8f8f8f8f8,
+    0xf0f0f0f0f0f0f0f0,
+    0xe0e0e0e0e0e0e0e0,
+    0xc0c0c0c0c0c0c0c0,
+    0x8080808080808080,
+];
+
+pub const LEFT_MOVE_MASK: [u64; 8] = [
+    0xffffffffffffffff,
+    0x7f7f7f7f7f7f7f7f,
+    0x3f3f3f3f3f3f3f3f,
+    0x1f1f1f1f1f1f1f1f,
+    0xf0f0f0f0f0f0f0f,
+    0x707070707070707,
+    0x303030303030303,
+    0x101010101010101,
+];
+
 pub const SQUARES: [u64; 65] = [
     0x1,
     0x2,

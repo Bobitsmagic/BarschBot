@@ -1,10 +1,17 @@
-use barschbot::game::game_state::GameState;
+use barschbot::{board::bit_array::{self, BitArray}, game::game_state::GameState};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 fn main() {
-    let mut game_state = GameState::from_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq -");
+    // let mut game_state = GameState::from_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq -");
 
-    let moves = game_state.gen_legal_moves();
+    // let moves = game_state.gen_legal_moves();
+
+    let occupied = 1;
+
+    let gen = bit_array::gen_rook_rays_kogge(occupied, occupied);
+
+    occupied.print();   
+    gen.print();
 }
 
 fn test_random_moves() {

@@ -1,8 +1,8 @@
 use core::panic;
 
-use crate::board::piece_type::PieceType;
+use crate::{board::{piece_board::PieceBoard, piece_type::PieceType}, game::board_state};
 
-use super::{bit_array::BitArray, bit_array_lookup::{DIAGONAL_MOVES, IN_BETWEEN_TABLE, KING_MOVES, KNIGHT_MOVES, ORTHOGONAL_MOVES}, dynamic_state::DynamicState, piece_type::ColoredPieceType, player_color::PlayerColor, square::{Square, VALID_SQUARES}};
+use super::{bit_array::{self, BitArray}, bit_array_lookup::{DIAGONAL_MOVES, IN_BETWEEN_TABLE, KING_MOVES, KNIGHT_MOVES, ORTHOGONAL_MOVES}, dynamic_state::DynamicState, piece_type::ColoredPieceType, player_color::PlayerColor, square::{Square, VALID_SQUARES}};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BitBoard {
@@ -162,6 +162,51 @@ impl BitBoard {
         };
 
         (color & self.king).iterate_squares().next().unwrap()
+    }
+
+    pub fn attacked_bits_through_king(&self, attacker_color: PlayerColor) -> u64 {
+        let opponent = match attacker_color {
+            PlayerColor::White => self.white_piece,
+            PlayerColor::Black => self.black_piece,
+        };
+        let allied = match attacker_color {
+            PlayerColor::White => self.black_piece,
+            PlayerColor::Black => self.white_piece,
+        };
+
+        let occupied = (self.white_piece | self.black_piece) & !(self.king & allied);
+        
+        let mut attacked_bits = 0;
+        //Knights
+        
+        for square in (self.knight & opponent).iterate_set_bits_indices() {
+            attacked_bits |= KNIGHT_MOVES[square as usize];    
+        }
+
+        //Sliders
+        let diagonal_sliders = self.diagonal_slider & opponent;
+        attacked_bits |= bit_array::gen_bishop_rays_kogge(diagonal_sliders, occupied);
+        // for attacker in diagonal_sliders.iterate_squares() {
+        //     let bits = bit_array::gen_bishop_moves_pext(attacker, occupied);
+        //     attacked_bits |= bits;
+        // }
+
+        let orthogonal_sliders = self.orthogonal_slider & opponent;
+        attacked_bits |= bit_array::gen_rook_rays_kogge(orthogonal_sliders, occupied);
+        // for attacker in orthogonal_sliders.iterate_squares() {
+        //     let bits = bit_array::gen_rook_moves_pext(attacker, occupied);
+        //     attacked_bits |= bits;
+        // }
+        
+        //Pawns
+        let dy = match attacker_color {
+            PlayerColor::White => 1,
+            PlayerColor::Black => -1,
+        };
+
+        attacked_bits |= (self.pawn & opponent).translate(1, dy) | (self.pawn & opponent).translate(-1, dy);
+        
+        return attacked_bits;
     }
 
     pub fn square_is_attacked_through_king(&self, target_square: Square, attacker_color: PlayerColor) -> bool {

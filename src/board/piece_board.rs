@@ -4,7 +4,7 @@ use colored::{Colorize, CustomColor};
 
 use crate::{board::player_color::PlayerColor, moves::chess_move::ChessMove};
 
-use super::{dynamic_state::DynamicState, piece_type::ColoredPieceType, square::Square};
+use super::{bit_board::BitBoard, dynamic_state::DynamicState, piece_type::ColoredPieceType, square::{Square, VALID_SQUARES}};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct PieceBoard {
@@ -52,6 +52,15 @@ impl PieceBoard {
     
     pub fn print(&self) {
         self.print_perspective(PlayerColor::White);
+    }
+
+    pub fn from_bit_board(bit_board: &BitBoard) -> PieceBoard {
+        let mut board = PieceBoard::empty();
+        for s in VALID_SQUARES {
+            board[s] = bit_board.get_colored_piecetype(s);
+        }
+
+        return board;
     }
 
     pub fn print_perspective(&self, perspective: PlayerColor) {

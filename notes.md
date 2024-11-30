@@ -35,7 +35,14 @@ Position counting
 Move counting
 
 - ArrayVec: 12.1 s
-- Move Iterator 8.3 s
+- Move Iterator 9.0 s
+- AttackedBits: 8.5 s
+
+Depth + 1
+
+- Attacked bits: 331 s
+- Knogge gen for AttackedBits: 299 s
+- Knogge gen for MoveGen: 295 s
 
 ### Algorithmic
 
@@ -47,6 +54,7 @@ Move counting
 - dynamic attack board
 - const expr `<const WHITE: bool>`
 - AttackBits for kingmoves
+- Perfect hashtable
 
 ### Refactors
 

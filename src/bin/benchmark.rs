@@ -15,13 +15,13 @@ pub fn benchmark_fens() {
         let fen = PERFT_FENS[p];
 
         println!("Testing fen: {}", fen);
-        let max_depth = MAX_DEPTH[p];
+        let max_depth = MAX_DEPTH[p] + 1;
     
         let d_time = std::time::Instant::now();
             
-        let count = count_moves(&mut GameState::from_fen(fen), max_depth);
+        // let count = count_moves(&mut GameState::from_fen(fen), max_depth);
         // let count = count_moves_iter(&mut GameState::from_fen(fen), max_depth);
-        // let count = count_moves_sperate_iter(&mut GameState::from_fen(fen), max_depth);
+        let count = count_moves_sperate_iter(&mut GameState::from_fen(fen), max_depth);
 
         println!("Finished depth: {}", max_depth);
         println!("\tTime: {:4.2} s", d_time.elapsed().as_secs_f64());

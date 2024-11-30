@@ -1,7 +1,7 @@
 
 use crate::board::square::VALID_SQUARES;
 
-use super::{bit_array_lookup::*, square::Square};
+use super::{bit_array_lookup::*, perfect_hashing, square::Square};
 
 pub trait BitArray {
     fn set_bit(&mut self, square: Square);
@@ -230,6 +230,258 @@ pub fn order_bits(value: u64, mask: u64) -> u64 {
     // }
 }
 
+pub fn gen_rook_phf(square: Square, occupied: u64) -> u64 {
+    let mask = ROOK_BLOCKER_MASK[square as usize];
+    let bits = mask & occupied;
+
+    *perfect_hashing::ROOK_TABLE[square as usize].get(&bits).unwrap()
+}
+
+pub fn gen_bishop_phf(square: Square, occupied: u64) -> u64 {
+    let mask = BISHOP_BLOCKER_MASK[square as usize];
+    let bits = mask & occupied;
+
+    *perfect_hashing::BISHOP_TABLE[square as usize].get(&bits).unwrap()
+}
+// https://www.chessprogramming.org/Kogge-Stone_Algorithm
+
+
+pub const DIAGONAL_FILL_FUNCTIONS_CAP: [fn(u64, u64) -> u64; 4] = [
+    fill_up_right_cap,
+    fill_up_left_cap,
+    fill_down_left_cap,
+    fill_down_right_cap,
+];
+
+pub const DIAGONAL_FILL_FUNCTIONS: [fn(u64, u64) -> u64; 4] = [
+    fill_up_right,
+    fill_up_left,
+    fill_down_left,
+    fill_down_right,
+];
+
+pub const ORTHOGONAL_FILL_FUNCTIONS_CAP: [fn(u64, u64) -> u64; 4] = [
+    fill_up_cap,
+    fill_left_cap,
+    fill_down_cap,
+    fill_right_cap,
+];
+
+pub const ORTHOGONAL_FILL_FUNCTIONS: [fn(u64, u64) -> u64; 4] = [
+    fill_up,
+    fill_left,
+    fill_down,
+    fill_right,
+];
+
+pub fn fill_up(mut gen: u64, mut free: u64) -> u64 {
+    gen |= free & (gen <<  8);
+    free &=       free <<  8;
+    gen |= free & (gen << 16);
+    free &=       free << 16;
+    gen |= free & (gen << 32);
+
+    return gen;
+}
+pub fn fill_up_cap(mut gen: u64, mut free: u64) -> u64 {
+    gen |= free & (gen <<  8);
+    free &=       free <<  8;
+    gen |= free & (gen << 16);
+    free &=       free << 16;
+    gen |= free & (gen << 32);
+
+    return gen & free | (gen << 8);
+}
+
+pub fn fill_down(mut gen: u64, mut free: u64) -> u64 {
+    gen |= free & (gen >>  8);
+    free &=       free >>  8;
+    gen |= free & (gen >> 16);
+    free &=       free >> 16;
+    gen |= free & (gen >> 32);
+
+    return gen;
+}
+pub fn fill_down_cap(mut gen: u64, mut free: u64) -> u64 {
+    gen |= free & (gen >>  8);
+    free &=       free >>  8;
+    gen |= free & (gen >> 16);
+    free &=       free >> 16;
+    gen |= free & (gen >> 32);
+
+    return gen & free | (gen >> 8);
+}
+
+//Right moving
+pub fn fill_right(mut gen: u64, mut free: u64) -> u64 {
+    free &= RIGHT_MOVE_MASK[1];
+    gen |= free & (gen << 1);
+    free &=       free << 1;
+    gen |= free & (gen << 2);
+    free &=       free << 2;
+    gen |= free & (gen << 4);
+
+    return gen;
+}
+pub fn fill_right_cap(mut gen: u64, mut free: u64) -> u64 {
+    free &= RIGHT_MOVE_MASK[1];
+    gen |= free & (gen << 1);
+    free &=       free << 1;
+    gen |= free & (gen << 2);
+    free &=       free << 2;
+    gen |= free & (gen << 4);
+
+    return gen & free | (gen << 1) & RIGHT_MOVE_MASK[1];
+}
+
+pub fn fill_up_right(mut gen: u64, mut free: u64) -> u64 {
+    free &= RIGHT_MOVE_MASK[1];
+    gen |= free & (gen <<  9);
+    free &=       free <<  9;
+    gen |= free & (gen << 18);
+    free &=       free << 18;
+    gen |= free & (gen << 36);
+
+    return gen;
+}
+pub fn fill_up_right_cap(mut gen: u64, mut free: u64) -> u64 {
+    free &= RIGHT_MOVE_MASK[1];
+    gen |= free & (gen <<  9);
+    free &=       free <<  9;
+    gen |= free & (gen << 18);
+    free &=       free << 18;
+    gen |= free & (gen << 36);
+
+    return gen & free | (gen << 9) & RIGHT_MOVE_MASK[1];
+}
+
+pub fn fill_down_right(mut gen: u64, mut free: u64) -> u64 {
+    free &= RIGHT_MOVE_MASK[1];
+    gen |= free & (gen >>  7);
+    free &=       free >>  7;
+    gen |= free & (gen >> 14);
+    free &=       free >> 14;
+    gen |= free & (gen >> 28);
+    return gen;
+}
+pub fn fill_down_right_cap(mut gen: u64, mut free: u64) -> u64 {
+    free &= RIGHT_MOVE_MASK[1];
+    gen |= free & (gen >>  7);
+    free &=       free >>  7;
+    gen |= free & (gen >> 14);
+    free &=       free >> 14;
+    gen |= free & (gen >> 28);
+    return gen | (gen >> 7) & RIGHT_MOVE_MASK[1];
+}
+
+//Left moving
+pub fn fill_left(mut gen: u64, mut free: u64) -> u64 {
+    free &= LEFT_MOVE_MASK[1];
+    gen |= free & (gen >> 1);
+    free &=       free >> 1;
+    gen |= free & (gen >> 2);
+    free &=       free >> 2;
+    gen |= free & (gen >> 4);
+
+    return gen;
+}
+pub fn fill_left_cap(mut gen: u64, mut free: u64) -> u64 {
+    free &= LEFT_MOVE_MASK[1];
+    gen |= free & (gen >> 1);
+    free &=       free >> 1;
+    gen |= free & (gen >> 2);
+    free &=       free >> 2;
+    gen |= free & (gen >> 4);
+
+    return gen & free | (gen >> 1) & LEFT_MOVE_MASK[1];
+}
+
+pub fn fill_up_left(mut gen: u64, mut free: u64) -> u64 {
+    free &= LEFT_MOVE_MASK[1];
+    gen |= free & (gen <<  7);
+    free &=       free <<  7;
+    gen |= free & (gen << 14);
+    free &=       free << 14;
+    gen |= free & (gen << 28);
+
+    return gen;
+}
+pub fn fill_up_left_cap(mut gen: u64, mut free: u64) -> u64 {
+    free &= LEFT_MOVE_MASK[1];
+    gen |= free & (gen <<  7);
+    free &=       free <<  7;
+    gen |= free & (gen << 14);
+    free &=       free << 14;
+    gen |= free & (gen << 28);
+
+    return gen & free | (gen << 7) & LEFT_MOVE_MASK[1];
+}
+
+pub fn fill_down_left(mut gen: u64, mut free: u64) -> u64 {
+    free &= LEFT_MOVE_MASK[1];
+    gen |= free & (gen >>  9);
+    free &=       free >>  9;
+    gen |= free & (gen >> 18);
+    free &=       free >> 18;
+    gen |= free & (gen >> 36);
+
+    return gen;
+}
+pub fn fill_down_left_cap(mut gen: u64, mut free: u64) -> u64 {
+    free &= LEFT_MOVE_MASK[1];
+    gen |= free & (gen >>  9);
+    free &=       free >>  9;
+    gen |= free & (gen >> 18);
+    free &=       free >> 18;
+    gen |= free & (gen >> 36);
+
+    return gen & free | (gen >> 9) & LEFT_MOVE_MASK[1];
+}
+
+pub fn gen_rook_rays_kogge(bb: u64, occupied: u64) -> u64 {
+    let mut next = 0;
+    let free = !occupied;
+
+    for f in ORTHOGONAL_FILL_FUNCTIONS_CAP {
+        next |= f(bb, free);
+    }
+
+    return next;
+}
+
+pub fn gen_bishop_rays_kogge(bb: u64, occupied: u64) -> u64 {
+    let mut next = 0;
+    let free = !occupied;
+
+    for f in DIAGONAL_FILL_FUNCTIONS_CAP {
+        next |= f(bb, free);
+    }
+
+    return next;
+}
+
+pub fn gen_rook_moves_kogge(bb: u64, allied: u64, opponent: u64) -> u64 {
+    let mut next = 0;
+    let free = !(allied | opponent);
+
+    for f in ORTHOGONAL_FILL_FUNCTIONS_CAP {
+        next |= f(bb, free);
+    }
+
+    return next & !allied;
+}
+
+pub fn gen_bishop_moves_kogge(bb: u64, allied: u64, opponent: u64) -> u64 {
+    let mut next = 0;
+    let free = !(allied | opponent);
+
+    for f in DIAGONAL_FILL_FUNCTIONS_CAP {
+        next |= f(bb, free);
+    }
+
+    return next & !allied;
+}
+
 //Unit tests
 #[cfg(test)]
 mod bit_array_tests {
@@ -238,7 +490,26 @@ mod bit_array_tests {
 
     use crate::board::{bit_array::{gen_bishop_moves, gen_bishop_moves_pext}, square::{Square, VALID_SQUARES}};
 
-    use super::{gen_rook_moves, gen_rook_moves_pext, BitArray};
+    use super::{gen_bishop_moves_kogge, gen_rook_moves, gen_rook_moves_kogge, gen_rook_moves_pext, BitArray};
+
+    fn fill_board(rng: &mut ChaCha8Rng) -> (u64, u64) {
+        let mut allied = 0;
+        let mut opponent = 0;
+
+        for x in 0..8 {
+            for y in 0..8 {
+                let square = Square::from_rank_file_index(y, x);
+                if rng.gen_bool(0.1) {
+                    allied.set_bit(square);
+                } else if rng.gen_bool(0.1) {
+                    opponent.set_bit(square);
+                }
+            }
+        }
+
+        return (allied, opponent);
+
+    }
 
     #[test]
     fn translation_test() {
@@ -306,19 +577,7 @@ mod bit_array_tests {
 
         for _ in 0..100 {
             
-            let mut allied = 0;
-            let mut opponent = 0;
-
-            for x in 0..8 {
-                for y in 0..8 {
-                    let square = Square::from_rank_file_index(y, x);
-                    if rng.gen_bool(0.1) {
-                        allied.set_bit(square);
-                    } else if rng.gen_bool(0.1) {
-                        opponent.set_bit(square);
-                    }
-                }
-            }
+            let (allied, opponent) = fill_board(&mut rng);
             
             for s in VALID_SQUARES {
                 let m1 = gen_bishop_moves(s, allied, opponent);
@@ -345,21 +604,7 @@ mod bit_array_tests {
         let mut rng = ChaCha8Rng::seed_from_u64(0);
 
         for _ in 0..100 {
-            
-            let mut allied = 0;
-            let mut opponent = 0;
-
-            for x in 0..8 {
-                for y in 0..8 {
-                    let square = Square::from_rank_file_index(y, x);
-                    if rng.gen_bool(0.1) {
-                        allied.set_bit(square);
-                    } else if rng.gen_bool(0.1) {
-                        opponent.set_bit(square);
-                    }
-                }
-            }
-            
+            let (allied, opponent) = fill_board(&mut rng);
             for s in VALID_SQUARES {
                 let m1 = gen_rook_moves(s, allied, opponent);
                 let m2 = gen_rook_moves_pext(s, allied | opponent) & !allied;
@@ -373,6 +618,52 @@ mod bit_array_tests {
                     println!("gen_moves:");
                     m1.print();
                     println!("gen_moves_pext:");
+                    m2.print();
+                    panic!();
+                }                
+            }
+        }
+    }
+
+    #[test]
+    fn kogge_test() {
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+
+        for _ in 0..100 {
+            let (allied, opponent) = fill_board(&mut rng);
+            for s in VALID_SQUARES {
+                let allied = allied | s.bit_array();
+
+                let m1 = gen_rook_moves(s, allied, opponent);
+                let m2 = gen_rook_moves_kogge(s.bit_array(), allied, opponent);
+                
+                if m1 != m2 {
+                    println!("Failed rook move generation");
+                    println!("Allied:");
+                    allied.print();
+                    println!("Opponent:");
+                    opponent.print();
+                    println!("Square: {}", s.to_string());
+                    println!("gen_moves:");
+                    m1.print();
+                    println!("gen_moves_kogge:");
+                    m2.print();
+                    panic!();
+                }
+
+                let m1 = gen_bishop_moves(s, allied, opponent);
+                let m2 = gen_bishop_moves_kogge(s.bit_array(), allied, opponent);
+
+                if m1 != m2 {
+                    println!("Failed bishop move generation");
+                    println!("Allied:");
+                    allied.print();
+                    println!("Opponent:");
+                    opponent.print();
+                    println!("Square: {}", s.to_string());
+                    println!("gen_moves:");
+                    m1.print();
+                    println!("gen_moves_kogge:");
                     m2.print();
                     panic!();
                 }                
