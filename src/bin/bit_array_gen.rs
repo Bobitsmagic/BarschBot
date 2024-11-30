@@ -1,6 +1,6 @@
 use std::{fs::File, io::Write};
 
-use barschbot::board::{bit_array::{self, order_bits, BitArray}, bit_array_lookup::{self, SQUARES}, square::{Square, VALID_SQUARES}};
+use barschbot::{board::{bit_array::{self, BitArray}, bit_array_lookup::{self, SQUARES}, square::{Square, VALID_SQUARES}}, moves::slider_gen::{gen_bishop_moves, gen_rook_moves, order_bits}};
 
 pub fn main() {
     // gen_bishop_move_table();
@@ -296,7 +296,7 @@ pub fn gen_rook_move_table() -> [Vec<u64>; 64] {
             
             assert_eq!(idx, index);
             
-            let moves = bit_array::gen_rook_moves(s, 0, blocker);
+            let moves = gen_rook_moves(s, 0, blocker);
             
             // println!("Blocker: ");
             // (blocker).print();
@@ -335,7 +335,7 @@ pub fn gen_bishop_move_table() -> [Vec<u64>; 64] {
 
             assert_eq!(idx, index);
 
-            let moves = bit_array::gen_bishop_moves(s, 0, (blocker));
+            let moves = gen_bishop_moves(s, 0, (blocker));
 
             move_set.push(moves);
         }

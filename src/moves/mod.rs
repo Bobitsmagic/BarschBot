@@ -7,3 +7,4 @@ pub mod check_pin_mask;
 pub mod move_iterator;
 pub mod kogge_gen;
 pub mod slider_gen;
+// pub mod perfect_hashing;

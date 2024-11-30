@@ -1,6 +1,6 @@
 use rand_chacha::ChaCha8Rng;
 
-use crate::board::{bit_array::BitArray, bit_array_lookup::{BISHOP_BLOCKER_MASK, BISHOP_MOVE_TABLE, ROOK_BLOCKER_MASK, ROOK_MOVE_TABLE}, perfect_hashing, square::{Square, VALID_SQUARES}};
+use crate::board::{bit_array::BitArray, bit_array_lookup::{BISHOP_BLOCKER_MASK, BISHOP_MOVE_TABLE, ROOK_BLOCKER_MASK, ROOK_MOVE_TABLE}, square::{Square, VALID_SQUARES}};
 
 use super::kogge_gen::{DIAGONAL_FILL_FUNCTIONS_CAP, ORTHOGONAL_FILL_FUNCTIONS_CAP};
 
@@ -103,14 +103,16 @@ pub fn gen_rook_phf(square: Square, occupied: u64) -> u64 {
     let mask = ROOK_BLOCKER_MASK[square as usize];
     let bits = mask & occupied;
 
-    *perfect_hashing::ROOK_TABLE[square as usize].get(&bits).unwrap()
+    unimplemented!();
+    // *perfect_hashing::ROOK_TABLE[square as usize].get(&bits).unwrap()
 }
 
 pub fn gen_bishop_phf(square: Square, occupied: u64) -> u64 {
     let mask = BISHOP_BLOCKER_MASK[square as usize];
     let bits = mask & occupied;
 
-    *perfect_hashing::BISHOP_TABLE[square as usize].get(&bits).unwrap()
+    unimplemented!();
+    // *perfect_hashing::BISHOP_TABLE[square as usize].get(&bits).unwrap()
 }
 
 pub fn gen_rook_moves_kogge(bb: u64, allied: u64, opponent: u64) -> u64 {

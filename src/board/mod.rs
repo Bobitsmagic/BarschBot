@@ -7,4 +7,3 @@ pub mod piece_board;
 pub mod bit_array_lookup;
 pub mod dynamic_state;
 pub mod zobrist_hash;
-pub mod perfect_hashing;

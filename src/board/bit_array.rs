@@ -1,7 +1,7 @@
 
 use crate::board::square::VALID_SQUARES;
 
-use super::{bit_array_lookup::*, perfect_hashing, square::Square};
+use super::{bit_array_lookup::*, square::Square};
 
 pub trait BitArray {
     fn set_bit(&mut self, square: Square);
