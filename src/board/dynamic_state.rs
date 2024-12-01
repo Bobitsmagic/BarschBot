@@ -1,24 +1,24 @@
-use crate::{board::{player_color::PlayerColor, piece_type::PieceType, square::File}, moves::chess_move::ChessMove};
+use crate::{board::{player_color::PlayerColor, piece_type::PieceType}, moves::chess_move::ChessMove};
 
-use super::{piece_type::ColoredPieceType, square::Square};
+use super::{piece_type::ColoredPieceType, square::{self, Square}};
 
 pub trait DynamicState {
     fn empty() -> Self;
-    fn add_piece(&mut self, pt: ColoredPieceType, s: Square);
-    fn remove_piece(&mut self, pt: ColoredPieceType, s: Square);
+    fn add_piece(&mut self, pt: ColoredPieceType, s: i8);
+    fn remove_piece(&mut self, pt: ColoredPieceType, s: i8);
     fn make_move(&mut self, m: ChessMove) {                
         //If castle move rook as well
         if m.is_castle() {
             let (rook_start_file, rook_end_file) = if m.is_long_castle() {                
-                (File::A, File::D)
+                (0, 3) //A, D
             }   
             else {
-                (File::H, File::F)
+                (7, 5) //H, F
             };
             
             let rank = m.start.rank();
-            let rook_start = Square::from_rank_file(rank, rook_start_file);
-            let rook_end = Square::from_rank_file(rank, rook_end_file);   
+            let rook_start = square::from_file_rank(rook_start_file, rank);
+            let rook_end = square::from_file_rank(rook_end_file, rank);
 
             self.remove_piece(PieceType::Rook.colored(m.move_piece.color()), rook_start);            
             self.add_piece(PieceType::Rook.colored(m.move_piece.color()), rook_end);
@@ -31,12 +31,12 @@ pub trait DynamicState {
         self.remove_piece(m.move_piece, m.start);
         
         if m.is_en_passant() {
-            let capture_square = match m.move_piece.color() {
+            let capture_i8 = match m.move_piece.color() {
                 PlayerColor::White => m.end.down(),
                 PlayerColor::Black => m.end.up(),
             };
             
-            self.remove_piece(m.move_piece.opposite(), capture_square);
+            self.remove_piece(m.move_piece.opposite(), capture_i8);
         }
         
         if m.is_promotion() {
@@ -51,15 +51,15 @@ pub trait DynamicState {
     fn undo_move(&mut self, m: ChessMove) {
         if m.is_castle() {
             let (rook_start_file, rook_end_file) = if m.is_long_castle() {                
-                (File::A, File::D)
+                (0, 3) //A, D
             }   
             else {
-                (File::H, File::F)
+                (7, 5) //H, F
             };
             
             let rank = m.start.rank();
-            let rook_start = Square::from_rank_file(rank, rook_start_file);
-            let rook_end = Square::from_rank_file(rank, rook_end_file);   
+            let rook_start = square::from_file_rank(rook_start_file, rank);
+            let rook_end = square::from_file_rank(rook_end_file, rank); 
 
             self.remove_piece(PieceType::Rook.colored(m.move_piece.color()), rook_end);            
             self.add_piece(PieceType::Rook.colored(m.move_piece.color()), rook_start);
@@ -77,12 +77,12 @@ pub trait DynamicState {
         }
         
         if m.is_en_passant() {
-            let capture_square = match m.move_piece.color() {
+            let capture_i8 = match m.move_piece.color() {
                 PlayerColor::White => m.end.down(),
                 PlayerColor::Black => m.end.up(),
             };
             
-            self.add_piece(m.move_piece.opposite(), capture_square);
+            self.add_piece(m.move_piece.opposite(), capture_i8);
         }
         
         self.add_piece(m.move_piece, m.start);

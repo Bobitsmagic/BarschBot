@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 
-use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup::{self, IN_BETWEEN_TABLE, ORTHOGONAL_MOVES, ROWS}, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, square::{Rank, Square}}, fen, game::{board_state::BoardState, game_flags::GameFlags}, moves::{check_pin_mask::CheckPinMask, slider_gen::{gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_bishop_phf, gen_rook_moves_kogge, gen_rook_moves_pext, gen_rook_phf}}};
+use crate::{board::{bit_array::BitArray, bit_array_lookup::{self, IN_BETWEEN_TABLE, ORTHOGONAL_MOVES, ROWS}, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, rank, square::{self, Square}}, game::{board_state::BoardState, game_flags::GameFlags}, moves::{check_pin_mask::CheckPinMask, slider_gen::{gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_rook_moves_kogge, gen_rook_moves_pext}}};
 
 use super::{chess_move::ChessMove, move_iterator::MoveIterator};
 
@@ -10,8 +10,6 @@ pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> 
     let mut moves = MoveIterator::new();
 
     let board = &board_state.bit_board;
-
-    // println!("{}", fen::fen_helper::to_fen(&board_state.piece_board, flags));
 
     let occupied = board.white_piece | board.black_piece;
     let moving_color = flags.active_color;
@@ -27,11 +25,7 @@ pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> 
         PlayerColor::Black => board.white_piece,
     };
 
-    // piece_board.print();
-
     let pin_mask = CheckPinMask::pins_on(moving_color, board);
-
-    // pin_mask.print();
 
     //Pawns
     let pawns = board.pawn & allied;
@@ -46,17 +40,16 @@ pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> 
     };
     
     //Captures
-    let mut ep_bit = if flags.en_passant_square != Square::None { flags.en_passant_square.bit_array() } else { 0 };
+    let mut ep_bit = if flags.en_passant_square.is_valid_square() { flags.en_passant_square.bit_array() } else { 0 };
 
     ep_bit &= !pin_mask.diag.translate_vertical(dy); //The ep pawn can not be diagonally pinned
-
 
     let row_index = match moving_color {
         PlayerColor::White => 4,
         PlayerColor::Black => 3,
     };
 
-    let king_square = (allied & board.king).to_square();
+    let king_square = (allied & board.king).lowest_square_index();
     //Horizontal ep pin
     let hz_attacker = ROWS[row_index] & board.orthogonal_slider & opponent & ORTHOGONAL_MOVES[king_square as usize];
 
@@ -130,13 +123,13 @@ pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> 
 
     let pinned_diagonal_sliders = diagonal_sliders & pin_mask.diag;
     for square in pinned_diagonal_sliders.iterate_squares() {
-        let moveset = gen_bishop_moves_kogge(square.bit_array(), allied, opponent) & pin_mask.diag  & pin_mask.check; //Stay on pin
+        let moveset = gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.diag  & pin_mask.check; //Stay on pin
         moves.add_move(square, moveset);
     }
 
     let not_pinned_diagonal_sliders = diagonal_sliders & !pin_mask.diag;
     for square in not_pinned_diagonal_sliders.iterate_squares() {
-        let moveset = gen_bishop_moves_kogge(square.bit_array(), allied, opponent) & pin_mask.check;
+        let moveset = gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.check;
         moves.add_move(square, moveset);
     }
 
@@ -145,18 +138,18 @@ pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> 
 
     let pinned_orthogonal_sliders = orthogonal_sliders & pin_mask.ortho;
     for square in pinned_orthogonal_sliders.iterate_squares() {
-        let moveset = gen_rook_moves_kogge(square.bit_array(), allied, opponent) & pin_mask.ortho & pin_mask.check; //Stay on pin
+        let moveset = gen_rook_moves_pext(square, occupied) & !allied & pin_mask.ortho & pin_mask.check; //Stay on pin
         moves.add_move(square, moveset);
     }
 
     let not_pinned_orthogonal_sliders = orthogonal_sliders & !pin_mask.ortho;
     for square in not_pinned_orthogonal_sliders.iterate_squares() {
-        let moveset = gen_rook_moves_kogge(square.bit_array(), allied, opponent) & pin_mask.check;
+        let moveset = gen_rook_moves_pext(square, occupied) & !allied & pin_mask.check;
         moves.add_move(square, moveset);
     }
 
     //King moves
-    let king_square = (board.king & allied).to_square();
+    let king_square = (board.king & allied).lowest_square_index() as i8;
     let king_moves = bit_array_lookup::KING_MOVES[king_square as usize] & !allied;
 
     //Castling
@@ -241,7 +234,7 @@ pub fn gen_legal_moves(board_state: &BoardState, flags: &GameFlags) -> MoveVecto
     };
     
     //Captures
-    let mut ep_bit = if flags.en_passant_square != Square::None { flags.en_passant_square.bit_array() } else { 0 };
+    let mut ep_bit = if flags.en_passant_square.is_valid_square() { flags.en_passant_square.bit_array() } else { 0 };
 
     ep_bit &= !pin_mask.diag.translate_vertical(dy); //The ep pawn can not be diagonally pinned
 
@@ -251,7 +244,7 @@ pub fn gen_legal_moves(board_state: &BoardState, flags: &GameFlags) -> MoveVecto
         PlayerColor::Black => 3,
     };
 
-    let king_square = (allied & board.king).to_square();
+    let king_square = (allied & board.king).lowest_square_index();
     //Horizontal ep pin
     let hz_attacker = ROWS[row_index] & board.orthogonal_slider & opponent & ORTHOGONAL_MOVES[king_square as usize];
 
@@ -392,7 +385,7 @@ pub fn gen_legal_moves(board_state: &BoardState, flags: &GameFlags) -> MoveVecto
     }
 
     //King moves
-    let king_square = (board.king & allied).to_square();
+    let king_square = (board.king & allied).lowest_square_index() as i8;
     let moveset = bit_array_lookup::KING_MOVES[king_square as usize] & !allied;
     for target_square in moveset.iterate_squares() {
         if !board_state.bit_board.square_is_attacked_through_king(target_square, !moving_color) {
@@ -439,10 +432,10 @@ pub fn gen_legal_moves(board_state: &BoardState, flags: &GameFlags) -> MoveVecto
     return moves;
 }
 
-fn add_pawn_move(list: &mut MoveVector, start_square: Square, target_square: Square, pt: ColoredPieceType, piece_board: &PieceBoard) {
+fn add_pawn_move(list: &mut MoveVector, start_square: i8, target_square: i8, pt: ColoredPieceType, piece_board: &PieceBoard) {
     let captured_piece = piece_board[target_square];
 
-    if target_square.rank() == Rank::R1 || target_square.rank() == Rank::R8 {
+    if target_square.rank() == rank::R1 || target_square.rank() == rank::R8 {
         list.push(ChessMove::new_pawn(start_square, target_square, pt, captured_piece, PieceType::Queen.colored(pt.color())));
         list.push(ChessMove::new_pawn(start_square, target_square, pt, captured_piece, PieceType::Rook.colored(pt.color())));
         list.push(ChessMove::new_pawn(start_square, target_square, pt, captured_piece, PieceType::Bishop.colored(pt.color())));

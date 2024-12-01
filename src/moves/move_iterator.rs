@@ -1,10 +1,10 @@
 use arrayvec::ArrayVec;
 
-use crate::board::{bit_array::BitArray, bit_array_lookup::ROWS, piece_board::PieceBoard, piece_type::PieceType, player_color::PlayerColor, square::{Rank, Square}};
+use crate::board::{bit_array::BitArray, piece_board::PieceBoard, piece_type::PieceType, player_color::PlayerColor, rank, square::Square};
 
 use super::chess_move::ChessMove;
 
-type SquareVec = ArrayVec<Square, 16>;
+type SquareVec = ArrayVec<i8, 16>;
 type BitBoardVec = ArrayVec<u64, 16>;
 pub struct MoveIterator {
     squares: SquareVec,
@@ -41,7 +41,7 @@ impl MoveIterator {
         // println!("Right Pawn Captures: {}", BitArray::new(self.right_pawn_captures));
     }
 
-    pub fn add_move(&mut self, square: Square, bit_board: u64) {
+    pub fn add_move(&mut self, square: i8, bit_board: u64) {
         self.squares.push(square);
         self.bit_boards.push(bit_board);
     }
@@ -78,7 +78,7 @@ impl MoveIterator {
         }
     }
 
-    pub fn iterate_uci_squares(&self, color: PlayerColor) -> impl Iterator<Item=(Square, Square)> + '_ {
+    pub fn iterate_uci_squares(&self, color: PlayerColor) -> impl Iterator<Item=(i8, i8)> + '_ {
         let dy = match color {
             PlayerColor::White => -1,
             PlayerColor::Black => 1,
@@ -106,7 +106,7 @@ impl MoveIterator {
         );
     }
 
-    pub fn iterate_piece_squares(&self) -> impl Iterator<Item=(Square, Square)> + '_ {
+    pub fn iterate_piece_squares(&self) -> impl Iterator<Item=(i8, i8)> + '_ {
         return self.squares.iter().zip(self.bit_boards.iter()).flat_map(|(start_square, bit_board)| {
             bit_board.iterate_squares().map(|target_square| {
                 (*start_square, target_square)
@@ -114,7 +114,7 @@ impl MoveIterator {
         });
     }
 
-    pub fn iterate_pawn_squares(&self, color: PlayerColor) -> impl Iterator<Item=(Square, Square)> + '_ {
+    pub fn iterate_pawn_squares(&self, color: PlayerColor) -> impl Iterator<Item=(i8, i8)> + '_ {
         let dy = match color {
             PlayerColor::White => -1,
             PlayerColor::Black => 1,
@@ -164,7 +164,7 @@ impl MoveIterator {
             let pt = piece_board[start_square];
             let cpt = piece_board[target_square];
 
-            if target_square.rank() == Rank::R1 || target_square.rank() == Rank::R8 {
+            if target_square.rank() == rank::R1 || target_square.rank() == rank::R8 {
                 return vec![
                     ChessMove::new_pawn(start_square, target_square, pt, cpt, PieceType::Queen.colored(color)),
                     ChessMove::new_pawn(start_square, target_square, pt, cpt, PieceType::Rook.colored(color)),
@@ -194,7 +194,7 @@ impl MoveIterator {
             let pt = piece_board[start_square];
             let cpt = piece_board[target_square];
             if pt.is_pawn() {
-                if target_square.rank() == Rank::R1 || target_square.rank() == Rank::R8 {
+                if target_square.rank() == rank::R1 || target_square.rank() == rank::R8 {
                     return vec![
                         ChessMove::new_pawn(start_square, target_square, pt, cpt, PieceType::Queen.colored(color)),
                         ChessMove::new_pawn(start_square, target_square, pt, cpt, PieceType::Rook.colored(color)),

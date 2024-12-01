@@ -30,7 +30,7 @@ impl BitBoard {
         }
     }
 
-    pub fn from_piece_board(piece_board: &crate::board::piece_board::PieceBoard) -> BitBoard {
+    pub fn from_piece_board(piece_board: &PieceBoard) -> BitBoard {
         let mut bit_board = BitBoard::empty();
 
         for square in VALID_SQUARES {
@@ -43,7 +43,7 @@ impl BitBoard {
         bit_board
     }
 
-    pub fn pawn_has_neighbour(&self, color: PlayerColor, square: Square) -> bool {
+    pub fn pawn_has_neighbour(&self, color: PlayerColor, square: i8) -> bool {
         let opponents = match color {
             PlayerColor::White => self.black_piece,
             PlayerColor::Black => self.white_piece,
@@ -54,7 +54,7 @@ impl BitBoard {
         return self.pawn & opponents & (mask.translate(1, 0) | mask.translate(-1, 0)) != 0;
     }
 
-    pub fn add_piece(&mut self, pt: ColoredPieceType, square: Square) {
+    pub fn add_piece(&mut self, pt: ColoredPieceType, square: i8) {
         match pt.color() {
             PlayerColor::White => {
                 self.white_piece.set_bit(square);
@@ -82,7 +82,7 @@ impl BitBoard {
         }
     }
 
-    pub fn remove_piece(&mut self, pt: ColoredPieceType, square: Square) {
+    pub fn remove_piece(&mut self, pt: ColoredPieceType, square: i8) {
         match pt.color() {
             PlayerColor::White => self.white_piece.clear_bit(square),
             PlayerColor::Black => self.black_piece.clear_bit(square),
@@ -105,7 +105,7 @@ impl BitBoard {
     }
 
     //[TODO] Benchmark flip_bit vs ^pos
-    pub fn toggle_piece(&mut self, pt: ColoredPieceType, square: Square) {
+    pub fn toggle_piece(&mut self, pt: ColoredPieceType, square: i8) {
         match pt.color() {
             PlayerColor::White => self.white_piece.flip_bit(square),
             PlayerColor::Black => self.black_piece.flip_bit(square),
@@ -127,7 +127,7 @@ impl BitBoard {
         }
     }
 
-    pub fn move_piece(&mut self, pt: ColoredPieceType, start: Square, end: Square) {
+    pub fn move_piece(&mut self, pt: ColoredPieceType, start: i8, end: i8) {
         
         debug_assert!(!(self.white_piece | self.black_piece).get_bit(end), "Target square is not empty");
         debug_assert!(pt != ColoredPieceType::None);
@@ -155,7 +155,7 @@ impl BitBoard {
         }
     }
 
-    pub fn king_position(&self, color: PlayerColor) -> Square {
+    pub fn king_position(&self, color: PlayerColor) -> i8 {
         let color = match color {
             PlayerColor::White => self.white_piece,
             PlayerColor::Black => self.black_piece,
@@ -209,7 +209,7 @@ impl BitBoard {
         return attacked_bits;
     }
 
-    pub fn square_is_attacked_through_king(&self, target_square: Square, attacker_color: PlayerColor) -> bool {
+    pub fn square_is_attacked_through_king(&self, target_square: i8, attacker_color: PlayerColor) -> bool {
         let opponent = match attacker_color {
             PlayerColor::White => self.white_piece,
             PlayerColor::Black => self.black_piece,
@@ -267,7 +267,7 @@ impl BitBoard {
         return false;
     }
 
-    pub fn square_is_attacked_by(&self, target_square: Square, opponent_color: PlayerColor) -> bool {
+    pub fn square_is_attacked_by(&self, target_square: i8, opponent_color: PlayerColor) -> bool {
         let opponent = match opponent_color {
             PlayerColor::White => self.white_piece,
             PlayerColor::Black => self.black_piece,
@@ -321,7 +321,7 @@ impl BitBoard {
         return self.square_is_attacked_by(self.king_position(color), !color);
     }
 
-    pub fn get_piecetype(&self, square: Square) -> PieceType {
+    pub fn get_piecetype(&self, square: i8) -> PieceType {
         if !(self.white_piece | self.black_piece).get_bit(square) {
             return PieceType::None;
         }
@@ -351,7 +351,7 @@ impl BitBoard {
         }
     }
 
-    pub fn get_colored_piecetype(&self, square: Square) -> ColoredPieceType {
+    pub fn get_colored_piecetype(&self, square: i8) -> ColoredPieceType {
         let c_res = match (self.white_piece.get_bit(square), self.black_piece.get_bit(square)) {
             (false, false) => None,
             (true, false) => Some(PlayerColor::White),
@@ -373,11 +373,11 @@ impl DynamicState for BitBoard {
         BitBoard::empty()
     }
 
-    fn add_piece(&mut self, pt: ColoredPieceType, s: Square) {
+    fn add_piece(&mut self, pt: ColoredPieceType, s: i8) {
         self.add_piece(pt, s);
     }
 
-    fn remove_piece(&mut self, pt: ColoredPieceType, s: Square) {
+    fn remove_piece(&mut self, pt: ColoredPieceType, s: i8) {
         self.remove_piece(pt, s);
     }
 }

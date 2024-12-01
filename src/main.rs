@@ -1,10 +1,13 @@
-use barschbot::{board::bit_array::{self, BitArray}, game::game_state::GameState};
+use std::ops::Shl;
+
+use barschbot::{board::{bit_array::{self, BitArray}, piece_type::ColoredPieceType, square::{A2, A4}}, fen::fen_helper, game::game_state::GameState, moves::chess_move::ChessMove};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 fn main() {
-    let mut game_state = GameState::from_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq -");
+    let mut game_state = GameState::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
 
-    let moves = game_state.gen_legal_moves();
+    game_state.make_move(ChessMove::new(A2, A4, ColoredPieceType::WhitePawn, ColoredPieceType::None));
+    
 }
 
 fn test_random_moves() {

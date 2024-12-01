@@ -4,7 +4,8 @@ use colored::{Colorize, CustomColor};
 
 use crate::{board::player_color::PlayerColor, moves::chess_move::ChessMove};
 
-use super::{bit_board::BitBoard, dynamic_state::DynamicState, piece_type::ColoredPieceType, square::{Square, VALID_SQUARES}};
+use super::{bit_board::BitBoard, dynamic_state::DynamicState, piece_type::ColoredPieceType, square::{self, VALID_SQUARES}};
+use crate::board::square::Square;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct PieceBoard {
@@ -21,29 +22,29 @@ impl PieceBoard {
     pub fn start_position() -> PieceBoard {
         let mut pb = PieceBoard::empty();
 
-        pb[Square::A1] = ColoredPieceType::WhiteRook;
-        pb[Square::B1] = ColoredPieceType::WhiteKnight;
-        pb[Square::C1] = ColoredPieceType::WhiteBishop;
-        pb[Square::D1] = ColoredPieceType::WhiteQueen;
-        pb[Square::E1] = ColoredPieceType::WhiteKing;
-        pb[Square::F1] = ColoredPieceType::WhiteBishop;
-        pb[Square::G1] = ColoredPieceType::WhiteKnight;
-        pb[Square::H1] = ColoredPieceType::WhiteRook;
+        pb[square::A1] = ColoredPieceType::WhiteRook;
+        pb[square::B1] = ColoredPieceType::WhiteKnight;
+        pb[square::C1] = ColoredPieceType::WhiteBishop;
+        pb[square::D1] = ColoredPieceType::WhiteQueen;
+        pb[square::E1] = ColoredPieceType::WhiteKing;
+        pb[square::F1] = ColoredPieceType::WhiteBishop;
+        pb[square::G1] = ColoredPieceType::WhiteKnight;
+        pb[square::H1] = ColoredPieceType::WhiteRook;
 
-        pb[Square::A8] = ColoredPieceType::BlackRook;
-        pb[Square::B8] = ColoredPieceType::BlackKnight;
-        pb[Square::C8] = ColoredPieceType::BlackBishop;
-        pb[Square::D8] = ColoredPieceType::BlackQueen;
-        pb[Square::E8] = ColoredPieceType::BlackKing;
-        pb[Square::F8] = ColoredPieceType::BlackBishop;
-        pb[Square::G8] = ColoredPieceType::BlackKnight;
-        pb[Square::H8] = ColoredPieceType::BlackRook;
+        pb[square::A8] = ColoredPieceType::BlackRook;
+        pb[square::B8] = ColoredPieceType::BlackKnight;
+        pb[square::C8] = ColoredPieceType::BlackBishop;
+        pb[square::D8] = ColoredPieceType::BlackQueen;
+        pb[square::E8] = ColoredPieceType::BlackKing;
+        pb[square::F8] = ColoredPieceType::BlackBishop;
+        pb[square::G8] = ColoredPieceType::BlackKnight;
+        pb[square::H8] = ColoredPieceType::BlackRook;
 
-        for s in Square::A2.rectangle_to(Square::H2) {
+        for s in square::A2..=square::H2 {
             pb[s] = ColoredPieceType::WhitePawn;
         }
 
-        for s in Square::A7.rectangle_to(Square::H7) {
+        for s in square::A7..=square::H7 {
             pb[s] = ColoredPieceType::BlackPawn;
         }
         
@@ -70,8 +71,8 @@ impl PieceBoard {
             for file in 0..8 {
 
                 let square = match perspective {
-                    PlayerColor::White => Square::from_rank_file_index(rank, file),
-                    PlayerColor::Black => Square::from_rank_file_index(7 - rank, 7 - file),
+                    PlayerColor::White => square::from_file_rank(file, rank),
+                    PlayerColor::Black => square::from_file_rank(7 - file, 7 - rank),
                 };
 
                 let piece = self[square];
@@ -98,7 +99,7 @@ impl PieceBoard {
         println!("{}", s);
     }
     
-    pub fn get_move(&self, start: Square, target: Square) -> ChessMove {
+    pub fn get_move(&self, start: i8, target: i8) -> ChessMove {
         ChessMove::new(start, target, self[start], self[target])
     }
 }
@@ -108,25 +109,25 @@ impl DynamicState for PieceBoard {
         PieceBoard::empty()
     }
 
-    fn add_piece(&mut self, pt: ColoredPieceType, s: Square) {
+    fn add_piece(&mut self, pt: ColoredPieceType, s: i8) {
         self[s] = pt;
     }
 
-    fn remove_piece(&mut self, _: ColoredPieceType, s: Square) {
+    fn remove_piece(&mut self, _: ColoredPieceType, s: i8) {
         self[s] = ColoredPieceType::None;
     }
 }
 
-impl Index<Square> for PieceBoard {
+impl Index<i8> for PieceBoard {
     type Output = ColoredPieceType;
     
-    fn index(&self, square: Square) -> &Self::Output {
+    fn index(&self, square: i8) -> &Self::Output {
         &self.squares[square as usize]
     }
 }
 
-impl IndexMut<Square> for PieceBoard {
-    fn index_mut(&mut self, square: Square) -> &mut Self::Output {
+impl IndexMut<i8> for PieceBoard {
+    fn index_mut(&mut self, square: i8) -> &mut Self::Output {
         &mut self.squares[square as usize]
     }
 }

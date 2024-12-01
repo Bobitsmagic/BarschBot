@@ -1,6 +1,6 @@
 use std::env;
 
-use barschbot::{board::{piece_type::PieceType, square::Rank}, game::game_state::GameState, moves::perft_tests::{self, PERFT_FENS}};
+use barschbot::{board::{piece_type::PieceType, rank, square::Square}, game::game_state::GameState, moves::perft_tests::PERFT_FENS};
 
 fn main() {
     // env::set_var("RUST_BACKTRACE", "1");
@@ -74,7 +74,7 @@ fn count_moves_sperate_iter(game_state: &mut GameState, depth: u8) -> u64 {
     }
 
     for (start, target) in moves.iterate_pawn_squares(game_state.active_color()) {
-        if target.rank() == Rank::R1 || target.rank() == Rank::R8 {
+        if target.rank() == rank::R1 || target.rank() == rank::R8 {
             for promotion in [PieceType::Queen, PieceType::Rook, PieceType::Bishop, PieceType::Knight].iter() {
                 let mut m = game_state.board_state.piece_board.get_move(start, target);
                 m.promotion_piece = promotion.colored(game_state.active_color());

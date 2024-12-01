@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 
-use crate::{board::{bit_array::{self, BitArray}, bit_array_lookup, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, square::{File, Rank, Square}}, game::{board_state::BoardState, game_flags::GameFlags}, moves::slider_gen::{gen_bishop_moves, gen_rook_moves}};
+use crate::{board::{bit_array::BitArray, bit_array_lookup, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, square::Square}, game::{board_state::BoardState, game_flags::GameFlags}, moves::slider_gen::{gen_bishop_moves, gen_rook_moves}};
 use super::{chess_move::ChessMove, move_gen::MoveVector};
 pub fn gen_legal_moves_bitboard(board_state: &BoardState, game_flags: &GameFlags) -> MoveVector {
     let moves = gen_pseudo_legal_moves_bitboard(board_state, game_flags);
@@ -46,7 +46,7 @@ pub fn gen_pseudo_legal_moves_bitboard(board_state: &BoardState, flags: &GameFla
     };
     
     //Captures
-    let pawn_targets = opponent | (if flags.en_passant_square != Square::None { flags.en_passant_square.bit_array() } else { 0 });
+    let pawn_targets = opponent | (if flags.en_passant_square.is_valid_square() { flags.en_passant_square.bit_array() } else { 0 });
     let pawn_left_attacks = pawn_targets & pawns.translate(-1, dy);
     for target_square in pawn_left_attacks.iterate_squares() {
         let start_square = target_square.translate(1, -dy);
@@ -97,7 +97,7 @@ pub fn gen_pseudo_legal_moves_bitboard(board_state: &BoardState, flags: &GameFla
         }
     }
     //King moves
-    let king_square = (board.king & allied).to_square();
+    let king_square = (board.king & allied).lowest_square_index() as i8;
     let moveset = bit_array_lookup::KING_MOVES[king_square as usize] & !allied;
     for target_square in moveset.iterate_squares() {
         moves.push(ChessMove::new(king_square, target_square, PieceType::King.colored(moving_color), piece_board[target_square]));
@@ -119,7 +119,7 @@ pub fn gen_pseudo_legal_moves_bitboard(board_state: &BoardState, flags: &GameFla
     };
     if !board_state.square_attacked(king_square, !moving_color) { 
         if queen_side && (occupied & queen_side_blocker) == 0 {
-            if king_square.file() == File::A {
+            if king_square.file() == 0 {
                 println!("Alarm");
                 board_state.piece_board.print();    
                 println!("Qeen side {}", queen_side);
@@ -138,9 +138,9 @@ pub fn gen_pseudo_legal_moves_bitboard(board_state: &BoardState, flags: &GameFla
     }
     return moves;
 }
-fn add_pawn_move(list: &mut MoveVector, start_square: Square, target_square: Square, pt: ColoredPieceType, piece_board: &PieceBoard) {
+fn add_pawn_move(list: &mut MoveVector, start_square: i8, target_square: i8, pt: ColoredPieceType, piece_board: &PieceBoard) {
     let captured_piece = piece_board[target_square];
-    if target_square.rank() == Rank::R1 || target_square.rank() == Rank::R8 {
+    if target_square.rank() == 0 || target_square.rank() == 7 {
         list.push(ChessMove::new_pawn(start_square, target_square, pt, captured_piece, PieceType::Queen.colored(pt.color())));
         list.push(ChessMove::new_pawn(start_square, target_square, pt, captured_piece, PieceType::Rook.colored(pt.color())));
         list.push(ChessMove::new_pawn(start_square, target_square, pt, captured_piece, PieceType::Bishop.colored(pt.color())));

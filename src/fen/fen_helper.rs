@@ -1,4 +1,4 @@
-use crate::{board::{dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::Square}, game::game_flags::GameFlags};
+use crate::{board::{dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::{self, Square}}, game::game_flags::GameFlags};
 
 pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
     let parts = fen.split(" ").collect::<Vec<_>>();
@@ -19,12 +19,12 @@ pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
         let piece = ColoredPieceType::from_char(c);
         
         if piece != ColoredPieceType::None {
-            board.add_piece(piece,  Square::from_u8(square));
+            board.add_piece(piece, square);
             
             square += 1;
         }
         else {
-            square += c.to_string().parse::<u8>().unwrap();
+            square += c.to_string().parse::<i8>().unwrap();
         }
     }
 
@@ -46,7 +46,7 @@ pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
     }
 
     if parts[3] != "-" {
-        game_flags.en_passant_square = Square::from_str(parts[3]);
+        game_flags.en_passant_square = square::from_str(parts[3]);
     }
 
     return (board, game_flags);
@@ -58,7 +58,7 @@ pub fn to_fen(board: &PieceBoard, game_flags: &GameFlags) -> String {
 
     for rank in (0..8).rev() {
         for file in 0..8 {
-            let square = Square::from_rank_file_index(rank, file);
+            let square = square::from_file_rank(file, rank);
             let piece = board[square];
 
             if piece == ColoredPieceType::None {
@@ -111,8 +111,8 @@ pub fn to_fen(board: &PieceBoard, game_flags: &GameFlags) -> String {
 
     fen.push(' ');
 
-    if game_flags.en_passant_square != Square::None {
-        fen.push_str(&game_flags.en_passant_square.to_string());
+    if game_flags.en_passant_square != square::NONE {
+        fen.push_str(&game_flags.en_passant_square.square_string());
     }
     else {
         fen.push('-');

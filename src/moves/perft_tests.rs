@@ -1,4 +1,3 @@
-use crate::{board::{piece_type::PieceType, square::Rank}, game::game_state::GameState};
 
 pub const PERFT_FENS: [&str; 6] = [
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 ", 
@@ -107,7 +106,7 @@ mod tests {
 
     #[test]
     fn test_perft_files() {
-        for p in 1..4 {
+        for p in 0..4 {
             let fen = PERFT_FENS[p];
 
             println!("Testing fen: {}", fen);
@@ -202,6 +201,9 @@ mod tests {
                         }
                     }
 
+                    for m in moves.iter() {
+                        print!("{} ", m.uci_move().to_string());
+                    }
                     println!();
                     panic!();
                 }

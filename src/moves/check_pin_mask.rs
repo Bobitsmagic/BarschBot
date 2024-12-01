@@ -1,4 +1,4 @@
-use crate::board::{bit_array::BitArray, bit_array_lookup::{DIAGONAL_MOVES, IN_BETWEEN_TABLE, KNIGHT_MOVES, ORTHOGONAL_MOVES, PAWN_MOVES_BLACK, PAWN_MOVES_WHITE}, bit_board::BitBoard, player_color::PlayerColor, square::{Square, VALID_SQUARES}};
+use crate::board::{bit_array::BitArray, bit_array_lookup::{DIAGONAL_MOVES, IN_BETWEEN_TABLE, KNIGHT_MOVES, ORTHOGONAL_MOVES, PAWN_MOVES_BLACK, PAWN_MOVES_WHITE}, bit_board::BitBoard, player_color::PlayerColor};
 
 pub struct CheckPinMask {
     pub check: u64,
@@ -29,7 +29,7 @@ impl CheckPinMask {
                 }
                 1 => { //Pin
                     diagonal_mask |= between;
-                    diagonal_mask.set_bit(VALID_SQUARES[attacker as usize]);
+                    diagonal_mask.set_bit(attacker as i8);
                 }
                 _ => {}
             }
@@ -46,7 +46,7 @@ impl CheckPinMask {
                 }
                 1 => { //Pin
                     orthogonal_mask |= between;
-                    orthogonal_mask.set_bit(VALID_SQUARES[attacker as usize]);
+                    orthogonal_mask.set_bit(attacker as i8);
                 }
                 _ => {}
             }

@@ -1,13 +1,11 @@
-
-use crate::board::square::VALID_SQUARES;
-
-use super::{bit_array_lookup::*, square::Square};
+use super::{bit_array_lookup::*};
+use crate::board::square::{self, Square};
 
 pub trait BitArray {
-    fn set_bit(&mut self, square: Square);
-    fn clear_bit(&mut self, square: Square);
-    fn get_bit(self, square: Square) -> bool;
-    fn flip_bit(&mut self, square: Square);
+    fn set_bit(&mut self, i8: i8);
+    fn clear_bit(&mut self, i8: i8);
+    fn get_bit(self, i8: i8) -> bool;
+    fn flip_bit(&mut self, i8: i8);
 
     fn translate(self, dx: i8, dy: i8) -> Self;
     fn translate_vertical(self, dy: i8) -> Self;
@@ -18,31 +16,32 @@ pub trait BitArray {
 
     fn iterate_set_bit_fields(self) -> impl Iterator<Item=u64>;
     fn iterate_set_bits_indices(self) -> impl Iterator<Item=u32>;
-    fn iterate_squares(self) -> impl Iterator<Item=Square>;
+    fn iterate_squares(self) -> impl Iterator<Item=i8>;
 
-    fn to_square(self) -> Square;
+    fn lowest_square_index(self) -> u32;
 
     fn print(self);
 }
 
 impl BitArray for u64 {
-    fn set_bit(&mut self, square: Square) {
-        *self |= 1 << square as u8;
-    }
-    fn clear_bit(&mut self, square: Square) {
-        *self &= !(1 << square as u8);
-    }
-    fn flip_bit(&mut self, square: Square) {
-        *self ^= 1 << square as u8;
+    fn set_bit(&mut self, i8: i8) {
+        *self |= 1 << i8;
     }
 
-    fn get_bit(self, square: Square) -> bool {
-        (self & (1 << square as u8)) != 0
+    fn clear_bit(&mut self, i8: i8) {
+        *self &= !(1 << i8);
+    }
+    fn flip_bit(&mut self, i8: i8) {
+        *self ^= 1 << i8;
     }
 
-    fn to_square(self) -> Square {
+    fn get_bit(self, i8: i8) -> bool {
+        (self & (1 << i8)) != 0
+    }
+
+    fn lowest_square_index(self) -> u32 {
         debug_assert!(self.count_ones() == 1, "Invalid bitboard: {}", self);
-        VALID_SQUARES[self.trailing_zeros() as usize]
+        self.trailing_zeros()
     }
 
     fn translate(self, dx: i8, dy: i8) -> u64 {
@@ -87,8 +86,8 @@ impl BitArray for u64 {
 
         for rank in (0..8).rev() {
             for file in 0..8 {
-                let square = Square::from_rank_file_index(rank, file);
-                s += &format!("{} ", if self.get_bit(square) { "■" } else { "□" });
+                let i8 = square::from_file_rank(file, rank);
+                s += &format!("{} ", if self.get_bit(i8) { "■" } else { "□" });
             }
             s += "\n";
         }
@@ -128,8 +127,8 @@ impl BitArray for u64 {
         });
     }
     
-    fn iterate_squares(self) -> impl Iterator<Item=Square> {
-        self.iterate_set_bits_indices().map(|v| Square::from_usize(v as usize))
+    fn iterate_squares(self) -> impl Iterator<Item=i8> {
+        self.iterate_set_bits_indices().map(|v| v as i8)
     }
 }
 
@@ -154,8 +153,8 @@ mod bit_array_tests {
             let mut bb = 0;
 
             for _ in 0..32 {
-                let square = super::Square::from_usize(rng.gen_range(0..64));
-                bb.set_bit(square);
+                let i8 = rng.gen_range(0_i8..64);
+                bb.set_bit(i8);
             }
 
             v.push(bb);

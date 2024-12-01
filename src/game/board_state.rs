@@ -1,4 +1,4 @@
-use crate::{board::{bit_board::BitBoard, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::{Square, VALID_SQUARES}}, moves::chess_move::ChessMove};
+use crate::{board::{bit_board::BitBoard, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::VALID_SQUARES}, moves::chess_move::ChessMove};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BoardState {
@@ -22,7 +22,7 @@ impl BoardState {
         return self.bit_board.is_in_check(color);        
     }
 
-    pub fn square_attacked(&self, s: Square, opponent_color: PlayerColor) -> bool {
+    pub fn square_attacked(&self, s: i8, opponent_color: PlayerColor) -> bool {
         return self.bit_board.square_is_attacked_by(s, opponent_color);
     }
 
@@ -49,12 +49,12 @@ impl DynamicState for BoardState {
         }
     }
     
-    fn add_piece(&mut self, pt: ColoredPieceType, s: Square) {
+    fn add_piece(&mut self, pt: ColoredPieceType, s: i8) {
         self.piece_board.add_piece(pt, s);
         self.bit_board.add_piece(pt, s);
     }
     
-    fn remove_piece(&mut self, pt: ColoredPieceType, s: Square) {
+    fn remove_piece(&mut self, pt: ColoredPieceType, s: i8) {
         self.piece_board.remove_piece(pt, s);
         self.bit_board.remove_piece(pt, s);
     }

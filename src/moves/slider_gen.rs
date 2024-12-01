@@ -1,22 +1,22 @@
 use rand_chacha::ChaCha8Rng;
 
-use crate::board::{bit_array::BitArray, bit_array_lookup::{BISHOP_BLOCKER_MASK, BISHOP_MOVE_TABLE, ROOK_BLOCKER_MASK, ROOK_MOVE_TABLE}, square::{Square, VALID_SQUARES}};
+use crate::board::{bit_array::BitArray, bit_array_lookup::{BISHOP_BLOCKER_MASK, BISHOP_MOVE_TABLE, ROOK_BLOCKER_MASK, ROOK_MOVE_TABLE}, square::{self, Square}};
 
 use super::kogge_gen::{DIAGONAL_FILL_FUNCTIONS_CAP, ORTHOGONAL_FILL_FUNCTIONS_CAP};
 
 //Move generation
-pub fn gen_rook_moves(square: Square, allied: u64, opponent: u64) -> u64 {
+pub fn gen_rook_moves(square: i8, allied: u64, opponent: u64) -> u64 {
     const DIRECTIONS: [(i8, i8); 4] = [(0, 1), (0, -1), (1, 0), (-1, 0)];
 
     let mut moves = 0;
-    let x = square.file_index() as i8;
-    let y = square.rank_index() as i8;
+    let x = square.file();
+    let y = square.rank();
     for (dx, dy) in DIRECTIONS {
         let mut sx = x + dx;
         let mut sy = y + dy;
 
         while sx >= 0 && sx < 8 && sy >= 0 && sy < 8 {
-            let next = Square::from_rank_file_index(sy as u8, sx as u8);
+            let next = square::from_file_rank(sx, sy);
             if opponent.get_bit(next) {
                 moves.set_bit(next);
                 break;
@@ -36,18 +36,18 @@ pub fn gen_rook_moves(square: Square, allied: u64, opponent: u64) -> u64 {
     return moves;
 }
 
-pub fn gen_bishop_moves(square: Square, allied: u64, opponent: u64) -> u64 {  
+pub fn gen_bishop_moves(square: i8, allied: u64, opponent: u64) -> u64 {  
     const DIRECTIONS: [(i8, i8); 4] = [(1, 1), (1, -1), (-1, 1), (-1, -1)];
 
     let mut moves = 0;
-    let x = square.file_index() as i8;
-    let y = square.rank_index() as i8;
+    let x = square.file() as i8;
+    let y = square.rank() as i8;
     for (dx, dy) in DIRECTIONS {
         let mut sx = x + dx;
         let mut sy = y + dy;
 
         while sx >= 0 && sx < 8 && sy >= 0 && sy < 8 {
-            let next = Square::from_rank_file_index(sy as u8, sx as u8);
+            let next = square::from_file_rank(sx, sy);
             if opponent.get_bit(next) {
                 moves.set_bit(next);
                 break;
@@ -67,17 +67,17 @@ pub fn gen_bishop_moves(square: Square, allied: u64, opponent: u64) -> u64 {
     return moves;
 }
 
-pub fn gen_queen_moves(square: Square, allied: u64, opponent: u64) -> u64 {
+pub fn gen_queen_moves(square: i8, allied: u64, opponent: u64) -> u64 {
     return gen_rook_moves(square, allied, opponent) | gen_bishop_moves(square, allied, opponent);
 }
 
-pub fn gen_rook_moves_pext(square: Square, occupied: u64) -> u64 {
+pub fn gen_rook_moves_pext(square: i8, occupied: u64) -> u64 {
     let index = order_bits(occupied, ROOK_BLOCKER_MASK[square as usize]);
 
     return ROOK_MOVE_TABLE[square as usize][index as usize];
 }
 
-pub fn gen_bishop_moves_pext(square: Square, occupied: u64) -> u64 {
+pub fn gen_bishop_moves_pext(square: i8, occupied: u64) -> u64 {
     let index = order_bits(occupied, BISHOP_BLOCKER_MASK[square as usize]);
 
     return BISHOP_MOVE_TABLE[square as usize][index as usize];
@@ -99,7 +99,7 @@ pub fn order_bits(value: u64, mask: u64) -> u64 {
     // }
 }
 
-pub fn gen_rook_phf(square: Square, occupied: u64) -> u64 {
+pub fn gen_rook_phf(square: i8, occupied: u64) -> u64 {
     let mask = ROOK_BLOCKER_MASK[square as usize];
     let bits = mask & occupied;
 
@@ -107,7 +107,7 @@ pub fn gen_rook_phf(square: Square, occupied: u64) -> u64 {
     // *perfect_hashing::ROOK_TABLE[square as usize].get(&bits).unwrap()
 }
 
-pub fn gen_bishop_phf(square: Square, occupied: u64) -> u64 {
+pub fn gen_bishop_phf(square: i8, occupied: u64) -> u64 {
     let mask = BISHOP_BLOCKER_MASK[square as usize];
     let bits = mask & occupied;
 
@@ -142,7 +142,7 @@ mod slider_gen_test {
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha8Rng;
 
-    use crate::board::{bit_array::BitArray, square::{Square, VALID_SQUARES}};
+    use crate::board::{bit_array::BitArray, square::{self, Square, VALID_SQUARES}};
 
     use super::{gen_bishop_moves, gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_bishop_phf, gen_rook_moves, gen_rook_moves_kogge, gen_rook_moves_pext, gen_rook_phf};
 
@@ -152,7 +152,7 @@ mod slider_gen_test {
     
         for x in 0..8 {
             for y in 0..8 {
-                let square = Square::from_rank_file_index(y, x);
+                let square = square::from_file_rank(x, y);
                 if rng.gen_bool(0.1) {
                     allied.set_bit(square);
                 } else if rng.gen_bool(0.1) {
@@ -186,7 +186,7 @@ mod slider_gen_test {
                     allied.print();
                     println!("Opponent:");
                     opponent.print();
-                    println!("Square: {}", s.to_string());
+                    println!("i8: {}", s.to_string());
                     println!("gen_moves:");
                     m1.print();
                     println!("gen_moves_pext:");
@@ -208,7 +208,7 @@ mod slider_gen_test {
                     allied.print();
                     println!("Opponent:");
                     opponent.print();
-                    println!("Square: {}", s.to_string());
+                    println!("i8: {}", s.to_string());
                     println!("gen_moves:");
                     m1.print();
                     println!("gen_moves_pext:");

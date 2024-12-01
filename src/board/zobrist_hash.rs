@@ -1,6 +1,6 @@
 use crate::game::game_flags::GameFlags;
 
-use super::{player_color::PlayerColor, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, square::{Square, VALID_SQUARES}};
+use super::{player_color::PlayerColor, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, square::{VALID_SQUARES}};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct ZobristHash {
@@ -44,11 +44,11 @@ impl DynamicState for ZobristHash {
         }
     }
 
-    fn add_piece(&mut self, pt: ColoredPieceType, s: Square) {
+    fn add_piece(&mut self, pt: ColoredPieceType, s: i8) {
         self.hash ^= SQUARE_PIECE_HASHS[s as usize][pt as usize];
     }
 
-    fn remove_piece(&mut self, pt: ColoredPieceType, s: Square) {
+    fn remove_piece(&mut self, pt: ColoredPieceType, s: i8) {
         self.hash ^= SQUARE_PIECE_HASHS[s as usize][pt as usize];
     }
 }
