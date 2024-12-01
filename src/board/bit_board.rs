@@ -1,8 +1,8 @@
 use core::panic;
 
-use crate::{board::{piece_board::PieceBoard, piece_type::PieceType}, game::board_state, moves::slider_gen::{gen_bishop_moves_kogge, gen_rook_moves_kogge}};
+use crate::{board::{piece_board::PieceBoard, piece_type::PieceType}, moves::slider_gen::{gen_bishop_moves_kogge, gen_rook_moves_kogge}};
 
-use super::{bit_array::{self, BitArray}, bit_array_lookup::{DIAGONAL_MOVES, IN_BETWEEN_TABLE, KING_MOVES, KNIGHT_MOVES, ORTHOGONAL_MOVES}, dynamic_state::DynamicState, piece_type::ColoredPieceType, player_color::PlayerColor, square::{Square, VALID_SQUARES}};
+use super::{bit_array::BitArray, bit_array_lookup::{DIAGONAL_MOVES, IN_BETWEEN_TABLE, KING_MOVES, KNIGHT_MOVES, ORTHOGONAL_MOVES}, dynamic_state::DynamicState, piece_type::ColoredPieceType, player_color::PlayerColor, square::{Square, VALID_SQUARES}};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BitBoard {

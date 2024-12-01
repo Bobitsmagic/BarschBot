@@ -44,6 +44,7 @@ Depth + 1
 - Knogge gen for AttackedBits: 299 s
 - Knogge gen for MoveGen: 295 s
 - PHF slider: 384 s
+- No square: 287 s
 
 ### Algorithmic
 
@@ -66,9 +67,8 @@ Done
 
 Todo
 
-- `Square` vs `i8`
-- `u8` vs  `i8`
-
 Done
 
+- `u8` vs  `i8`
+- `Square` vs `i8`
 - `BitArray` vs `u64`

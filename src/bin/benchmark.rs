@@ -1,5 +1,3 @@
-use std::env;
-
 use barschbot::{board::{piece_type::PieceType, rank, square::Square}, game::game_state::GameState, moves::perft_tests::PERFT_FENS};
 
 fn main() {

@@ -1,6 +1,6 @@
 use std::{fs::File, io::Write};
 
-use barschbot::{board::{bit_array::{self, BitArray}, bit_array_lookup::{self, SQUARES}, square::{Square, VALID_SQUARES}}, moves::slider_gen::{gen_bishop_moves, gen_rook_moves, order_bits}};
+use barschbot::{board::{bit_array::BitArray, bit_array_lookup::{self}, square::{self, Square, VALID_SQUARES}}, moves::slider_gen::{gen_bishop_moves, gen_rook_moves, order_bits}};
 
 pub fn main() {
     // gen_bishop_move_table();
@@ -244,14 +244,14 @@ pub fn gen_rook_blocker_mask() -> [u64; 64] {
     for s in VALID_SQUARES {
         let mut blocker_mask = 0;
 
-        let sx = s.file_index() as u8;
-        let sy = s.rank_index() as u8;
+        let sx = s.file();
+        let sy = s.rank();
 
         for i in 1..7 {
-            let square = Square::from_rank_file_index(sy, i);
+            let square = square::from_file_rank(i, sy);
             blocker_mask.set_bit(square);
 
-            let square = Square::from_rank_file_index(i, sx);
+            let square = square::from_file_rank(sx, i);
             blocker_mask.set_bit(square);
         }
 
@@ -371,7 +371,7 @@ pub fn gen_in_between_table() -> [[u64; 64]; 64] {
 
 
                         while x != x2 || y != y2 {
-                            in_between.set_bit(Square::from_rank_file_index(y as u8, x as u8));
+                            in_between.set_bit(square::from_file_rank(x, y));
 
                             x += dx.signum();
                             y += dy.signum();

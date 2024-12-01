@@ -1,5 +1,5 @@
-use super::{bit_array_lookup::*};
-use crate::board::square::{self, Square};
+use super::bit_array_lookup::*;
+use crate::board::square::{self};
 
 pub trait BitArray {
     fn set_bit(&mut self, i8: i8);

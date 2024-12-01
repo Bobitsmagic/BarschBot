@@ -1,5 +1,3 @@
-use rand_chacha::ChaCha8Rng;
-
 use crate::board::{bit_array::BitArray, bit_array_lookup::{BISHOP_BLOCKER_MASK, BISHOP_MOVE_TABLE, ROOK_BLOCKER_MASK, ROOK_MOVE_TABLE}, square::{self, Square}};
 
 use super::kogge_gen::{DIAGONAL_FILL_FUNCTIONS_CAP, ORTHOGONAL_FILL_FUNCTIONS_CAP};
@@ -99,22 +97,6 @@ pub fn order_bits(value: u64, mask: u64) -> u64 {
     // }
 }
 
-pub fn gen_rook_phf(square: i8, occupied: u64) -> u64 {
-    let mask = ROOK_BLOCKER_MASK[square as usize];
-    let bits = mask & occupied;
-
-    unimplemented!();
-    // *perfect_hashing::ROOK_TABLE[square as usize].get(&bits).unwrap()
-}
-
-pub fn gen_bishop_phf(square: i8, occupied: u64) -> u64 {
-    let mask = BISHOP_BLOCKER_MASK[square as usize];
-    let bits = mask & occupied;
-
-    unimplemented!();
-    // *perfect_hashing::BISHOP_TABLE[square as usize].get(&bits).unwrap()
-}
-
 pub fn gen_rook_moves_kogge(bb: u64, allied: u64, opponent: u64) -> u64 {
     let mut next = 0;
     let free = !(allied | opponent);
@@ -144,7 +126,7 @@ mod slider_gen_test {
 
     use crate::board::{bit_array::BitArray, square::{self, Square, VALID_SQUARES}};
 
-    use super::{gen_bishop_moves, gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_bishop_phf, gen_rook_moves, gen_rook_moves_kogge, gen_rook_moves_pext, gen_rook_phf};
+    use super::{gen_bishop_moves, gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_rook_moves, gen_rook_moves_kogge, gen_rook_moves_pext};
 
     fn fill_board(rng: &mut ChaCha8Rng) -> (u64, u64) {
         let mut allied = 0;
@@ -178,10 +160,9 @@ mod slider_gen_test {
 
                 let m1 = gen_bishop_moves(s, allied, opponent);
                 let m2 = gen_bishop_moves_pext(s, allied | opponent) & !allied;
-                let m3 = gen_bishop_phf(s, allied | opponent) & !allied;
-                let m4 = gen_bishop_moves_kogge(s.bit_array(), allied, opponent);
+                let m3 = gen_bishop_moves_kogge(s.bit_array(), allied, opponent);
                 
-                if m1 != m2 || m1 != m3 || m1 != m4 {
+                if m1 != m2  || m1 != m3 {
                     println!("Allied:");
                     allied.print();
                     println!("Opponent:");
@@ -191,19 +172,16 @@ mod slider_gen_test {
                     m1.print();
                     println!("gen_moves_pext:");
                     m2.print();
-                    println!("gen_moves_phf:");
-                    m3.print();
                     println!("gen_moves_kogge:");
-                    m4.print();
+                    m3.print();
                     panic!();
                 }
 
                 let m1 = gen_rook_moves(s, allied, opponent);
                 let m2 = gen_rook_moves_pext(s, allied | opponent) & !allied;
-                let m3 = gen_rook_phf(s, allied | opponent) & !allied;
-                let m4 = gen_rook_moves_kogge(s.bit_array(), allied, opponent);
+                let m3 = gen_rook_moves_kogge(s.bit_array(), allied, opponent);
                 
-                if m1 != m2 || m1 != m3 || m1 != m4 {
+                if m1 != m2 || m1 != m3 {
                     println!("Allied:");
                     allied.print();
                     println!("Opponent:");
@@ -213,10 +191,8 @@ mod slider_gen_test {
                     m1.print();
                     println!("gen_moves_pext:");
                     m2.print();
-                    println!("gen_moves_phf:");
-                    m3.print();
                     println!("gen_moves_kogge:");
-                    m4.print();
+                    m3.print();
                     panic!();
                 }
             }

@@ -7,6 +7,5 @@ edition = "2021"
 arrayvec = "0.7.6"
 bitintr = "0.3.0"
 colored = "2.1.0"
-phf = { version = "*", features = ["macros"] }
 rand = "0.8.5"
 rand_chacha = "0.3.1"

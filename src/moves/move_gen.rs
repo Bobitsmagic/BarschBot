@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 
-use crate::{board::{bit_array::BitArray, bit_array_lookup::{self, IN_BETWEEN_TABLE, ORTHOGONAL_MOVES, ROWS}, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, rank, square::{self, Square}}, game::{board_state::BoardState, game_flags::GameFlags}, moves::{check_pin_mask::CheckPinMask, slider_gen::{gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_rook_moves_kogge, gen_rook_moves_pext}}};
+use crate::{board::{bit_array::BitArray, bit_array_lookup::{self, IN_BETWEEN_TABLE, ORTHOGONAL_MOVES, ROWS}, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, rank, square::Square}, game::{board_state::BoardState, game_flags::GameFlags}, moves::{check_pin_mask::CheckPinMask, slider_gen::{gen_bishop_moves_pext, gen_rook_moves_pext}}};
 
 use super::{chess_move::ChessMove, move_iterator::MoveIterator};
 
