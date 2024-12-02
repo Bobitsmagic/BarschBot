@@ -110,7 +110,7 @@ mod tests {
             let fen = PERFT_FENS[p];
 
             println!("Testing fen: {}", fen);
-            for depth in 0..4 {
+            for depth in 0..5 {
                 let map = load_perft_file(&format!("data/p{}_perft/perft_{}.txt", p, depth));
     
                 check_dfs(&mut GameState::from_fen(fen), depth, &map);

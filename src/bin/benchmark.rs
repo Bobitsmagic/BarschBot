@@ -1,4 +1,4 @@
-use barschbot::{board::{piece_type::PieceType, rank, square::Square}, game::game_state::GameState, moves::perft_tests::PERFT_FENS};
+use barschbot::{board::{piece_type::PieceType, rank, square::Square}, game::game_state::GameState, moves::{move_gen, perft_tests::PERFT_FENS}};
 
 fn main() {
     // env::set_var("RUST_BACKTRACE", "1");
@@ -17,9 +17,9 @@ pub fn benchmark_fens() {
     
         let d_time = std::time::Instant::now();
             
-        // let count = count_moves(&mut GameState::from_fen(fen), max_depth);
+        let count = count_moves(&mut GameState::from_fen(fen), max_depth);
         // let count = count_moves_iter(&mut GameState::from_fen(fen), max_depth);
-        let count = count_moves_sperate_iter(&mut GameState::from_fen(fen), max_depth);
+        // let count = count_moves_sperate_iter(&mut GameState::from_fen(fen), max_depth);
 
         println!("Finished depth: {}", max_depth);
         println!("\tTime: {:4.2} s", d_time.elapsed().as_secs_f64());
@@ -52,16 +52,16 @@ fn count_moves_iter(game_state: &mut GameState, depth: u8) -> u64 {
 }
 
 fn count_moves_sperate_iter(game_state: &mut GameState, depth: u8) -> u64 {
-    let moves = game_state.gen_legal_moves_iterator();
     
     if depth == 0 {
         return 1;
     }
     
     if depth == 1 {
-        return moves.count_moves() as u64;
+        return move_gen::count_moves(&game_state.board_state, &game_state.get_flags()) as u64;
     }
-        
+    
+    let moves = game_state.gen_legal_moves_iterator();
     let mut count = 0;
     for (start, target) in moves.iterate_piece_squares(){
         let m = game_state.board_state.piece_board.get_move(start, target);
@@ -94,16 +94,16 @@ fn count_moves_sperate_iter(game_state: &mut GameState, depth: u8) -> u64 {
 }
 
 fn count_moves(game_state: &mut GameState, depth: u8) -> u64 {
-    let moves = game_state.gen_legal_moves();
     
     if depth == 0 {
         return 1;
     }
     
     if depth == 1 {
-        return moves.len() as u64;
+        return move_gen::count_moves(&game_state.board_state, &game_state.get_flags()) as u64;
     }
-        
+    
+    let moves = game_state.gen_legal_moves();
     let mut count = 0;
     for m in moves {
         game_state.make_move(m);

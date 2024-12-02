@@ -232,9 +232,9 @@ mod square_tests {
 
     #[test]
     fn test_to_string() {
-        assert_eq!(A1.to_string(), "a1");
-        assert_eq!(C4.to_string(), "c4");
-        assert_eq!(H8.to_string(), "h8");
+        assert_eq!(A1.square_string(), "a1");
+        assert_eq!(C4.square_string(), "c4");
+        assert_eq!(H8.square_string(), "h8");
     }
 
     #[test]

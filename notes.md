@@ -2,11 +2,18 @@
 
 ## UI
 
+Todo
+
+- Flip for black view
+- Undo move
+- Arrow drawing
+- Evalbar
+
+Done
+
 - Rendering
 - Move making
 - Files and Ranks
-- Flip for black view
-- Undo move
 - Multithreaded rendering
 
 ## Barschbot
@@ -18,7 +25,7 @@
 
 - `cargo rustc --bin benchmark --release -- -C target-cpu=native`
 
-## History
+### History
 
 Position counting
 
