@@ -43,6 +43,10 @@ impl GameState {
         return self.flag_stack.last().unwrap().active_color;
     }
 
+    pub fn to_fen(&self) -> String {
+        return fen_helper::to_fen(&self.board_state.piece_board, &self.get_flags());
+    }
+
     pub fn from_fen(fen: &str) -> GameState {
         let (pb, flags) = fen_helper::from_fen(fen);
 

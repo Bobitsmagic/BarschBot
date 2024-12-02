@@ -8,6 +8,14 @@ pub struct UciMove {
 }
 
 impl UciMove {
+    pub fn new(start: i8, end: i8, promotion_piece: PieceType) -> UciMove {
+        UciMove {
+            start,
+            end,
+            promotion_piece,
+        }
+    }
+
     pub fn from_str(s: &str) -> UciMove {
         let start = square::from_str(&s[0..2]);
         let end = square::from_str(&s[2..4]);

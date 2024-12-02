@@ -104,7 +104,15 @@ impl ChessMove {
         }
 
         s += &self.end.square_string(); 
+
+        if self.is_promotion() {
+            s += &self.promotion_piece.to_char().to_string();
+        }
         
         println!("{}", s);
+    }
+    
+    pub fn is_null_move(&self) -> bool {
+        *self == NULL_MOVE
     }
 }
