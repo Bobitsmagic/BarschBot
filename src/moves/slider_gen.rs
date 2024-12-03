@@ -97,6 +97,16 @@ pub fn order_bits(value: u64, mask: u64) -> u64 {
     // }
 }
 
+pub fn gen_rook_moves_kogge_occ(bb: u64, occupied: u64) -> u64 {
+    let mut next = 0;
+    let free = !occupied;
+
+    for f in ORTHOGONAL_FILL_FUNCTIONS_CAP {
+        next |= f(bb, free);
+    }
+
+    return next;
+}
 pub fn gen_rook_moves_kogge(bb: u64, allied: u64, opponent: u64) -> u64 {
     let mut next = 0;
     let free = !(allied | opponent);
@@ -108,6 +118,16 @@ pub fn gen_rook_moves_kogge(bb: u64, allied: u64, opponent: u64) -> u64 {
     return next & !allied;
 }
 
+pub fn gen_bishop_moves_kogge_occ(bb: u64, occupied: u64) -> u64 {
+    let mut next = 0;
+    let free = !occupied;
+
+    for f in DIAGONAL_FILL_FUNCTIONS_CAP {
+        next |= f(bb, free);
+    }
+
+    return next;
+}
 pub fn gen_bishop_moves_kogge(bb: u64, allied: u64, opponent: u64) -> u64 {
     let mut next = 0;
     let free = !(allied | opponent);

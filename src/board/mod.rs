@@ -10,3 +10,4 @@ pub mod zobrist_hash;
 pub mod rank;
 pub mod file;
 pub mod attack_board;
+pub mod field_counter;
