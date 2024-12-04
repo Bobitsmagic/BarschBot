@@ -1,10 +1,9 @@
-use crate::{board::{attack_board::{AttackBoard, ColoredAttackBoard}, bit_board::BitBoard, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::VALID_SQUARES}, moves::chess_move::ChessMove};
+use crate::{board::{bit_board::BitBoard, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::VALID_SQUARES}, moves::chess_move::ChessMove};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BoardState {
     pub piece_board: PieceBoard,
     pub bit_board: BitBoard,
-    pub attack_board: AttackBoard,
 }
 
 impl BoardState {
@@ -16,7 +15,6 @@ impl BoardState {
         BoardState {
             piece_board: piece_board.clone(),
             bit_board: BitBoard::from_piece_board(piece_board),
-            attack_board: AttackBoard::empty(),
         }
     }
 

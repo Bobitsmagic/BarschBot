@@ -126,7 +126,9 @@ pub fn fill_down_right_cap(mut gen: u64, mut free: u64) -> u64 {
     gen |= free & (gen >> 14);
     free &=       free >> 14;
     gen |= free & (gen >> 28);
-    return gen | (gen >> 7) & RIGHT_MOVE_MASK[1];
+
+
+    return gen & free | (gen >> 7) & RIGHT_MOVE_MASK[1];
 }
 
 //Left moving

@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 
-use crate::{board::{bit_array::BitArray, bit_array_lookup::{self, IN_BETWEEN_TABLE, ORTHOGONAL_MOVES, ROWS}, piece_board::PieceBoard, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, rank, square::Square}, game::{board_state::BoardState, game_flags::GameFlags}, moves::{check_pin_mask::CheckPinMask, slider_gen::{gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_rook_moves_kogge, gen_rook_moves_pext}}};
+use crate::{board::{bit_array::BitArray, bit_array_lookup::{self, IN_BETWEEN_TABLE, KING_MOVES, ORTHOGONAL_MOVES, ROWS}, piece_board::{self, PieceBoard}, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, rank, square::{self, Square}}, game::{board_state::BoardState, game_flags::GameFlags}, moves::{check_pin_mask::CheckPinMask, slider_gen::{gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_rook_moves_kogge, gen_rook_moves_pext}}};
 
 use super::{chess_move::ChessMove, move_iterator::MoveIterator};
 
@@ -198,6 +198,108 @@ pub fn count_moves(board_state: &BoardState, flags: &GameFlags) -> u32 {
         const LAST_RANK: u64 = 0xFF000000000000FF;
         return (targets & !LAST_RANK).count_ones() + (targets & LAST_RANK).count_ones() * 4;
     }
+}
+
+pub fn gen_eval_moves(board_state: &BoardState) -> (MoveVector, MoveVector) {
+    let mut white_moves = ArrayVec::new();
+    let mut black_moves = ArrayVec::new();
+
+    let board = &board_state.bit_board;
+    let piece_board = &board_state.piece_board;
+
+    
+    //Pawns
+    let white_pawns = board.pawn & board.white_piece;
+    let pawn_left_attacks = white_pawns.translate(-1, 1);
+    for target_square in pawn_left_attacks.iterate_squares() {
+        let start_square = target_square.translate(1, -1);
+        add_pawn_move(&mut white_moves, start_square, target_square, ColoredPieceType::WhitePawn, piece_board);
+    }
+    let pawn_right_attacks = white_pawns.translate(1, 1);
+    for target_square in pawn_right_attacks.iterate_squares() {
+        let start_square = target_square.translate(-1, -1);
+        add_pawn_move(&mut white_moves, start_square, target_square, ColoredPieceType::WhitePawn, piece_board);
+    }
+
+    let black_pawns = board.pawn & board.black_piece;
+    let pawn_left_attacks = black_pawns.translate(-1, -1);
+    for target_square in pawn_left_attacks.iterate_squares() {
+        let start_square = target_square.translate(1, 1);
+        add_pawn_move(&mut black_moves, start_square, target_square, ColoredPieceType::BlackPawn, piece_board);
+    }
+    let pawn_right_attacks = black_pawns.translate(1, -1);
+    for target_square in pawn_right_attacks.iterate_squares() {
+        let start_square = target_square.translate(-1, 1);
+        add_pawn_move(&mut black_moves, start_square, target_square, ColoredPieceType::BlackPawn, piece_board);
+    }
+    
+    //Knights
+    let white_knights = board.knight & board.white_piece;
+    for square in white_knights.iterate_squares() {
+        let moveset = bit_array_lookup::KNIGHT_MOVES[square as usize];
+        for target_square in moveset.iterate_squares() {
+            white_moves.push(ChessMove::new(square, target_square, ColoredPieceType::WhiteKnight, piece_board[target_square]));
+        }
+    }
+
+    let black_knights = board.knight & board.black_piece;
+    for square in black_knights.iterate_squares() {
+        let moveset = bit_array_lookup::KNIGHT_MOVES[square as usize];
+        for target_square in moveset.iterate_squares() {
+            black_moves.push(ChessMove::new(square, target_square, ColoredPieceType::BlackKnight, piece_board[target_square]));
+        }
+    }
+
+
+    //Diagonal sliders
+    let occupied = board.white_piece | board.black_piece;
+    let white_diagonal_slider = board.diagonal_slider & board.white_piece;
+    for square in white_diagonal_slider.iterate_squares() {
+        let pt = piece_board[square];
+        let moveset = gen_bishop_moves_pext(square, occupied);
+        for target_square in moveset.iterate_squares() {
+            white_moves.push(ChessMove::new(square, target_square, pt, piece_board[target_square]));
+        }
+    }
+    let black_diagonal_slider = board.diagonal_slider & board.black_piece;
+    for square in black_diagonal_slider.iterate_squares() {
+        let pt = piece_board[square];
+        let moveset = gen_bishop_moves_pext(square, occupied);
+        for target_square in moveset.iterate_squares() {
+            black_moves.push(ChessMove::new(square, target_square, pt, piece_board[target_square]));
+        }
+    }
+
+    //Orthogonal sliders
+    let white_orthogonal_slider = board.orthogonal_slider & board.white_piece;
+    for square in white_orthogonal_slider.iterate_squares() {
+        let pt = piece_board[square];
+        let moveset = gen_rook_moves_pext(square, occupied);
+        for target_square in moveset.iterate_squares() {
+            white_moves.push(ChessMove::new(square, target_square, pt, piece_board[target_square]));
+        }
+    }
+    let black_orthogonal_slider = board.orthogonal_slider & board.black_piece;
+    for square in black_orthogonal_slider.iterate_squares() {
+        let pt = piece_board[square];
+        let moveset = gen_rook_moves_pext(square, occupied);
+        for target_square in moveset.iterate_squares() {
+            black_moves.push(ChessMove::new(square, target_square, pt, piece_board[target_square]));
+        }
+    }
+
+    //King
+    let wks = board.king_position(PlayerColor::White);
+    for square in KING_MOVES[wks as usize].iterate_squares() {
+        white_moves.push(ChessMove::new(wks, square, ColoredPieceType::WhiteKing, piece_board[square]));
+    }
+    
+    let bks = board.king_position(PlayerColor::Black);
+    for square in KING_MOVES[bks as usize].iterate_squares() {
+        black_moves.push(ChessMove::new(bks, square, ColoredPieceType::BlackKing, piece_board[square]));
+    }
+
+    return (white_moves, black_moves);
 }
 
 pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> MoveIterator {
