@@ -205,6 +205,10 @@ impl BitBoard {
         };
 
         attacked_bits |= (self.pawn & opponent).translate(1, dy) | (self.pawn & opponent).translate(-1, dy);
+
+        //King
+        let king_square = self.king_position(attacker_color);
+        attacked_bits |= KING_MOVES[king_square as usize];
         
         return attacked_bits;
     }

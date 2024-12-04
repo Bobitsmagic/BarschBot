@@ -1,10 +1,199 @@
 use arrayvec::ArrayVec;
 
-use crate::{board::{bit_array::BitArray, bit_array_lookup::{self, IN_BETWEEN_TABLE, KING_MOVES, ORTHOGONAL_MOVES, ROWS}, piece_board::{self, PieceBoard}, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, rank, square::{self, Square}}, game::{board_state::BoardState, game_flags::GameFlags}, moves::{check_pin_mask::CheckPinMask, slider_gen::{gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_rook_moves_kogge, gen_rook_moves_pext}}};
+use crate::{board::{bit_array::BitArray, bit_array_lookup::{self, IN_BETWEEN_TABLE, KING_MOVES, ORTHOGONAL_MOVES, ROWS}, piece_board::{self, PieceBoard}, piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, rank, square::{self, Square}}, game::{board_state::BoardState, game_flags::GameFlags, game_result::GameResult}, moves::{check_pin_mask::CheckPinMask, slider_gen::{gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_rook_moves_kogge, gen_rook_moves_pext}}};
 
 use super::{chess_move::ChessMove, move_iterator::MoveIterator};
 
 pub type MoveVector = ArrayVec<ChessMove, 200>;
+
+pub fn game_result(board_state: &BoardState, flags: &GameFlags) -> GameResult {
+    let board = &board_state.bit_board;
+
+    let occupied = board.white_piece | board.black_piece;
+    let moving_color = flags.active_color;
+
+    let empty = !occupied;
+    let allied = match moving_color {
+        PlayerColor::White => board.white_piece,
+        PlayerColor::Black => board.black_piece,
+    };
+
+    let opponent = match moving_color {
+        PlayerColor::White => board.black_piece,
+        PlayerColor::Black => board.white_piece,
+    };
+
+    let pin_mask = CheckPinMask::pins_on(moving_color, board);
+
+    //Pawns
+    let pawns = board.pawn & allied;
+    let dy = match moving_color {
+        PlayerColor::White => 1,
+        PlayerColor::Black => -1,
+    };
+    
+    let double_push_destination_rank = match moving_color {
+        PlayerColor::White => bit_array_lookup::ROWS[3],
+        PlayerColor::Black => bit_array_lookup::ROWS[4],
+    };
+    
+    //Captures
+    let mut ep_bit = if flags.en_passant_square.is_valid_square() { flags.en_passant_square.bit_array() } else { 0 };
+
+    ep_bit &= !pin_mask.diag.translate_vertical(dy); //The ep pawn can not be diagonally pinned
+
+    let row_index = match moving_color {
+        PlayerColor::White => 4,
+        PlayerColor::Black => 3,
+    };
+
+    let king_square = (allied & board.king).lowest_square_index();
+    //Horizontal ep pin
+    let hz_attacker = ROWS[row_index] & board.orthogonal_slider & opponent & ORTHOGONAL_MOVES[king_square as usize];
+
+    for attacker in hz_attacker.iterate_set_bits_indices() {
+        let between = IN_BETWEEN_TABLE[attacker as usize][king_square as usize];
+        if (between & occupied).count_ones() == 2 {
+            let intersection = between & occupied;
+
+            ep_bit &= !intersection.translate_vertical(dy);
+        }
+    }
+
+    let pawn_targets = (opponent | ep_bit) & pin_mask.check | (ep_bit & pin_mask.check.translate_vertical(dy));
+
+    let attack_pawns = pawns & !pin_mask.ortho; //Pawns that can attack
+
+    //Pinned pawns
+    let diagonal_pinned_pawns = attack_pawns & pin_mask.diag;
+
+    //Pawns that are diagonally pinned need to stay on the pin mask
+    let pawn_left_attacks = pawn_targets & diagonal_pinned_pawns.translate(-1, dy) & pin_mask.diag;
+    if pawn_left_attacks != 0 {
+        return GameResult::Undecided;
+    }
+    
+    let pawn_right_attacks = pawn_targets & diagonal_pinned_pawns.translate(1, dy) & pin_mask.diag;
+    if pawn_right_attacks != 0 {
+        return GameResult::Undecided;
+    }
+
+    //Not pinned pawns
+    let not_pinned_pawns = attack_pawns & !pin_mask.diag;
+
+    let pawn_left_attacks = pawn_targets & not_pinned_pawns.translate(-1, dy);
+    if pawn_left_attacks != 0 {
+        return GameResult::Undecided;
+    }
+
+    let pawn_right_attacks = pawn_targets & not_pinned_pawns.translate(1, dy);
+    if pawn_right_attacks != 0 {
+        return GameResult::Undecided;
+    }
+
+    //Pushes
+    let pushable_pawns = pawns & !pin_mask.diag;
+
+    //Pinned pawns
+    let orthogonal_pinned_pawns = pushable_pawns & pin_mask.ortho;
+
+    let pinned_pushes = empty & orthogonal_pinned_pawns.translate_vertical(dy) & pin_mask.ortho & pin_mask.check;
+    if pinned_pushes != 0 {
+        return GameResult::Undecided;
+    }
+
+    //Not pinned pawns
+    let not_pinned_pawns = pushable_pawns & !pin_mask.ortho ;
+    let not_pinned_pushes = empty & not_pinned_pawns.translate_vertical(dy) & pin_mask.check;
+    if not_pinned_pushes != 0 {
+        return GameResult::Undecided;
+    }
+
+    //Double pushes
+    let double_mask = pin_mask.check & double_push_destination_rank & empty;
+
+    let pinned_double_pushes = double_mask & 
+        ((pushable_pawns & pin_mask.ortho).translate_vertical(dy) & empty).translate_vertical(dy) & pin_mask.ortho; //Stay on pin
+
+    if pinned_double_pushes != 0 {
+        return GameResult::Undecided;
+    }
+    
+    let not_pinned_double_pushes = double_mask & 
+        ((pushable_pawns & !pin_mask.ortho).translate_vertical(dy) & empty).translate_vertical(dy);
+    
+    if not_pinned_double_pushes != 0 {
+        return GameResult::Undecided;
+    }
+
+    //Knights
+    let knights = board.knight & allied & !pin_mask.diag & !pin_mask.ortho;
+    for square in knights.iterate_squares() {
+        let moveset = bit_array_lookup::KNIGHT_MOVES[square as usize] & !allied & pin_mask.check;
+        if moveset != 0 {
+            return GameResult::Undecided;
+        }
+    }
+
+    //Diagonal sliders
+    let diagonal_sliders = board.diagonal_slider & allied & !pin_mask.ortho;
+
+    let pinned_diagonal_sliders = diagonal_sliders & pin_mask.diag;
+    for square in pinned_diagonal_sliders.iterate_squares() {
+        let moveset = gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.diag  & pin_mask.check; //Stay on pin
+        if moveset != 0 {
+            return GameResult::Undecided;
+        }
+    }
+
+    let not_pinned_diagonal_sliders = diagonal_sliders & !pin_mask.diag;
+    for square in not_pinned_diagonal_sliders.iterate_squares() {
+        let moveset = gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.check;
+        if moveset != 0 {
+            return GameResult::Undecided;
+        }
+    }
+
+    //Orthogonal sliders
+    let orthogonal_sliders = board.orthogonal_slider & allied & !pin_mask.diag;
+
+    let pinned_orthogonal_sliders = orthogonal_sliders & pin_mask.ortho;
+    for square in pinned_orthogonal_sliders.iterate_squares() {
+        let moveset = gen_rook_moves_pext(square, occupied) & !allied & pin_mask.ortho & pin_mask.check; //Stay on pin
+        if moveset != 0 {
+            return GameResult::Undecided;
+        }
+    }
+
+    let not_pinned_orthogonal_sliders = orthogonal_sliders & !pin_mask.ortho;
+    for square in not_pinned_orthogonal_sliders.iterate_squares() {
+        let moveset = gen_rook_moves_pext(square, occupied) & !allied & pin_mask.check;
+        if moveset != 0 {
+            return GameResult::Undecided;
+        }
+    }
+
+    //King moves
+    let king_square = (board.king & allied).lowest_square_index() as i8;
+    let king_moves = bit_array_lookup::KING_MOVES[king_square as usize] & !allied;
+
+    let attacked_squares = board_state.bit_board.attacked_bits_through_king(!moving_color);
+    if (king_moves & !attacked_squares) != 0 {
+        return GameResult::Undecided;
+    }
+
+    // pin_mask.check.print();
+
+    if pin_mask.check != u64::MAX { 
+        match flags.active_color {
+            PlayerColor::White => GameResult::BlackWin,
+            PlayerColor::Black => GameResult::WhiteWin,
+        }
+    }
+    else {
+        GameResult::Draw
+    }
+}
 
 pub fn count_moves(board_state: &BoardState, flags: &GameFlags) -> u32 {
     let mut count = 0;

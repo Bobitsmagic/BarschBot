@@ -1,5 +1,7 @@
 use crate::{board::{bit_board::BitBoard, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::VALID_SQUARES}, moves::chess_move::ChessMove};
 
+use super::game_result::GameResult;
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct BoardState {
     pub piece_board: PieceBoard,

@@ -106,11 +106,11 @@ mod tests {
 
     #[test]
     fn test_perft_files() {
-        for p in 0..5 {
+        for p in 0..4 {
             let fen = PERFT_FENS[p];
 
             println!("Testing fen: {}", fen);
-            for depth in 0..4 {
+            for depth in 0..5 {
                 let map = load_perft_file(&format!("data/p{}_perft/perft_{}.txt", p, depth));
     
                 check_dfs(&mut GameState::from_fen(fen), depth, &map);
@@ -292,7 +292,7 @@ mod tests {
             let fen = FENS[i];            
             let res = RESULTS[i];
             
-            let game_state = GameState::from_fen(fen);
+            let mut game_state = GameState::from_fen(fen);
             println!("Testing fen: {}", fen);
             game_state.board_state.piece_board.print();
             
