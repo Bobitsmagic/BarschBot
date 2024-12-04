@@ -1,5 +1,7 @@
 
 
+use std::collections::{HashMap, HashSet};
+
 use crate::{board::{dynamic_state::DynamicState, piece_board::PieceBoard, player_color::PlayerColor, zobrist_hash::ZobristHash}, fen::fen_helper, moves::{chess_move::ChessMove, move_gen::{self, MoveVector}, move_iterator::MoveIterator}};
 
 use super::{board_state::BoardState, game_flags::GameFlags, game_result::GameResult};
@@ -8,6 +10,7 @@ use super::{board_state::BoardState, game_flags::GameFlags, game_result::GameRes
 pub struct GameState {
     pub board_state: BoardState,
     pub zobrist_hash: ZobristHash,
+    pub visited_pos: HashSet<u64>,
     pub move_stack: Vec<ChessMove>,
     pub flag_stack: Vec<GameFlags>,
     pub legal_moves: Option<MoveVector>,
@@ -23,16 +26,6 @@ impl PartialEq for GameState {
 }
 
 impl GameState {
-    pub fn new() -> GameState {
-        GameState {
-            board_state: BoardState::empty(),
-            move_stack: Vec::new(),
-            flag_stack: vec![GameFlags::start_flags()],
-            zobrist_hash: ZobristHash::empty(),
-            legal_moves: None,
-        }
-    }
-
     pub fn start_position() -> GameState {
         GameState {
             board_state: BoardState::start_position(),
@@ -40,6 +33,7 @@ impl GameState {
             flag_stack: vec![GameFlags::start_flags()],
             zobrist_hash: ZobristHash::from_position(&PieceBoard::start_position(), GameFlags::start_flags()),
             legal_moves: None,
+            visited_pos: HashSet::new(),
         }
     }
 
@@ -68,11 +62,17 @@ impl GameState {
             flag_stack: vec![flags],
             zobrist_hash: ZobristHash::from_position(&pb, flags),
             legal_moves: None,
+            visited_pos: HashSet::new(),
         }
     }
 
     pub fn make_move(&mut self, m: ChessMove) {
         self.legal_moves = None;
+
+        if !self.visited_pos.insert(self.zobrist_hash.hash) {
+            self.board_state.piece_board.print();
+            panic!("Repetition detected");
+        }
 
         self.board_state.make_move(m);
         self.move_stack.push(m);
@@ -82,6 +82,7 @@ impl GameState {
         self.zobrist_hash.toggle_flags(new_flags); //Remove old flags
         new_flags.make_move(m, &self.board_state.bit_board);
         self.zobrist_hash.toggle_flags(new_flags); //Add new flags
+
 
         self.flag_stack.push(new_flags);
     }
@@ -97,6 +98,11 @@ impl GameState {
 
         self.zobrist_hash.toggle_flags(top_flag); //Remove latest
         self.zobrist_hash.toggle_flags(*self.flag_stack.last().unwrap()); //Add old flags
+
+        if !self.visited_pos.remove(&self.zobrist_hash.hash) {
+            self.board_state.piece_board.print();
+            panic!("Previous position not found");
+        }
     }
 
     pub fn gen_legal_moves(&mut self) -> MoveVector {
@@ -111,6 +117,11 @@ impl GameState {
     }
 
     pub fn game_result(&self) -> GameResult {
+        if self.visited_pos.contains(&self.zobrist_hash.hash) {
+            // self.board_state.piece_board.print();
+            return GameResult::Draw;
+        }
+
         move_gen::game_result(&self.board_state, &self.get_flags())
     }
 }

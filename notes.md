@@ -21,7 +21,27 @@ Done
 - Endgame table with undo_move enumeration
 - Opening book with lichess database
 
-## Benchmarking
+## Benchmarking search
+
+NegaMax:
+
+- Nodes: 113068461
+- Evals: 109625445
+- Time: 95521
+
+NegaAlphaBeta:
+
+- Nodes: 2882936
+- Evals: 2566585
+- Time: 2216
+
+NegaAlphaBeta + move Sorter:
+
+- Nodes: 577339
+- Evals: 434558
+- Time: 407
+
+## Benchmarking Move gen
 
 - `cargo rustc --bin benchmark --release -- -C target-cpu=native`
 
@@ -57,11 +77,11 @@ Depth + 1
 
 Todo
 
-- dynamic attack board
-- const expr `<const WHITE: bool>`
+- const expr `<const WHITE: bool>` //Not doable because there are no const expr?
 
 Done
 
+- dynamic attack board  (Big fail)
 - `blsr` for BitArray iterator
 - `pext` for slider
 - move list with `ArrayVec<(BitArray, Square)>`

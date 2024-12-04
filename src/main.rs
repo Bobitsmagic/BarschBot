@@ -82,10 +82,9 @@ fn bot_battle(engine_handle: VisHandle) {
         // }
 
 
-        let (m, eval) = search_functions::nega_alpha_beta(&mut gs, 6);
+        let (m, eval, _) = search_functions::nega_alpha_beta(&mut gs, 8);
 
         gs.make_move(m);
-
 
 
         println!("Eval: {}", eval);
