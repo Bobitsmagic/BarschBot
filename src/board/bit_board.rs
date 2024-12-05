@@ -325,6 +325,53 @@ impl BitBoard {
         return self.square_is_attacked_by(self.king_position(color), !color);
     }
 
+    pub fn attacks_king(&self, pt: ColoredPieceType, square: i8 )-> bool {
+        let king_square = self.king_position(!pt.color());
+        
+        match pt.piece_type() {
+            PieceType::Pawn => {
+                let dy = match pt.color() {
+                    PlayerColor::White => 1,
+                    PlayerColor::Black => -1,
+                };
+
+                return square.translate(-1, dy) == king_square || square.translate(1, dy) == king_square;
+            },
+            PieceType::Knight => {
+                return KNIGHT_MOVES[square as usize].get_bit(king_square);
+            },
+            PieceType::Bishop => {
+                if DIAGONAL_MOVES[square as usize].get_bit(king_square) {
+                    let between = IN_BETWEEN_TABLE[square as usize][king_square as usize];
+                    return between == 0;
+                }
+                return false;
+            },
+            PieceType::Rook => {
+                if ORTHOGONAL_MOVES[square as usize].get_bit(king_square) {
+                    let between = IN_BETWEEN_TABLE[square as usize][king_square as usize];
+                    return between == 0;
+                }
+                return false;
+            },
+            PieceType::Queen => {
+                if DIAGONAL_MOVES[square as usize].get_bit(king_square) {
+                    let between = IN_BETWEEN_TABLE[square as usize][king_square as usize];
+                    return between == 0;
+                }
+                if ORTHOGONAL_MOVES[square as usize].get_bit(king_square) {
+                    let between = IN_BETWEEN_TABLE[square as usize][king_square as usize];
+                    return between == 0;
+                }
+                return false;
+            },
+            PieceType::King => {
+                return false;
+            },
+            PieceType::None => panic!("Invalid piece type"),
+        }
+    }
+
     pub fn get_piecetype(&self, square: i8) -> PieceType {
         if !(self.white_piece | self.black_piece).get_bit(square) {
             return PieceType::None;

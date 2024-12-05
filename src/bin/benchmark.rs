@@ -1,4 +1,4 @@
-use barschbot::{board::{piece_type::PieceType, rank, square::Square}, evaluation::{search_functions::{get_random_pos, nega_alpha_beta, nega_max}, search_stats::SearchStats}, game::game_state::GameState, moves::{move_gen, perft_tests::PERFT_FENS}};
+use barschbot::{board::{piece_type::PieceType, rank, square::Square}, evaluation::{search_functions::{get_random_pos, iterative_deepening, nega_alpha_beta, nega_alpha_beta_tt, nega_max, nega_scout}, search_stats::SearchStats}, game::game_state::GameState, moves::{chess_move::ChessMove, move_gen, perft_tests::PERFT_FENS}};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
@@ -118,14 +118,19 @@ fn count_moves(game_state: &mut GameState, depth: u8) -> u64 {
 }
 
 pub fn bench_search_functions() {
+    const MAX_DEPTH: i32 = 6;
+
     let mut rng = ChaCha8Rng::seed_from_u64(1);
 
-    let mut sum_stats_1 = SearchStats::new();
-    let mut sum_stats_2 = SearchStats::new();
+    const FUNCTIONS: [fn(&mut GameState, i32) -> (ChessMove, i32, SearchStats); 4] = [nega_alpha_beta, nega_scout, iterative_deepening, nega_alpha_beta_tt];
 
+    
+    let mut sum_stats = Vec::new();
+    let mut times = vec![0; FUNCTIONS.len()];
 
-    let mut time_1 = 0;
-    let mut time_2 = 0;
+    for _ in 0..FUNCTIONS.len() {
+        sum_stats.push(SearchStats::new());
+    }
 
     for i in 0..100 {
         println!("Iteration: {}", i);
@@ -133,29 +138,29 @@ pub fn bench_search_functions() {
         let depth = rng.gen_range(10..50);
         let gs = get_random_pos(depth, &mut rng);
         
-        let start = std::time::Instant::now();
-        let (m1, eval1, stats1) = nega_max(&mut gs.clone(), 4);
-        time_1 += start.elapsed().as_millis();
-
-        let start = std::time::Instant::now();
-        let (m2, eval2, stats2) = nega_alpha_beta(&mut gs.clone(), 4);
-        time_2 += start.elapsed().as_millis();
-        
-        if eval1 != eval2 {
-            println!("Different evals");
-            println!("  {:?} {:?}", m1, eval1);
-            println!("  {:?} {:?}", m2, eval2);
-            panic!();
+        let mut evals = Vec::new();
+        for j in 0..FUNCTIONS.len() {
+            let start = std::time::Instant::now();
+            let (_, eval, stats) = FUNCTIONS[j](&mut gs.clone(), MAX_DEPTH);
+            times[j] += start.elapsed().as_millis();
+            sum_stats[j].add(&stats);
+            evals.push(eval);
         }
 
-        sum_stats_1.add(&stats1);
-        sum_stats_2.add(&stats2);    
+        for j in 1..FUNCTIONS.len() {
+            if evals[j] != evals[0] {
+                println!("Different move found!");
+                gs.board_state.piece_board.print();
+                println!("index: {}", j);
+                println!("Evals: {} {}", evals[0], evals[j]);
+                panic!();
+            }
+        }
     }
 
-    println!("NegaMax:");
-    sum_stats_1.print();
-    println!("Time: {}", time_1);
-    println!("NegaAlphaBeta:");
-    sum_stats_2.print();
-    println!("Time: {}", time_2);
+    for i in 0..FUNCTIONS.len() {
+        println!("Function: {}", i);
+        println!("Time: {} ms", times[i]);
+        sum_stats[i].print();
+    }
 }

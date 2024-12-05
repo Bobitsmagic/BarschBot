@@ -23,6 +23,8 @@ Done
 
 ## Benchmarking search
 
+### Depth 4
+
 NegaMax:
 
 - Nodes: 113068461
@@ -40,6 +42,46 @@ NegaAlphaBeta + move Sorter:
 - Nodes: 577339
 - Evals: 434558
 - Time: 407
+
+NegaScout:
+
+- Nodes: 626283
+- Evals: 483698
+- Time: 444
+
+### Depth 6
+
+NegaAlphaBeta:
+
+- Nodes: 24224135
+- Evals: 18568434
+- Time: 18961
+
+NegaScout:
+
+- Nodes: 21397158
+- Evals: 16604698
+- Time: 16417
+
+Move sorter with check:
+
+NegaAlphaBeta:
+
+- Nodes: 20611073
+- Evals: 15987200
+- Time: 16753
+
+NegaScout:
+
+- Nodes: 17484697
+- Evals: 13632489
+- Time: 14031
+
+NegaScout + Iterative deepening + Transposition Table
+
+- Time: 9140 ms
+- Nodes: 11030822
+- Evals: 8219554
 
 ## Benchmarking Move gen
 
