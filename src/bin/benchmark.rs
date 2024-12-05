@@ -1,4 +1,4 @@
-use barschbot::{board::{piece_type::PieceType, rank, square::Square}, evaluation::{search_functions::{get_random_pos, iterative_deepening, nega_alpha_beta, nega_alpha_beta_tt, nega_max, nega_scout}, search_stats::SearchStats}, game::game_state::GameState, moves::{chess_move::ChessMove, move_gen, perft_tests::PERFT_FENS}};
+use barschbot::{board::{piece_type::PieceType, rank, square::Square}, evaluation::{search_functions::{get_random_pos, iterative_deepening, nega_alpha_beta, nega_alpha_beta_tt, nega_alpha_beta_tt_qmt, nega_max, nega_scout}, search_stats::SearchStats}, game::game_state::GameState, moves::{chess_move::ChessMove, move_gen, perft_tests::PERFT_FENS}};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
@@ -118,11 +118,11 @@ fn count_moves(game_state: &mut GameState, depth: u8) -> u64 {
 }
 
 pub fn bench_search_functions() {
-    const MAX_DEPTH: i32 = 6;
+    const MAX_DEPTH: i32 = 9;
 
-    let mut rng = ChaCha8Rng::seed_from_u64(1);
+    let mut rng = ChaCha8Rng::seed_from_u64(2);
 
-    const FUNCTIONS: [fn(&mut GameState, i32) -> (ChessMove, i32, SearchStats); 4] = [nega_alpha_beta, nega_scout, iterative_deepening, nega_alpha_beta_tt];
+    const FUNCTIONS: [fn(&mut GameState, i32) -> (ChessMove, i32, SearchStats); 2] = [nega_alpha_beta_tt, nega_alpha_beta_tt_qmt];
 
     
     let mut sum_stats = Vec::new();
@@ -137,7 +137,7 @@ pub fn bench_search_functions() {
 
         let depth = rng.gen_range(10..50);
         let gs = get_random_pos(depth, &mut rng);
-        
+
         let mut evals = Vec::new();
         for j in 0..FUNCTIONS.len() {
             let start = std::time::Instant::now();

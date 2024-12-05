@@ -83,6 +83,12 @@ NegaScout + Iterative deepening + Transposition Table
 - Nodes: 11030822
 - Evals: 8219554
 
+NegaScout + Iterative deepening + Transposition Table + Quiet move table
+
+- Time: 7404 ms
+- Nodes: 8991583
+- Evals: 6537089
+
 ## Benchmarking Move gen
 
 - `cargo rustc --bin benchmark --release -- -C target-cpu=native`
