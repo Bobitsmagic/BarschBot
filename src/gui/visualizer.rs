@@ -102,8 +102,13 @@ impl Visualizer {
                         let width = self.window.window.window.inner_size().width;
                         let height = self.window.window.window.inner_size().height;
 
-                        let start = transfrom_choords(self.last_click_pos, width, height);
-                        let end = transfrom_choords(self.cursor_pos, width, height);
+                        let mut start = transfrom_choords(self.last_click_pos, width, height);
+                        let mut end = transfrom_choords(self.cursor_pos, width, height);
+
+                        if self.latest_render_state.flip {
+                            start = start.rotate_180();
+                            end = end.rotate_180();
+                        }                
 
                         let mpt = self.latest_render_state.piece_board[start];
                         let cpt = self.latest_render_state.piece_board[end];
@@ -212,7 +217,7 @@ impl Visualizer {
                     
                     if !lm.is_null_move() {
                         if sq == lm.start || 
-                        sq == lm.end {
+                         sq == lm.end {
                             if sq.is_light() {
                                 rectangle(LIGHT_MOVE_SQUARE, square, transform, graphics);
                             }
@@ -246,8 +251,8 @@ impl Visualizer {
 
             //Draw file names
             for x in 0..8 {
-                let text = format!("{}", FILE_NAMES[x]);        
-                let color = if x % 2 == 0 { DARK_SQUARE } else { LIGHT_SQUARE };
+                let text = format!("{}", FILE_NAMES[if flip { 7 - x } else { x }]);        
+                let color = if x % 2 == 1 { DARK_SQUARE } else { LIGHT_SQUARE };
                 let position = x as f64 * square_side_length;
 
                 text::Text::new_color(color, SQUARE_FONT_SIZE)
@@ -262,8 +267,8 @@ impl Visualizer {
             }
             //Draw rank names
             for y in 0..8 {
-                let text = format!("{}", 8 - y);        
-                let color = if y % 2 == 0 { DARK_SQUARE } else { LIGHT_SQUARE };
+                let text = format!("{}", if flip { y + 1 } else { 8 - y });        
+                let color = if y % 2 == 1 { DARK_SQUARE } else { LIGHT_SQUARE };
                 let position = y as f64 * square_side_length;
 
                 let text_width = self.glyphs.width(SQUARE_FONT_SIZE, &text).unwrap();
@@ -279,17 +284,19 @@ impl Visualizer {
             }
 
             if !lm.is_null_move() {
-                let mx = lm.start.file() as f64 + 
-                    (lm.end.file() as f64 - lm.start.file() as f64) * ratio;
-            
-                let my = lm.start.rank() as f64 + 
-                    (lm.end.rank() as f64 - lm.start.rank() as f64) * ratio;
+                let x = lm.end.file();
+                let y = lm.end.rank();
 
-                let transform = context
+                let mut transform = context
+                .transform
+                    .trans(x as f64 * square_side_length, (7 - y)  as f64 * square_side_length);
+
+                if flip {
+                    transform = context
                     .transform
-                    .trans(mx * square_side_length, (7.0 - my) as f64 * square_side_length);
+                    .trans((7 - x) as f64 * square_side_length, y  as f64 * square_side_length);
+                }
 
-                
                 let mut texture = &self.textures[lm.move_piece as usize];
 
                 if lm.is_promotion() && ratio > 0.9 {
