@@ -118,11 +118,11 @@ fn count_moves(game_state: &mut GameState, depth: u8) -> u64 {
 }
 
 pub fn bench_search_functions() {
-    const MAX_DEPTH: i32 = 9;
+    const MAX_DEPTH: i32 = 7;
 
     let mut rng = ChaCha8Rng::seed_from_u64(2);
 
-    const FUNCTIONS: [fn(&mut GameState, i32) -> (ChessMove, i32, SearchStats); 2] = [nega_alpha_beta_tt, nega_alpha_beta_tt_qmt];
+    const FUNCTIONS: [fn(&mut GameState, i32) -> (ChessMove, i32, SearchStats); 3] = [nega_alpha_beta_tt, nega_alpha_beta_tt_qmt, nega_scout];
 
     
     let mut sum_stats = Vec::new();

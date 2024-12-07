@@ -681,6 +681,10 @@ pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> 
 }
 
 pub fn gen_legal_moves(board_state: &BoardState, flags: &GameFlags) -> MoveVector {
+    gen_legal_moves_check(board_state, flags).0
+}
+
+pub fn gen_legal_moves_check(board_state: &BoardState, flags: &GameFlags) -> (MoveVector, bool) {
     let mut moves = ArrayVec::new();
 
     let board = &board_state.bit_board;
@@ -917,7 +921,7 @@ pub fn gen_legal_moves(board_state: &BoardState, flags: &GameFlags) -> MoveVecto
         }
     }
 
-    return moves;
+    return (moves, pin_mask.check != u64::MAX);
 }
 
 fn add_pawn_move(list: &mut MoveVector, start_square: i8, target_square: i8, pt: ColoredPieceType, piece_board: &PieceBoard) {

@@ -88,7 +88,8 @@ impl ChessMove {
         }
     }
 
-    pub fn print(&self) {
+
+    pub fn to_string(&self) -> String {
         let mut s = String::new();
         s += &self.move_piece.to_char().to_string();
         s += &self.start.square_string();
@@ -108,8 +109,11 @@ impl ChessMove {
         if self.is_promotion() {
             s += &self.promotion_piece.to_char().to_string();
         }
-        
-        println!("{}", s);
+
+        s
+    }
+    pub fn print(&self) {
+        println!("{}", self.to_string());
     }
     
     pub fn is_null_move(&self) -> bool {

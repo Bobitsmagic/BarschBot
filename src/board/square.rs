@@ -98,6 +98,9 @@ pub trait Square {
     fn left(self) -> Self;
     fn right(self) -> Self;
     fn translate(&self, dx: i8, dy: i8) -> Self;
+    fn flip_x(self) -> Self;
+    fn flip_y(self) -> Self;
+    fn rotate_180(self) -> Self;
 }
 
 pub fn from_file_rank(file: i8, rank: i8) -> i8 {
@@ -147,14 +150,14 @@ impl Square for i8 {
         let rank = self.rank();
         let file = self.file();
 
-        (rank + file) % 2 == 0
+        (rank + file) % 2 == 1
     }
 
     fn is_dark(self) -> bool {
         let rank = self.rank();
         let file = self.file();
 
-        (rank + file) % 2 == 1
+        (rank + file) % 2 == 0
     }
 
     fn rank(self) -> i8 {
@@ -207,6 +210,17 @@ impl Square for i8 {
         self + 1
     }
 
+    fn flip_x(self) -> i8 {
+        self ^ 7
+    }
+    fn flip_y(self) -> i8 {
+        self ^ 56 // 7 * 8
+    }
+
+    fn rotate_180(self) -> i8 {
+        self ^ 63 // 7 * 8 + 7
+    }
+
     fn translate(&self, dx: i8, dy: i8) -> i8 {
         let delta = dx + (dy * 8);
 
@@ -244,6 +258,23 @@ mod square_tests {
                 let square = square::from_file_rank(x, y);
                 assert_eq!(square.file(), x);
                 assert_eq!(square.rank(), y);
+            }
+        }
+    }
+
+    #[test]
+    fn test_flips() {
+        for x in 0..8 {
+            for y in 0..8 {
+                let square = square::from_file_rank(x, y);
+                assert_eq!(square.flip_x().flip_x(), square);
+                assert_eq!(square.flip_y().flip_y(), square);
+                assert_eq!(square.rotate_180().rotate_180(), square);
+
+                assert_eq!(square.flip_x().file(), 7 - x);
+                assert_eq!(square.flip_y().rank(), 7 - y);
+                assert_eq!(square.rotate_180().file(), 7 - x);
+                assert_eq!(square.rotate_180().rank(), 7 - y);
             }
         }
     }

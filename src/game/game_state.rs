@@ -88,9 +88,12 @@ impl GameState {
     }
 
     pub fn undo_move(&mut self) {
+
+
         self.legal_moves = None;
 
         let m = self.move_stack.pop().unwrap();
+
         self.board_state.undo_move(m);
         self.zobrist_hash.undo_move(m);
 

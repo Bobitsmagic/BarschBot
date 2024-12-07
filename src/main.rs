@@ -48,10 +48,11 @@ fn bot_battle(engine_handle: VisHandle) {
     engine_handle.send_render_state(RenderState::render_move(
         gs.board_state.piece_board.clone(),
         chess_move::NULL_MOVE,
-        false
+        true
     ));
     
-    loop {
+    let mut time_left = 1000 * 60 * 1;
+    loop { 
         // gs.board_state.piece_board.print();
 
         let moves = gs.gen_legal_moves();
@@ -68,7 +69,7 @@ fn bot_battle(engine_handle: VisHandle) {
                 engine_handle.send_render_state(RenderState::render_move(
                     gs.board_state.piece_board.clone(),
                     uci,
-                    false
+                    true
                 ));
 
                 break;
@@ -82,7 +83,12 @@ fn bot_battle(engine_handle: VisHandle) {
         // }
 
 
-        let (m, eval, _) = search_functions::nega_alpha_beta(&mut gs, 8);
+        // let (m, eval, _) = search_functions::engine_search(&mut gs, 8);
+        let start_time = std::time::Instant::now();
+        let (m, eval, _) = search_functions::timed_search(&mut gs, time_left);
+        time_left -= start_time.elapsed().as_millis();
+
+        println!("Time left: {}", time_left);
 
         gs.make_move(m);
 
@@ -92,7 +98,7 @@ fn bot_battle(engine_handle: VisHandle) {
         engine_handle.send_render_state(RenderState::render_move(
             gs.board_state.piece_board.clone(),
             m,
-            false
+            true
         ));
     }
 }
