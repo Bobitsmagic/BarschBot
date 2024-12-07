@@ -1,6 +1,8 @@
+use core::time;
 use std::{thread, time::Duration};
 
 use barschbot::{board::{piece_type::ColoredPieceType, square}, evaluation::search_functions, game::game_state::GameState, gui::{engine_handle::{self, EngineHandle}, render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, moves::chess_move::{self, ChessMove}};
+use piston_window::color::BLACK;
 use rand::seq::SliceRandom;
 
 fn main() {    
@@ -41,64 +43,98 @@ fn random_moves(engine_handle: VisHandle) {
     }
 }
 
+
+//Error at r6k/1bpp1pp1/2q1r2p/p3PQ2/4BP2/P1B3R1/1PP3PP/2KR4 b - - 0 23
 fn bot_battle(engine_handle: VisHandle) {
+    const PLAY_BLACK: bool = true;
+
     let mut gs = GameState::start_position();
     // let mut gs = GameState::from_fen("6k1/8/1R3K2/8/8/8/8/8 w - - 0 1");
 
-    engine_handle.send_render_state(RenderState::render_move(
+
+    
+    const START_TIME : u128 = 1000 * 60 * 5;
+    let mut white_time_left = START_TIME;
+    let mut black_time_left = START_TIME;
+
+    engine_handle.send_render_state(RenderState::render_move_timed(
         gs.board_state.piece_board.clone(),
         chess_move::NULL_MOVE,
-        true
+        PLAY_BLACK,
+        white_time_left,
+        black_time_left
     ));
-    
-    let mut time_left = 1000 * 60 * 1;
+
+    if PLAY_BLACK {
+        let (m, time_used) = get_bot_move(&mut gs, black_time_left);
+        gs.make_move(m);
+
+        white_time_left -= time_used.min(white_time_left);
+
+        engine_handle.send_render_state(RenderState::render_move_timed(
+            gs.board_state.piece_board.clone(),
+            m,
+            PLAY_BLACK,
+            white_time_left,
+            black_time_left
+        ));
+    }
+//43
     loop { 
-        // gs.board_state.piece_board.print();
+        let (m, time_used) = get_human_move(&mut gs, &engine_handle);
+        gs.make_move(m);
 
+        if PLAY_BLACK {
+            black_time_left -= time_used.min(black_time_left);
+        } else {
+            white_time_left -= time_used.min(white_time_left);
+        }
+
+        engine_handle.send_render_state(RenderState::render_move_timed(
+            gs.board_state.piece_board.clone(),
+            m,
+            PLAY_BLACK,
+            white_time_left,
+            black_time_left
+        ));
+
+        let (m, time_used) = get_bot_move(&mut gs, black_time_left);
+        gs.make_move(m);
+
+        if PLAY_BLACK {
+            white_time_left -= time_used.min(white_time_left);
+        } else {
+            black_time_left -= time_used.min(black_time_left);
+        }
+
+
+        println!("White time left: {}", white_time_left);
+        println!("Black time left: {}", black_time_left);
+        engine_handle.send_render_state(RenderState::render_move_timed(
+            gs.board_state.piece_board.clone(),
+            m,
+            PLAY_BLACK,
+            white_time_left,
+            black_time_left
+        ));
+    }
+
+    fn get_bot_move(gs: &mut GameState, time_left: u128) -> (ChessMove, u128) {
+        let start_time = std::time::Instant::now();
+        let (m, _, _) = search_functions::timed_search(gs, time_left);
+        let time_used = start_time.elapsed().as_millis();
+        (m, time_used)
+    }
+
+    fn get_human_move(gs: &mut GameState, engine_handle: &VisHandle) -> (ChessMove, u128) {
+        let start_time = std::time::Instant::now();
         let moves = gs.gen_legal_moves();
-
-        // for m in moves.iter() {
-        //     m.print();
-        // }
-
         loop {
             let uci = engine_handle.recive_move();
 
             if moves.contains(&uci) {
-                gs.make_move(uci);
-                engine_handle.send_render_state(RenderState::render_move(
-                    gs.board_state.piece_board.clone(),
-                    uci,
-                    true
-                ));
-
-                break;
+                return (uci, start_time.elapsed().as_millis());
             }
         }
-
-        // for d in 0..9 {
-        //     println!("Depth: {}", d);
-        //     let (m, eval) = search_functions::nega_alpha_beta(&mut gs, d);
-        //     println!("Eval: {}", eval);
-        // }
-
-
-        // let (m, eval, _) = search_functions::engine_search(&mut gs, 8);
-        let start_time = std::time::Instant::now();
-        let (m, eval, _) = search_functions::timed_search(&mut gs, time_left);
-        time_left -= start_time.elapsed().as_millis();
-
-        println!("Time left: {}", time_left);
-
-        gs.make_move(m);
-
-
-        println!("Eval: {}", eval);
-
-        engine_handle.send_render_state(RenderState::render_move(
-            gs.board_state.piece_board.clone(),
-            m,
-            true
-        ));
     }
 }

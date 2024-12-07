@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use piston::{Button, Event, Key, MouseButton, MouseCursorEvent, PressEvent, ReleaseEvent, RenderEvent, UpdateEvent, WindowSettings};
 use piston_window::{graphics, Flip, G2dTexture, Glyphs, OpenGL, PistonWindow, Texture, TextureSettings};
 
-use crate::{board::{piece_type::{ColoredPieceType, PieceType}, square::{self, Square}}, gui::render_state::ANIMATION_TIME, moves::chess_move::ChessMove};
+use crate::{board::{piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, square::{self, Square}}, gui::render_state::ANIMATION_TIME, moves::chess_move::ChessMove};
 
 use super::{engine_handle::EngineHandle, render_state::RenderState};
 
@@ -18,13 +18,16 @@ pub struct Visualizer {
     cursor_pos: [f64; 2],
 }
 
-const SIDE_LENGTH: u32 = 900;
+const BOARD_SIDE_LENGTH: u32 = 900;
+const INFO_PANEL_WIDTH: u32 = 500;
+const WINDOW_HEIGHT: u32 = 900;
+const WINDOW_WIDTH: u32 = BOARD_SIDE_LENGTH + INFO_PANEL_WIDTH;
 
 impl Visualizer {
     pub fn new(engine_handle: EngineHandle) -> Self {
         let opengl = OpenGL::V3_2;
         let mut window: PistonWindow =
-            WindowSettings::new("Chess stuff", [SIDE_LENGTH, SIDE_LENGTH])
+            WindowSettings::new("Chess stuff", [WINDOW_WIDTH, WINDOW_HEIGHT])
             .exit_on_esc(true)
             .graphics_api(opengl)
             .build()
@@ -99,8 +102,8 @@ impl Visualizer {
                     Button::Mouse(MouseButton::Left) => {
                         println!("Handle move from {:?} to {:?}", self.last_click_pos, self.cursor_pos);
 
-                        let width = self.window.window.window.inner_size().width;
-                        let height = self.window.window.window.inner_size().height;
+                        let width = BOARD_SIDE_LENGTH;
+                        let height = BOARD_SIDE_LENGTH;
 
                         let mut start = transfrom_choords(self.last_click_pos, width, height);
                         let mut end = transfrom_choords(self.cursor_pos, width, height);
@@ -165,6 +168,20 @@ impl Visualizer {
             }
             else if let Some(args) = e.update_args() {
                 self.latest_render_state.animation_time += args.dt;
+
+                if !self.latest_render_state.lm.move_piece.is_none() {
+                    if self.latest_render_state.lm.move_piece.color() == PlayerColor::White {
+                        self.latest_render_state.black_time -= ((args.dt * 1000.0) as u128).min(self.latest_render_state.black_time);
+                    }
+                    else {
+                        self.latest_render_state.white_time -= ((args.dt * 1000.0) as u128).min(self.latest_render_state.white_time);
+                    }
+                }
+                else {
+                    self.latest_render_state.white_time -= ((args.dt * 1000.0) as u128).min(self.latest_render_state.white_time);
+                }
+
+                
             }
         }
     }
@@ -172,15 +189,22 @@ impl Visualizer {
     pub fn render_board(&mut self, event: Event) -> bool {
         use graphics::*;
         
+        const BACKGROUND: [f32; 4] = [36.0 / 255.0, 41.0 / 255.0, 46.0 / 255.0, 1.0];
+        const TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+
         const LIGHT_SQUARE: [f32; 4] = [240.0 / 255.0, 217.0 / 255.0, 181.0 / 255.0, 1.0];
         const DARK_SQUARE: [f32; 4] = [181.0 / 255.0, 136.0 / 255.0, 99.0 / 255.0, 1.0];
         const LIGHT_MOVE_SQUARE: [f32; 4] = [205.0 / 255.0, 210.0 / 255.0, 106.0 / 255.0, 1.0];
         const DARK_MOVE_SQUARE: [f32; 4] = [170.0 / 255.0, 162.0 / 255.0, 58.0 / 255.0, 1.0];
+
         const FILE_NAMES: [&str; 8] = ["a", "b", "c", "d", "e", "f", "g", "h"];
+
         
-        let square_side_length = self.window.window.window.inner_size().width as f64 / 8.0;
-        let window_height = self.window.window.window.inner_size().height as f64;
-        let window_width = self.window.window.window.inner_size().width as f64;
+        const TIME_FONT_SIZE: u32 = 30;
+        const SQUARE_FONT_SIZE: u32 = 20;
+        const SQUARE_MARGIN: f64 = 5.0;
+        
+        let square_side_length = BOARD_SIDE_LENGTH as f64 / 8.0;
         let square = rectangle::square(0.0, 0.0, square_side_length);
 
         let lm = self.latest_render_state.lm;
@@ -191,10 +215,8 @@ impl Visualizer {
         let ratio = completion - 0.1 * (completion * std::f64::consts::PI * 2.0).sin();
         
         self.window.draw_2d(&event, |context, graphics, device| {
-            clear(DARK_SQUARE, graphics);
+            clear(BACKGROUND, graphics);
 
-            const SQUARE_FONT_SIZE: u32 = 20;
-            const SQUARE_MARGIN: f64 = 5.0;
 
             for x in 0..8 {
                 for y in 0..8 {
@@ -212,7 +234,10 @@ impl Visualizer {
 
                     if sq.is_light() {
                         rectangle(LIGHT_SQUARE, square, transform, graphics);
-                    } 
+                    }
+                    else {
+                        rectangle(DARK_SQUARE, square, transform, graphics);
+                    }
 
                     
                     if !lm.is_null_move() {
@@ -247,8 +272,6 @@ impl Visualizer {
 
                 }
             }
-
-
             //Draw file names
             for x in 0..8 {
                 let text = format!("{}", FILE_NAMES[if flip { 7 - x } else { x }]);        
@@ -260,7 +283,7 @@ impl Visualizer {
                     &text,
                     &mut self.glyphs,
                     &context.draw_state,
-                    context.transform.trans(position + SQUARE_MARGIN, window_height - SQUARE_MARGIN),
+                    context.transform.trans(position + SQUARE_MARGIN, BOARD_SIDE_LENGTH as f64 - SQUARE_MARGIN),
                     graphics,
                 )
                 .unwrap();
@@ -278,7 +301,7 @@ impl Visualizer {
                     &text,
                     &mut self.glyphs,
                     &context.draw_state,
-                    context.transform.trans(window_width - text_width - SQUARE_MARGIN, position + SQUARE_MARGIN + SQUARE_FONT_SIZE as f64),
+                    context.transform.trans(BOARD_SIDE_LENGTH as f64 - text_width - SQUARE_MARGIN, position + SQUARE_MARGIN + SQUARE_FONT_SIZE as f64),
                     graphics,
                 ).unwrap();
             }
@@ -308,9 +331,44 @@ impl Visualizer {
                     graphics);
             }
 
+            //Render Times:
+            let text = time_to_string(self.latest_render_state.white_time);
+            let text_width = self.glyphs.width(TIME_FONT_SIZE, &text).unwrap();
+            text::Text::new_color(TEXT_COLOR, SQUARE_FONT_SIZE)
+            .draw(
+                &text,
+                &mut self.glyphs,
+                &context.draw_state,
+                context.transform.trans((BOARD_SIDE_LENGTH + INFO_PANEL_WIDTH / 2) as f64 - text_width, (WINDOW_HEIGHT / 2 + SQUARE_FONT_SIZE) as f64),
+                graphics,
+            ).unwrap();
+
+            let text = time_to_string(self.latest_render_state.black_time);
+            let text_width = self.glyphs.width(TIME_FONT_SIZE, &text).unwrap();
+            text::Text::new_color(TEXT_COLOR, SQUARE_FONT_SIZE)
+            .draw(
+                &text,
+                &mut self.glyphs,
+                &context.draw_state,
+                context.transform.trans((BOARD_SIDE_LENGTH + INFO_PANEL_WIDTH / 2) as f64 - text_width, (WINDOW_HEIGHT / 2 - SQUARE_FONT_SIZE) as f64),
+                graphics,
+            ).unwrap();
+
             self.glyphs.factory.encoder.flush(device);
+
+
         });
 
         return true;        
+
+        fn time_to_string(time: u128) -> String {
+            let minutes = time / 1000 / 60;
+            let seconds = time / 1000 % 60;
+            let milliseconds = time % 1000;
+    
+            format!("{:02}:{:02}:{:03}", minutes, seconds, milliseconds)
+        }
     }
+
+
 }

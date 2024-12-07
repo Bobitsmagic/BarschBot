@@ -7,6 +7,8 @@ pub struct RenderState {
     pub lm: ChessMove,
     pub flip: bool,
     pub animation_time: f64,
+    pub white_time: u128,
+    pub black_time: u128,
 }
 
 impl RenderState {
@@ -16,6 +18,8 @@ impl RenderState {
             lm: chess_move::NULL_MOVE,
             flip: false,
             animation_time: ANIMATION_TIME,
+            white_time: 0,
+            black_time: 0,
         }
     }
 
@@ -25,6 +29,8 @@ impl RenderState {
             lm,
             flip,
             animation_time: ANIMATION_TIME,
+            white_time: 0,
+            black_time: 0,
         }
     }
 
@@ -34,6 +40,19 @@ impl RenderState {
             lm,
             flip,
             animation_time: 0.0,
+            white_time: 0,
+            black_time: 0,
+        }
+    }
+
+    pub fn render_move_timed(piece_board: PieceBoard, lm: ChessMove, flip: bool, white_time: u128, black_time: u128) -> Self {
+        RenderState {
+            piece_board,
+            lm,
+            flip,
+            animation_time: ANIMATION_TIME,
+            white_time,
+            black_time,
         }
     }
 }
