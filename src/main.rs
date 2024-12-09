@@ -48,11 +48,9 @@ fn random_moves(engine_handle: VisHandle) {
 fn bot_battle(engine_handle: VisHandle) {
     const PLAY_BLACK: bool = true;
 
-    let mut gs = GameState::start_position();
-    // let mut gs = GameState::from_fen("6k1/8/1R3K2/8/8/8/8/8 w - - 0 1");
+    // let mut gs = GameState::start_position();
+    let mut gs = GameState::from_fen("r6k/1bpp1pp1/2q1r2p/p3PQ2/4BP2/P1B3R1/1PP3PP/2KR4 b - - 0 23");
 
-
-    
     const START_TIME : u128 = 1000 * 60 * 5;
     let mut white_time_left = START_TIME;
     let mut black_time_left = START_TIME;
@@ -79,7 +77,7 @@ fn bot_battle(engine_handle: VisHandle) {
             black_time_left
         ));
     }
-//43
+//43 
     loop { 
         let (m, time_used) = get_human_move(&mut gs, &engine_handle);
         gs.make_move(m);
@@ -107,9 +105,6 @@ fn bot_battle(engine_handle: VisHandle) {
             black_time_left -= time_used.min(black_time_left);
         }
 
-
-        println!("White time left: {}", white_time_left);
-        println!("Black time left: {}", black_time_left);
         engine_handle.send_render_state(RenderState::render_move_timed(
             gs.board_state.piece_board.clone(),
             m,
