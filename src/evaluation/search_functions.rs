@@ -625,7 +625,7 @@ pub fn timed_search(game_state: &mut GameState, time_left: u128) -> (ChessMove, 
     let mut tt = TranspositionTable::new();
     let mut qmt = [[0; 64]; 64];
 
-    let min_time = time_left / 100;
+    let min_time = time_left / 50;
     let mut eval = 1337;
     let mut depth = 1;
     while start_time.elapsed().as_millis() < min_time {
@@ -639,11 +639,11 @@ pub fn timed_search(game_state: &mut GameState, time_left: u128) -> (ChessMove, 
 
         println!("Depth: {} Best move: {} Score: {}", depth, best_move.to_string(), eval);
 
+        depth += 1;
+
         if eval.abs() >= CHECKMATE_VALUE {
             break;
         }
-
-        depth += 1;
     }
 
     let mut line = Vec::new();
@@ -652,13 +652,17 @@ pub fn timed_search(game_state: &mut GameState, time_left: u128) -> (ChessMove, 
     for d in 0..depth - 1 {
         let entry = tt.get(&game_state.zobrist_hash.hash).unwrap();
         debug_assert!(entry.node_type == NodeType::Exact);
-    
+        
+
+        
         let best_move = entry.best_move;
 
         print!("{} ", best_move.to_string());
 
+        println!("Making move: {}", best_move.to_string());
         line.push(best_move);
         game_state.make_move(best_move);
+
     }
 
     println!();
@@ -726,8 +730,13 @@ fn bb_search(game_state: &mut GameState, depth_left: i32, depth: i32, mut alpha:
 
     
     if depth_left == 0 {
-        let lm = game_state.last_move().unwrap();
+        let factor = match game_state.active_color() {
+            PlayerColor::White => 1,
+            PlayerColor::Black => -1,
+        };
+        return Attributes::from_board_state(&game_state.board_state).multiply(&attributes::STANDARD_EVAL) * factor;
         
+        // let lm = game_state.last_move().unwrap();
         return quiessence_search(game_state, 5, 0, alpha, beta, stats);
     }
 
@@ -755,6 +764,7 @@ fn bb_search(game_state: &mut GameState, depth_left: i32, depth: i32, mut alpha:
     }
 
     let mut best_move = chess_move::NULL_MOVE;
+    let mut best_score = -MAX_VALUE;
 
     let mut lm = game_state.gen_legal_moves();
 
@@ -783,14 +793,16 @@ fn bb_search(game_state: &mut GameState, depth_left: i32, depth: i32, mut alpha:
 
         game_state.undo_move();
 
-        if t > alpha {
-            best_move = m;
-            alpha = t;
+        if t > best_score {
+            best_score = t;
+            best_move = m;            
+        }
 
+        if best_score > alpha {
+            alpha = best_score;
             node_type = NodeType::Exact;
             if alpha >= beta {
                 node_type = NodeType::LowerBound;
-                best_move = m;
                 alpha = beta;
                 
                 if is_quiet_move {
@@ -804,7 +816,7 @@ fn bb_search(game_state: &mut GameState, depth_left: i32, depth: i32, mut alpha:
                 }
 
                 break;
-            }            
+            }
         }
 
         if is_quiet_move {
@@ -814,10 +826,20 @@ fn bb_search(game_state: &mut GameState, depth_left: i32, depth: i32, mut alpha:
         b = alpha + 1;
     }
 
+    // println!("Depth: {} Best move: {} Score: {}", depth, best_move.to_string(), alpha);
+    // println!("Depth left {}", depth_left);
+    // println!("Nodetype: {:?}", node_type);
+
     if depth_left >= tt_entry.search_depth as i32 && (node_type == NodeType::Exact ||
         tt_entry.node_type == NodeType::Unknown || 
         tt_entry.node_type == node_type) {
-        
+
+        if best_move.is_null_move() {
+            println!("Null move");
+            println!("Node type: {:?}", node_type);
+            game_state.board_state.piece_board.print();
+        }
+
         tt.insert(game_state.zobrist_hash.hash, TTEntry {
             search_depth: depth_left as u8,
             score: alpha,

@@ -1,7 +1,7 @@
 use core::time;
 use std::{thread, time::Duration};
 
-use barschbot::{board::{piece_type::ColoredPieceType, square}, evaluation::search_functions, game::game_state::GameState, gui::{engine_handle::{self, EngineHandle}, render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, moves::chess_move::{self, ChessMove}};
+use barschbot::{board::{piece_type::ColoredPieceType, square}, evaluation::search_functions, game::game_state::GameState, gui::{engine_handle::{self, EngineHandle}, render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, match_handling, moves::chess_move::{self, ChessMove}};
 use piston_window::color::BLACK;
 use rand::seq::SliceRandom;
 
@@ -13,7 +13,7 @@ fn main() {
     //Start random move thread
     std::thread::spawn(move || {
         // random_moves(vis_handle);
-        bot_battle(vis_handle);
+        human_against_bot(vis_handle);
     });
 
     visualizer.run();
@@ -45,12 +45,18 @@ fn random_moves(engine_handle: VisHandle) {
 
 
 //Error at r6k/1bpp1pp1/2q1r2p/p3PQ2/4BP2/P1B3R1/1PP3PP/2KR4 b - - 0 23
-fn bot_battle(engine_handle: VisHandle) {
-    const PLAY_BLACK: bool = true;
+fn human_against_bot(engine_handle: VisHandle) {
+    const PLAY_BLACK: bool = false;
 
-    // let mut gs = GameState::start_position();
-    let mut gs = GameState::from_fen("r6k/1bpp1pp1/2q1r2p/p3PQ2/4BP2/P1B3R1/1PP3PP/2KR4 b - - 0 23");
-
+    
+    // let mut rng = rand::thread_rng();
+    // let fen_list = match_handling::file_loader::load_test_fens();
+    
+    // let mut gs = fen_list.choose(&mut rng).unwrap().clone();
+    
+    let mut gs = GameState::start_position();
+    // let mut gs = GameState::from_fen("1k5r/p1p2ppp/1pn1p3/8/3P4/Q1PqB2P/5PPK/8 w - - 0 1");
+    
     const START_TIME : u128 = 1000 * 60 * 5;
     let mut white_time_left = START_TIME;
     let mut black_time_left = START_TIME;
@@ -77,7 +83,7 @@ fn bot_battle(engine_handle: VisHandle) {
             black_time_left
         ));
     }
-//43 
+
     loop { 
         let (m, time_used) = get_human_move(&mut gs, &engine_handle);
         gs.make_move(m);
