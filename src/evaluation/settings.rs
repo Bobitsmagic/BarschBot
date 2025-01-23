@@ -1,4 +1,5 @@
+#[derive(Debug, Clone, Copy)]
 pub struct Settings {
-    used_time: f32,
-    quiessence_depth: i32,
+    pub time_percentage: f32,
+    pub quiessence_depth: i32,
 }

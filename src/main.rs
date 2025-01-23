@@ -1,23 +1,43 @@
 use core::time;
 use std::{thread, time::Duration};
 
-use barschbot::{board::{piece_type::ColoredPieceType, square}, evaluation::search_functions, game::game_state::GameState, gui::{engine_handle::{self, EngineHandle}, render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, match_handling, moves::chess_move::{self, ChessMove}};
+use barschbot::{board::{piece_type::ColoredPieceType, square}, evaluation::{barschbot::Barschbot, search_functions, settings::{self, Settings}}, game::game_state::GameState, gui::{engine_handle::{self, EngineHandle}, render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, match_handling::{self, match_handler}, moves::chess_move::{self, ChessMove}};
 use piston_window::color::BLACK;
 use rand::seq::SliceRandom;
 
 fn main() {    
+    rayon::ThreadPoolBuilder::new().num_threads(12).build_global().unwrap();
+
+    play_all_fens_vis();
+
+    // play_all_fens_par();
+}   
+
+fn play_all_fens_vis() {
+    let mut bot_a = Barschbot::new(Settings { time_percentage: 0.015, quiessence_depth: 0 });
+    let mut bot_b = Barschbot::new(Settings { time_percentage: 0.01, quiessence_depth: 0 });
+
     let (vis_handle, engine_handle) = VisHandle::create_handles();
     
     let mut visualizer = Visualizer::new(engine_handle);
-
+    
     //Start random move thread
     std::thread::spawn(move || {
         // random_moves(vis_handle);
-        human_against_bot(vis_handle);
+        let (a_wins, b_wins, draws) = match_handler::show_all_fens(&mut bot_a, &mut bot_b, 1000*60, vis_handle);
+        println!("A wins: {}, B wins: {}, Draws: {}", a_wins, b_wins, draws);
     });
-
+    
     visualizer.run();
-}   
+}
+
+fn play_all_fens_par() {
+    let mut bot_a = Barschbot::new(Settings { time_percentage: 0.015, quiessence_depth: 0 });
+    let mut bot_b = Barschbot::new(Settings { time_percentage: 0.01, quiessence_depth: 0 });
+
+    let (a_wins, b_wins, draws) = match_handler::play_all_fens(&mut bot_a, &mut bot_b, 1000*10);
+    println!("A wins: {}, B wins: {}, Draws: {}", a_wins, b_wins, draws);
+}
 
 fn random_moves(engine_handle: VisHandle) {
     // let mut gs = GameState::start_position();

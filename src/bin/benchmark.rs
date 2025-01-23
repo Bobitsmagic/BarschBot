@@ -143,7 +143,7 @@ pub fn bench_search_functions() {
             let start = std::time::Instant::now();
             let (_, eval, stats) = FUNCTIONS[j](&mut gs.clone(), MAX_DEPTH);
             times[j] += start.elapsed().as_millis();
-            sum_stats[j].add(&stats);
+            sum_stats[j] += stats;
             evals.push(eval);
         }
 
