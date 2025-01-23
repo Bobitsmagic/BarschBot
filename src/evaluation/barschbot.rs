@@ -4,16 +4,22 @@ use super::{search_functions::bb_timed_search, search_stats::SearchStats, settin
 
 #[derive(Clone)]
 pub struct Barschbot {
+    pub name: String,
     settings: Settings,
     search_stats: SearchStats,    
 }
 
 impl Barschbot {
-    pub fn new(settings: Settings) -> Barschbot {
+    pub fn named(settings: Settings, name: String) -> Barschbot {
         Barschbot {
+            name,
             settings,
             search_stats: SearchStats::new(),
         }
+    }
+
+    pub fn new(settings: Settings) -> Barschbot {
+        Barschbot::named(settings, String::from("Barschbot"))
     }
 
     pub fn search(&mut self, game_state: &mut GameState, time_left: u128) -> ChessMove {

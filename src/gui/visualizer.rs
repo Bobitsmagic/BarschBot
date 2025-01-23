@@ -23,6 +23,8 @@ const INFO_PANEL_WIDTH: u32 = 500;
 const WINDOW_HEIGHT: u32 = 900;
 const WINDOW_WIDTH: u32 = BOARD_SIDE_LENGTH + INFO_PANEL_WIDTH;
 
+
+
 impl Visualizer {
     pub fn new(engine_handle: EngineHandle) -> Self {
         let opengl = OpenGL::V3_2;
@@ -64,7 +66,7 @@ impl Visualizer {
         }
 
         let glyphs: Glyphs = window.load_font(&format!("{}/font.ttf", assets_folder)).expect(&format!("Could not find font at"));
-                
+
         return Visualizer { 
             glyphs,
             input_state: HashSet::new(),
@@ -214,9 +216,20 @@ impl Visualizer {
         let completion = (self.latest_render_state.animation_time / ANIMATION_TIME).min(1.0);
         let ratio = completion - 0.1 * (completion * std::f64::consts::PI * 2.0).sin();
         
+        let mut time_digit_width = 0.0;
+
+        for z in 0..=9 {
+            let s = format!("{}", z);
+
+            let text_width = self.glyphs.width(SQUARE_FONT_SIZE, &s).unwrap();
+
+            if text_width > time_digit_width {
+                time_digit_width = text_width;
+            }
+        }
+
         self.window.draw_2d(&event, |context, graphics, device| {
             clear(BACKGROUND, graphics);
-
 
             for x in 0..8 {
                 for y in 0..8 {
@@ -331,26 +344,55 @@ impl Visualizer {
                     graphics);
             }
 
-            //Render Times:
+            let mut name_offset = 15.0;
+            if !self.latest_render_state.white_name.is_empty() && !self.latest_render_state.black_name.is_empty() {
+                let text = format!("White: {}", self.latest_render_state.white_name);
+                let text_width = self.glyphs.width(SQUARE_FONT_SIZE, &text).unwrap();
+                if text_width > name_offset {
+                    name_offset = text_width;
+                }
+                text::Text::new_color(TEXT_COLOR, SQUARE_FONT_SIZE)
+                .draw(
+                    &text,
+                    &mut self.glyphs,
+                    &context.draw_state,
+                    context.transform.trans((BOARD_SIDE_LENGTH + 15) as f64, (WINDOW_HEIGHT / 2 + SQUARE_FONT_SIZE) as f64),
+                    graphics,
+                ).unwrap();
+
+                let text = format!("Black: {}", self.latest_render_state.black_name);
+                let text_width = self.glyphs.width(SQUARE_FONT_SIZE, &text).unwrap();
+                if text_width > name_offset {
+                    name_offset = text_width;
+                }
+
+                text::Text::new_color(TEXT_COLOR, SQUARE_FONT_SIZE)
+                .draw(
+                    &text,
+                    &mut self.glyphs,
+                    &context.draw_state,
+                    context.transform.trans((BOARD_SIDE_LENGTH + 15) as f64, (WINDOW_HEIGHT / 2 - SQUARE_FONT_SIZE) as f64),
+                    graphics,
+                ).unwrap();
+            }
+
             let text = time_to_string(self.latest_render_state.white_time);
-            let text_width = self.glyphs.width(TIME_FONT_SIZE, &text).unwrap();
             text::Text::new_color(TEXT_COLOR, SQUARE_FONT_SIZE)
             .draw(
                 &text,
                 &mut self.glyphs,
                 &context.draw_state,
-                context.transform.trans((BOARD_SIDE_LENGTH + INFO_PANEL_WIDTH / 2) as f64 - text_width, (WINDOW_HEIGHT / 2 + SQUARE_FONT_SIZE) as f64),
+                context.transform.trans((BOARD_SIDE_LENGTH) as f64 + name_offset + 30.0, (WINDOW_HEIGHT / 2 + SQUARE_FONT_SIZE) as f64),
                 graphics,
             ).unwrap();
 
             let text = time_to_string(self.latest_render_state.black_time);
-            let text_width = self.glyphs.width(TIME_FONT_SIZE, &text).unwrap();
             text::Text::new_color(TEXT_COLOR, SQUARE_FONT_SIZE)
             .draw(
                 &text,
                 &mut self.glyphs,
                 &context.draw_state,
-                context.transform.trans((BOARD_SIDE_LENGTH + INFO_PANEL_WIDTH / 2) as f64 - text_width, (WINDOW_HEIGHT / 2 - SQUARE_FONT_SIZE) as f64),
+                context.transform.trans((BOARD_SIDE_LENGTH) as f64 + name_offset + 30.0, (WINDOW_HEIGHT / 2 - SQUARE_FONT_SIZE) as f64),
                 graphics,
             ).unwrap();
 

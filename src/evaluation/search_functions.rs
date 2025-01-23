@@ -34,54 +34,6 @@ fn is_checkmate_eval(eval: i32) -> bool {
     eval.abs() >= CHECKMATE_VALUE
 }
 
-
-pub fn nega_max(game_state: &mut GameState, depth_left: i32) -> (ChessMove, i32, SearchStats) {
-    let mut stats = SearchStats::new();
-    let (m, eval) = nega_max_search(game_state, depth_left, &mut stats);
-
-    return (m, eval, stats);
-}
-
-fn nega_max_search(game_state: &mut GameState, depth_left: i32, stats: &mut SearchStats) -> (ChessMove, i32) {
-    stats.nodes += 1;
-
-    let res = game_state.game_result();
-    match res {
-        GameResult::WhiteWin => return (chess_move::NULL_MOVE, -CHECKMATE_VALUE - depth_left),
-        GameResult::BlackWin => return (chess_move::NULL_MOVE, -CHECKMATE_VALUE - depth_left),
-        GameResult::Draw => return (chess_move::NULL_MOVE, 0),
-        GameResult::Undecided => (),
-    }
-
-    if depth_left == 0 {
-        stats.evals += 1;
-
-        let factor = match game_state.active_color() {
-            PlayerColor::White => 1,
-            PlayerColor::Black => -1,
-        };
-        return (chess_move::NULL_MOVE, factor * Attributes::from_board_state(&game_state.board_state).multiply(&attributes::STANDARD_EVAL));
-    }
-
-    let mut best_move = chess_move::NULL_MOVE;
-    let mut best_score = -MAX_VALUE;
-
-    for m in move_gen::gen_legal_moves(&game_state.board_state, &game_state.get_flags()) {       
-        game_state.make_move(m);
-        let (_, score) = nega_max_search(game_state, depth_left - 1, stats);
-        game_state.undo_move();
-
-        let score = -score;
-
-        if score > best_score {
-            best_score = score;
-            best_move = m;
-        }
-    }
-
-    return (best_move, best_score);
-}
-
 pub fn better_move_sorter(list: &mut MoveVector, board: &BoardState, prev_best: ChessMove) {
     const PIECE_VALUES: [i32; 7] = [10, 28, 32, 50, 90, 100, 0];
      
@@ -193,704 +145,43 @@ pub fn killer_move_sorter(list: &mut MoveVector, board: &BoardState, prev_best: 
     });
 }
 
-pub fn nega_alpha_beta(game_state: &mut GameState, max_depth: i32) -> (ChessMove, i32, SearchStats) {
-    let mut stats = SearchStats::new();
-    let (m, eval) = nega_alpha_beta_search(game_state, max_depth, 0, -MAX_VALUE, MAX_VALUE, &mut stats);
-
-    return (m, eval, stats);
-}
-
-fn nega_alpha_beta_search(game_state: &mut GameState, depth_left: i32, depth: i32, mut alpha: i32, beta: i32, stats: &mut SearchStats) -> (ChessMove, i32) {
-    stats.nodes += 1;
-
-    let res = game_state.game_result();
-    match res {
-        GameResult::WhiteWin => return (chess_move::NULL_MOVE, -CHECKMATE_VALUE - depth_left),
-        GameResult::BlackWin => return (chess_move::NULL_MOVE, -CHECKMATE_VALUE - depth_left),
-        GameResult::Draw => return (chess_move::NULL_MOVE, 0),
-        GameResult::Undecided => (),
-    }
-
-    if depth_left == 0 {
-        stats.evals += 1;
-
-        let factor = match game_state.active_color() {
-            PlayerColor::White => 1,
-            PlayerColor::Black => -1,
-        };
-        return (chess_move::NULL_MOVE, factor * Attributes::from_board_state(&game_state.board_state).multiply(&attributes::STANDARD_EVAL));
-    }
-
-    let mut best_move = chess_move::NULL_MOVE;
-    let mut best_score = -MAX_VALUE;
-
-    let mut lm = game_state.gen_legal_moves();
-
-    better_move_sorter(&mut lm, &game_state.board_state, chess_move::NULL_MOVE);
-
-    for m in lm {       
-        game_state.make_move(m);
-        let (_, score) = nega_alpha_beta_search(game_state, depth_left - 1, depth + 1, -beta, -alpha, stats);
-        game_state.undo_move();
-
-        let score = -score;
-
-        if score > best_score {
-            best_score = score;
-            best_move = m;
-
-            if best_score > alpha {
-                alpha = best_score;
-            }
-        }
-
-        if alpha >= beta {
-            break;
-        }
-    }
-
-    return (best_move, best_score);
-}
-
-pub fn nega_scout(game_state: &mut GameState, max_depth: i32) -> (ChessMove, i32, SearchStats) {
-    let mut stats = SearchStats::new();
-    let (m, eval) = nega_scout_search(game_state, max_depth, 0, -MAX_VALUE, MAX_VALUE, &mut stats);
-
-    return (m, eval, stats);
-}
-
-pub fn nega_scout_search(game_state: &mut GameState, depth_left: i32, depth: i32, mut alpha: i32, beta: i32, stats: &mut SearchStats) -> (ChessMove, i32) {
-    stats.nodes += 1;
-
-    let res = game_state.game_result();
-    match res {
-        GameResult::WhiteWin => return (chess_move::NULL_MOVE, -CHECKMATE_VALUE - depth_left),
-        GameResult::BlackWin => return (chess_move::NULL_MOVE, -CHECKMATE_VALUE - depth_left),
-        GameResult::Draw => return (chess_move::NULL_MOVE, 0),
-        GameResult::Undecided => (),
-    }
-
-    if depth_left == 0 {
-        stats.evals += 1;
-
-        let factor = match game_state.active_color() {
-            PlayerColor::White => 1,
-            PlayerColor::Black => -1,
-        };
-        return (chess_move::NULL_MOVE, factor * Attributes::from_board_state(&game_state.board_state).multiply(&attributes::STANDARD_EVAL));
-    }
-
-    let mut best_move = chess_move::NULL_MOVE;
-
-    let mut lm = game_state.gen_legal_moves();
-
-    better_move_sorter(&mut lm, &game_state.board_state, chess_move::NULL_MOVE);
-
-    let mut b = beta;
-
-    for i in 0..lm.len() {       
-        let m = lm[i];
-
-        game_state.make_move(m);
-        let (_, score) = nega_scout_search(game_state, depth_left - 1, depth + 1, -b, -alpha, stats);
-        let mut t = -score;
-
-        if t > alpha && t < beta && i > 0 && depth_left > 1 {
-            let (_, score) = nega_scout_search(game_state, depth_left - 1, depth + 1, -beta, -alpha, stats);
-            t = -score;
-        }
-        game_state.undo_move();
-
-        if t >= alpha {
-            best_move = m;
-            alpha = t;
-        }
-        
-
-        if alpha >= beta {
-            return (best_move, alpha);
-        }
-
-        b = alpha + 1;
-    }
-
-    return (best_move, alpha);
-}
-
-pub fn iterative_deepening(game_state: &mut GameState, max_depth: i32) -> (ChessMove, i32, SearchStats) {
-    let mut stats = SearchStats::new();
-    let mut best_move = chess_move::NULL_MOVE;
-    let mut best_score = -MAX_VALUE;
-
-    for depth in 1..=max_depth {
-        let (m, eval, s) = nega_scout(game_state, depth);
-        stats += s;
-
-        best_move = m;
-        best_score = eval;
-    }
-
-    return (best_move, best_score, stats);
-}
-
-pub fn nega_alpha_beta_tt(game_state: &mut GameState, max_depth : i32) -> (ChessMove, i32, SearchStats) {
-    let mut stats = SearchStats::new();
-    let mut tt = TranspositionTable::new();
-
-    let mut best_move = chess_move::NULL_MOVE;
-    let mut best_score = -MAX_VALUE;
-    for depth in 1..=max_depth {
-        let (m, eval) = nega_alpha_beta_tt_search(game_state, depth, 0, -MAX_VALUE, MAX_VALUE, &mut stats, &mut tt);
-
-        best_move = m;
-        best_score = eval;
-    }
-    
-
-    return (best_move, best_score, stats);
-}
-
-fn nega_alpha_beta_tt_search(game_state: &mut GameState, depth_left: i32, depth: i32, mut alpha: i32, beta: i32, stats: &mut SearchStats, tt: &mut TranspositionTable) -> (ChessMove, i32) {
-    stats.nodes += 1;
-
-    let res = game_state.game_result();
-    match res {
-        GameResult::WhiteWin => return (chess_move::NULL_MOVE, -CHECKMATE_VALUE - depth_left),
-        GameResult::BlackWin => return (chess_move::NULL_MOVE, -CHECKMATE_VALUE - depth_left),
-        GameResult::Draw => return (chess_move::NULL_MOVE, 0),
-        GameResult::Undecided => (),
-    }
-
-    if depth_left == 0 {
-        stats.evals += 1;
-
-        let factor = match game_state.active_color() {
-            PlayerColor::White => 1,
-            PlayerColor::Black => -1,
-        };
-        return (chess_move::NULL_MOVE, factor * Attributes::from_board_state(&game_state.board_state).multiply(&attributes::STANDARD_EVAL));
-    }
-
-    let tt_entry = if tt.contains_key(&game_state.zobrist_hash.hash) {
-        tt[&game_state.zobrist_hash.hash].clone()
-    }
-    else {
-        TTEntry {
-            search_depth: 0,
-            score: 0,
-            best_move: chess_move::NULL_MOVE,
-            node_type: NodeType::Unknown,
-        }
-    };
-
-    if tt_entry.search_depth as i32 == depth_left && 
-        match tt_entry.node_type {
-            NodeType::Exact         => true,
-            NodeType::LowerBound    => tt_entry.score >= beta,
-            NodeType::UpperBound    => tt_entry.score <= alpha,
-            NodeType::Unknown       => false,
-        } {
-        // println!("TT hit {:?} Score: {} Alpha {} Beta {}", tt_entry.node_type, tt_entry.score, alpha, beta);
-        return (tt_entry.best_move, tt_entry.score);
-    }
-
-    let mut best_move = chess_move::NULL_MOVE;
-
-    let mut lm = game_state.gen_legal_moves();
-
-    better_move_sorter(&mut lm, &game_state.board_state, tt_entry.best_move);
-
-    let mut node_type = NodeType::UpperBound;
-    let mut b = beta;
-    for i in 0..lm.len() {       
-        let m = lm[i];
-
-        game_state.make_move(m);
-        let (_, score) = nega_alpha_beta_tt_search(game_state, depth_left - 1, depth + 1, -b, -alpha, stats, tt);
-        let mut t = -score;
-
-        if t > alpha && t < beta && i > 0 && depth_left > 1 {
-            let (_, score) = nega_alpha_beta_tt_search(game_state, depth_left - 1, depth + 1, -beta, -alpha, stats, tt);
-            t = -score;
-        }
-
-        // game_state.board_state.piece_board.print();
-        // println!("Score: {}", t);
-        game_state.undo_move();
-
-        if t > alpha {
-            best_move = m;
-            alpha = t;
-
-            // println!("New best move");
-            // best_move.print();
-
-            node_type = NodeType::Exact;
-            if alpha >= beta {
-                // println!("Beta cutoff: {} >= {}", alpha, beta);
-                node_type = NodeType::LowerBound;
-                best_move = m;
-                alpha = beta;
-                break;
-            }            
-        }
-        
-        b = alpha + 1;
-    }
-
-    if depth_left >= tt_entry.search_depth as i32 && (node_type == NodeType::Exact ||
-        tt_entry.node_type == NodeType::Unknown || 
-        tt_entry.node_type == node_type) {
-        
-        tt.insert(game_state.zobrist_hash.hash, TTEntry {
-            search_depth: depth_left as u8,
-            score: alpha,
-            best_move: best_move,
-            node_type: node_type,
-        });
-    }
-
-    return (best_move, alpha);
-}
-
-pub fn nega_alpha_beta_tt_qmt(game_state: &mut GameState, max_depth : i32) -> (ChessMove, i32, SearchStats) {
-    let mut stats = SearchStats::new();
-    let mut tt = TranspositionTable::new();
-    let mut qmt = [[0; 64]; 64];
-
-    for depth in 1..=max_depth {
-        let eval = nega_alpha_beta_tt_qmt_search(game_state, depth, 0, -MAX_VALUE, MAX_VALUE, &mut stats, &mut tt, &mut qmt);
-    }
-
-    let entry = tt.get(&game_state.zobrist_hash.hash).unwrap();
-    debug_assert!(entry.node_type == NodeType::Exact);
-
-    let best_move = entry.best_move;
-    let best_score = entry.score;
-
-    return (best_move, best_score, stats);
-}
-
-fn nega_alpha_beta_tt_qmt_search(game_state: &mut GameState, depth_left: i32, depth: i32, mut alpha: i32, beta: i32, stats: &mut SearchStats, tt: &mut TranspositionTable, quiet_move_table: &mut QuietMoveTable) -> i32 {
-    stats.nodes += 1;
-
-    let res = game_state.game_result();
-    match res {
-        GameResult::WhiteWin => return -CHECKMATE_VALUE - depth_left,
-        GameResult::BlackWin => return -CHECKMATE_VALUE - depth_left,
-        GameResult::Draw => return 0,
-        GameResult::Undecided => (),
-    }
-
-    if depth_left == 0 {
-        stats.evals += 1;
-
-        let factor = match game_state.active_color() {
-            PlayerColor::White => 1,
-            PlayerColor::Black => -1,
-        };
-        return factor * Attributes::from_board_state(&game_state.board_state).multiply(&attributes::STANDARD_EVAL);
-    }
-
-    let tt_entry = if tt.contains_key(&game_state.zobrist_hash.hash) {
-        tt[&game_state.zobrist_hash.hash].clone()
-    }
-    else {
-        TTEntry {
-            search_depth: 0,
-            score: 0,
-            best_move: chess_move::NULL_MOVE,
-            node_type: NodeType::Unknown,
-        }
-    };
-
-    if tt_entry.search_depth as i32 == depth_left && 
-        match tt_entry.node_type {
-            NodeType::Exact         => true,
-            NodeType::LowerBound    => tt_entry.score >= beta,
-            NodeType::UpperBound    => tt_entry.score <= alpha,
-            NodeType::Unknown       => false,
-        } {
-        return tt_entry.score;
-    }
-
-    let mut best_move = chess_move::NULL_MOVE;
-
-    let mut lm = game_state.gen_legal_moves();
-
-    quiet_move_sorter(&mut lm, &game_state.board_state, tt_entry.best_move, quiet_move_table);
-
-    let mut quiets_evaluated: MoveVector = ArrayVec::new();
-
-    let mut node_type = NodeType::UpperBound;
-    let mut b = beta;
-    for i in 0..lm.len() {       
-        let m = lm[i];
-
-        let mut is_quiet_move = !(m.is_capture() || m.is_promotion());
-        if is_quiet_move {
-            is_quiet_move = !game_state.board_state.bit_board.attacks_king(m.move_piece, m.end);
-        }
-
-        game_state.make_move(m);
-
-        let mut t = - nega_alpha_beta_tt_qmt_search(game_state, depth_left - 1, depth + 1, -b, -alpha, stats, tt, quiet_move_table);
-
-        if t > alpha && t < beta && i > 0 && depth_left > 1 {
-            t = - nega_alpha_beta_tt_qmt_search(game_state, depth_left - 1, depth + 1, -beta, -alpha, stats, tt, quiet_move_table);
-        }
-
-        game_state.undo_move();
-
-        if t > alpha {
-            best_move = m;
-            alpha = t;
-            node_type = NodeType::Exact;
-            
-            if alpha >= beta {
-                node_type = NodeType::LowerBound;
-                best_move = m;
-                alpha = beta;
-                
-                if is_quiet_move {
-                    quiet_move_table[m.start as usize][m.end as usize] += depth_left as i64 * depth_left as i64;
-
-                    for qm in quiets_evaluated {
-                        let reduction = depth_left as i64 * depth_left as i64;
-                        let val = quiet_move_table[qm.start as usize][qm.end as usize];
-                        quiet_move_table[qm.start as usize][qm.end as usize] -= val.min(reduction);
-                    }
-                }
-
-                break;
-            }            
-        }
-
-        if is_quiet_move {
-            quiets_evaluated.push(m);
-        }
-        
-        b = alpha + 1;
-    }
-
-    if depth_left >= tt_entry.search_depth as i32 && (node_type == NodeType::Exact ||
-        tt_entry.node_type == NodeType::Unknown || 
-        tt_entry.node_type == node_type) {
-        
-        tt.insert(game_state.zobrist_hash.hash, TTEntry {
-            search_depth: depth_left as u8,
-            score: alpha,
-            best_move: best_move,
-            node_type: node_type,
-        });
-    }
-
-    return alpha;
-}
-
-pub fn aspiration_window(game_state: &mut GameState, max_depth : i32) -> (ChessMove, i32, SearchStats) {
-    let mut stats = SearchStats::new();
-    let mut tt = TranspositionTable::new();
-    let mut qmt = [[0; 64]; 64];
-
-    for depth in 1..=max_depth {
-        let mut window = 500;
-        let mut score = 0;
-
-        loop {
-            let alpha = score - window;
-            let beta = score + window;
-            score = nega_alpha_beta_tt_qmt_search(game_state, depth, 0, alpha, beta, &mut stats, &mut tt, &mut qmt);
-
-            if alpha < score && score < beta {
-                break;
-            }
-
-            window *= 4;
-        }
-    }
-
-    let entry = tt.get(&game_state.zobrist_hash.hash).unwrap();
-    debug_assert!(entry.node_type == NodeType::Exact);
-
-    let best_move = entry.best_move;
-    let best_score = entry.score;
-
-    return (best_move, best_score, stats);
-}
-
-pub fn timed_search(game_state: &mut GameState, time_left: u128) -> (ChessMove, i32, SearchStats) {
-    let start_time = std::time::Instant::now();
-    let mut stats = SearchStats::new();
-    let mut tt = TranspositionTable::new();
-    let mut qmt = [[0; 64]; 64];
-
-    let min_time = time_left / 50;
-    let mut eval = 1337;
-    let mut depth = 1;
-    while start_time.elapsed().as_millis() < min_time {
-        eval = bb_search(game_state, depth, 0, -MAX_VALUE, MAX_VALUE, &mut stats, &mut tt, &mut qmt);
-
-        let entry = tt.get(&game_state.zobrist_hash.hash).unwrap();
-        debug_assert!(entry.node_type == NodeType::Exact);
-        debug_assert!(entry.score == eval);
-
-        let best_move = entry.best_move;
-
-        println!("Depth: {} Best move: {} Score: {}", depth, best_move.to_string(), eval);
-
-        depth += 1;
-
-        if eval.abs() >= CHECKMATE_VALUE {
-            break;
-        }
-    }
-
-    let mut line = Vec::new();
-
-    println!("PV line:");
-    for d in 0..depth - 1 {
-        let entry = tt.get(&game_state.zobrist_hash.hash).unwrap();
-        debug_assert!(entry.node_type == NodeType::Exact);
-        
-
-        
-        let best_move = entry.best_move;
-
-        print!("{} ", best_move.to_string());
-
-        println!("Making move: {}", best_move.to_string());
-        line.push(best_move);
-        game_state.make_move(best_move);
-
-    }
-
-    println!();
-
-    for _ in 0..line.len() {
-        game_state.undo_move();
-    }
-
-    return (line[0], eval, stats);
-}
-
-pub fn engine_search(game_state: &mut GameState, max_depth: i32) -> (ChessMove, i32, SearchStats) {
-    let mut stats = SearchStats::new();
-    let mut tt = TranspositionTable::new();
-    let mut qmt = [[0; 64]; 64];
-
-    let mut eval = 1337;
-    for depth in 1..=max_depth {
-        eval = bb_search(game_state, depth, 0, -MAX_VALUE, MAX_VALUE, &mut stats, &mut tt, &mut qmt);
-
-        let entry = tt.get(&game_state.zobrist_hash.hash).unwrap();
-        debug_assert!(entry.node_type == NodeType::Exact);
-        debug_assert!(entry.score == eval);
-
-        let best_move = entry.best_move;
-
-        println!("Depth: {} Best move: {} Score: {}", depth, best_move.to_string(), eval);
-    }
-
-    let mut line = Vec::new();
-
-    println!("PV line:");
-    for d in 0..max_depth {
-        let entry = tt.get(&game_state.zobrist_hash.hash).unwrap();
-        debug_assert!(entry.node_type == NodeType::Exact);
-    
-        let best_move = entry.best_move;
-
-        print!("{} ", best_move.to_string());
-
-        line.push(best_move);
-
-        game_state.make_move(best_move);
-    }
-
-    println!();
-
-    for _ in 0..line.len() {
-        game_state.undo_move();
-    }
-
-    return (line[0], eval, stats);
-}
-
-fn bb_search(game_state: &mut GameState, depth_left: i32, depth: i32, mut alpha: i32, beta: i32, stats: &mut SearchStats, tt: &mut TranspositionTable, quiet_move_table: &mut QuietMoveTable) -> i32 {
-    stats.nodes += 1;
-
-    let res = game_state.game_result();
-    match res {
-        GameResult::WhiteWin => return -CHECKMATE_VALUE - depth_left,
-        GameResult::BlackWin => return -CHECKMATE_VALUE - depth_left,
-        GameResult::Draw => return 0,
-        GameResult::Undecided => (),
-    }
-
-    
-    if depth_left == 0 {
-        let factor = match game_state.active_color() {
-            PlayerColor::White => 1,
-            PlayerColor::Black => -1,
-        };
-        return Attributes::from_board_state(&game_state.board_state).multiply(&attributes::STANDARD_EVAL) * factor;
-        
-        // let lm = game_state.last_move().unwrap();
-        return quiessence_search(game_state, 5, 0, alpha, beta, stats);
-    }
-
-    let tt_entry = if tt.contains_key(&game_state.zobrist_hash.hash) {
-        tt[&game_state.zobrist_hash.hash].clone()
-    }
-    else {
-        TTEntry {
-            search_depth: 0,
-            score: 0,
-            best_move: chess_move::NULL_MOVE,
-            node_type: NodeType::Unknown,
-        }
-    };
-
-    if tt_entry.search_depth as i32 == depth_left && 
-        match tt_entry.node_type {
-            NodeType::Exact         => true,
-            NodeType::LowerBound    => tt_entry.score >= beta,
-            NodeType::UpperBound    => tt_entry.score <= alpha,
-            NodeType::Unknown       => false,
-        } {
-        // println!("TT hit {:?} Score: {} Alpha {} Beta {}", tt_entry.node_type, tt_entry.score, alpha, beta);
-        return tt_entry.score;
-    }
-
-    let mut best_move = chess_move::NULL_MOVE;
-    let mut best_score = -MAX_VALUE;
-
-    let mut lm = game_state.gen_legal_moves();
-
-    quiet_move_sorter(&mut lm, &game_state.board_state, tt_entry.best_move, quiet_move_table);
-    // better_move_sorter(&mut lm, &game_state.board_state, tt_entry.best_move);
-
-    let mut quiets_evaluated: MoveVector = ArrayVec::new();
-
-    let mut node_type = NodeType::UpperBound;
-    let mut b = beta;
-    for i in 0..lm.len() {       
-        let m = lm[i];
-
-        let mut is_quiet_move = !(m.is_capture() || m.is_promotion());
-        if is_quiet_move {
-            is_quiet_move = !game_state.board_state.bit_board.attacks_king(m.move_piece, m.end);
-        }
-
-        game_state.make_move(m);
-
-        let mut t = - bb_search(game_state, depth_left - 1, depth + 1, -b, -alpha, stats, tt, quiet_move_table);
-
-        if t > alpha && t < beta && i > 0 && depth_left > 1 {
-            t = - bb_search(game_state, depth_left - 1, depth + 1, -beta, -alpha, stats, tt, quiet_move_table);
-        }
-
-        game_state.undo_move();
-
-        if t > best_score {
-            best_score = t;
-            best_move = m;            
-        }
-
-        if best_score > alpha {
-            alpha = best_score;
-            node_type = NodeType::Exact;
-            if alpha >= beta {
-                node_type = NodeType::LowerBound;
-                alpha = beta;
-                
-                if is_quiet_move {
-                    quiet_move_table[m.start as usize][m.end as usize] += depth_left as i64 * depth_left as i64;
-
-                    for qm in quiets_evaluated {
-                        let reduction = depth_left as i64 * depth_left as i64;
-                        let val = quiet_move_table[qm.start as usize][qm.end as usize];
-                        quiet_move_table[qm.start as usize][qm.end as usize] -= val.min(reduction);
-                    }
-                }
-
-                break;
-            }
-        }
-
-        if is_quiet_move {
-            quiets_evaluated.push(m);
-        }
-        
-        b = alpha + 1;
-    }
-
-    // println!("Depth: {} Best move: {} Score: {}", depth, best_move.to_string(), alpha);
-    // println!("Depth left {}", depth_left);
-    // println!("Nodetype: {:?}", node_type);
-
-    if depth_left >= tt_entry.search_depth as i32 && (node_type == NodeType::Exact ||
-        tt_entry.node_type == NodeType::Unknown || 
-        tt_entry.node_type == node_type) {
-
-        if best_move.is_null_move() {
-            println!("Null move");
-            println!("Node type: {:?}", node_type);
-            game_state.board_state.piece_board.print();
-        }
-
-        tt.insert(game_state.zobrist_hash.hash, TTEntry {
-            search_depth: depth_left as u8,
-            score: alpha,
-            best_move: best_move,
-            node_type: node_type,
-        });
-    }
-
-    return alpha;
-}
-
-fn quiessence_search(game_state: &mut GameState, depth_left: i32, depth: i32, mut alpha: i32, beta: i32, stats: &mut SearchStats) -> i32 {
+fn quiessence_search(game_state: &mut GameState, depth_left: i32, depth: i32, mut alpha: i32, beta: i32, settings: &Settings, stats: &mut SearchStats, tt: &mut TranspositionTable, quiet_move_table: &mut QuietMoveTable) -> i32 {
     stats.quiessence_nodes += 1;
 
     let res = game_state.game_result();
 
     match res {
-        GameResult::WhiteWin => return -CHECKMATE_VALUE - depth_left,
-        GameResult::BlackWin => return -CHECKMATE_VALUE - depth_left,
+        GameResult::WhiteWin => return -CHECKMATE_VALUE + depth,
+        GameResult::BlackWin => return -CHECKMATE_VALUE + depth,
         GameResult::Draw => return 0,
         GameResult::Undecided => {},
     };
 
+    let res = tt.get(&game_state.zobrist_hash.hash);
+    if let Some(entry) = res {
+        if entry.search_depth as i32 >= depth_left {
+            match entry.node_type {
+                NodeType::Exact         => return entry.score,
+                _                       => {},
+            }
+        }
+    }
+
     let (mut lm, in_check) = move_gen::gen_legal_moves_check(&game_state.board_state, &game_state.get_flags());
 
     if !in_check {
-        let lm = game_state.last_move().unwrap();
-
         let factor = match game_state.active_color() {
             PlayerColor::White => 1,
             PlayerColor::Black => -1,
         };
         let local_score = Attributes::from_board_state(&game_state.board_state).multiply(&attributes::STANDARD_EVAL) * factor;
-        
-        // if lm.move_piece.is_queen() {
-        //     println!("Q depth: {} Alpha: {} Beta: {}", depth, alpha, beta);
-        //     println!("Local score: {}", local_score);
-        //     println!("Last move: {}", lm.to_string());    
-        //     game_state.board_state.piece_board.print();
-        // }
-
-        if depth_left <= 0 {
-            return local_score;
-        }
-
-        if local_score <= alpha { //?
-            return alpha;
-        }
 
         if local_score >= beta {
-            return beta;
+            return local_score;
+        }
+    
+        if depth_left <= 0 {
+            return local_score;
         }
 
         alpha = local_score.max(alpha);
@@ -912,7 +203,7 @@ fn quiessence_search(game_state: &mut GameState, depth_left: i32, depth: i32, mu
 
         game_state.make_move(m);
 
-        let score = -quiessence_search(game_state, depth_left - 1, depth + 1, -beta, -alpha, stats);
+        let score = -quiessence_search(game_state, depth_left - 1, depth + 1, -beta, -alpha, settings, stats, tt, quiet_move_table);
 
         game_state.undo_move();
 
@@ -993,8 +284,8 @@ fn bb_search_settings(game_state: &mut GameState, depth_left: i32, depth: i32, m
 
     let res = game_state.game_result();
     match res {
-        GameResult::WhiteWin => return -CHECKMATE_VALUE - depth_left,
-        GameResult::BlackWin => return -CHECKMATE_VALUE - depth_left,
+        GameResult::WhiteWin => return -CHECKMATE_VALUE + depth,
+        GameResult::BlackWin => return -CHECKMATE_VALUE + depth,
         GameResult::Draw => return 0,
         GameResult::Undecided => (),
     }
@@ -1006,10 +297,16 @@ fn bb_search_settings(game_state: &mut GameState, depth_left: i32, depth: i32, m
             PlayerColor::Black => -1,
         };
 
-        return Attributes::from_board_state(&game_state.board_state).multiply(&attributes::STANDARD_EVAL) * factor;
+
+        if settings.quiessence_depth == 0 {
+            return Attributes::from_board_state(&game_state.board_state).multiply(&attributes::STANDARD_EVAL) * factor;
+        }
+        else {
+            return quiessence_search(game_state, settings.quiessence_depth, depth, alpha, beta, settings, stats, tt, quiet_move_table);
+        }
         
         // let lm = game_state.last_move().unwrap();
-        return quiessence_search(game_state, 5, 0, alpha, beta, stats);
+        
     }
 
     let tt_entry = if tt.contains_key(&game_state.zobrist_hash.hash) {
@@ -1144,36 +441,36 @@ pub fn get_random_pos(depth: i32, rng: &mut ChaCha8Rng) -> GameState {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use rand::{seq::SliceRandom, Rng, SeedableRng};
-    use rand_chacha::ChaCha8Rng;
+// #[cfg(test)]
+// mod tests {
+//     use rand::{seq::SliceRandom, Rng, SeedableRng};
+//     use rand_chacha::ChaCha8Rng;
 
-    use super::get_random_pos;
+//     use super::get_random_pos;
 
-    #[test]
-    fn test_stable_search() {
-        let mut rng = ChaCha8Rng::seed_from_u64(0);
+//     #[test]
+//     fn test_stable_search() {
+//         let mut rng = ChaCha8Rng::seed_from_u64(0);
 
-        for _ in 0..100 {
-            let depth = rng.gen_range(10..50);
-            let gs = get_random_pos(depth, &mut rng);
+//         for _ in 0..100 {
+//             let depth = rng.gen_range(10..50);
+//             let gs = get_random_pos(depth, &mut rng);
 
             
-            let (m1, eval1, _) = super::nega_max(&mut gs.clone(), 4);
-            let (m2, eval2, _) = super::nega_alpha_beta(&mut gs.clone(), 4);
+//             let (m1, eval1, _) = super::nega_max(&mut gs.clone(), 4);
+//             let (m2, eval2, _) = super::nega_alpha_beta(&mut gs.clone(), 4);
             
-            if eval1 != eval2 {
-                gs.board_state.piece_board.print();
+//             if eval1 != eval2 {
+//                 gs.board_state.piece_board.print();
 
-                println!("Depth: {}", depth);
-                println!("Eval1: {}", eval1);
-                println!("Eval2: {}", eval2);
-                m1.print();
-                m2.print();
+//                 println!("Depth: {}", depth);
+//                 println!("Eval1: {}", eval1);
+//                 println!("Eval2: {}", eval2);
+//                 m1.print();
+//                 m2.print();
 
-                panic!();
-            }
-        }
-    }
-}
+//                 panic!();
+//             }
+//         }
+//     }
+// }

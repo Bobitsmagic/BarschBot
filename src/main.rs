@@ -8,14 +8,14 @@ use rand::seq::SliceRandom;
 fn main() {    
     rayon::ThreadPoolBuilder::new().num_threads(12).build_global().unwrap();
 
-    play_all_fens_vis();
+    // play_all_fens_vis();
 
-    // play_all_fens_par();
+    play_all_fens_par();
 }   
 
 fn play_all_fens_vis() {
-    let mut bot_a = Barschbot::new(Settings { time_percentage: 0.015, quiessence_depth: 0 });
-    let mut bot_b = Barschbot::new(Settings { time_percentage: 0.01, quiessence_depth: 0 });
+    let mut bot_a = Barschbot::named(Settings { time_percentage: 0.008, quiessence_depth: 3 }, String::from("QDepth: 3"));
+    let mut bot_b = Barschbot::named(Settings { time_percentage: 0.008, quiessence_depth: 0 }, String::from("No Qsearch"));
 
     let (vis_handle, engine_handle) = VisHandle::create_handles();
     
@@ -24,7 +24,7 @@ fn play_all_fens_vis() {
     //Start random move thread
     std::thread::spawn(move || {
         // random_moves(vis_handle);
-        let (a_wins, b_wins, draws) = match_handler::show_all_fens(&mut bot_a, &mut bot_b, 1000*60, vis_handle);
+        let (a_wins, b_wins, draws) = match_handler::show_all_fens(&mut bot_a, &mut bot_b, 1000*10, vis_handle);
         println!("A wins: {}, B wins: {}, Draws: {}", a_wins, b_wins, draws);
     });
     
@@ -32,8 +32,8 @@ fn play_all_fens_vis() {
 }
 
 fn play_all_fens_par() {
-    let mut bot_a = Barschbot::new(Settings { time_percentage: 0.015, quiessence_depth: 0 });
-    let mut bot_b = Barschbot::new(Settings { time_percentage: 0.01, quiessence_depth: 0 });
+    let mut bot_a = Barschbot::named(Settings { time_percentage: 0.008, quiessence_depth: 3 }, String::from("QDepth: 3"));
+    let mut bot_b = Barschbot::named(Settings { time_percentage: 0.008, quiessence_depth: 0 }, String::from("No Qsearch"));
 
     let (a_wins, b_wins, draws) = match_handler::play_all_fens(&mut bot_a, &mut bot_b, 1000*10);
     println!("A wins: {}, B wins: {}, Draws: {}", a_wins, b_wins, draws);
@@ -64,98 +64,98 @@ fn random_moves(engine_handle: VisHandle) {
 }
 
 
-//Error at r6k/1bpp1pp1/2q1r2p/p3PQ2/4BP2/P1B3R1/1PP3PP/2KR4 b - - 0 23
-fn human_against_bot(engine_handle: VisHandle) {
-    const PLAY_BLACK: bool = false;
+// //Error at r6k/1bpp1pp1/2q1r2p/p3PQ2/4BP2/P1B3R1/1PP3PP/2KR4 b - - 0 23
+// fn human_against_bot(engine_handle: VisHandle) {
+//     const PLAY_BLACK: bool = false;
 
     
-    // let mut rng = rand::thread_rng();
-    // let fen_list = match_handling::file_loader::load_test_fens();
+//     // let mut rng = rand::thread_rng();
+//     // let fen_list = match_handling::file_loader::load_test_fens();
     
-    // let mut gs = fen_list.choose(&mut rng).unwrap().clone();
+//     // let mut gs = fen_list.choose(&mut rng).unwrap().clone();
     
-    let mut gs = GameState::start_position();
-    // let mut gs = GameState::from_fen("1k5r/p1p2ppp/1pn1p3/8/3P4/Q1PqB2P/5PPK/8 w - - 0 1");
+//     let mut gs = GameState::start_position();
+//     // let mut gs = GameState::from_fen("1k5r/p1p2ppp/1pn1p3/8/3P4/Q1PqB2P/5PPK/8 w - - 0 1");
     
-    const START_TIME : u128 = 1000 * 60 * 5;
-    let mut white_time_left = START_TIME;
-    let mut black_time_left = START_TIME;
+//     const START_TIME : u128 = 1000 * 60 * 5;
+//     let mut white_time_left = START_TIME;
+//     let mut black_time_left = START_TIME;
 
-    engine_handle.send_render_state(RenderState::render_move_timed(
-        gs.board_state.piece_board.clone(),
-        chess_move::NULL_MOVE,
-        PLAY_BLACK,
-        white_time_left,
-        black_time_left
-    ));
+//     engine_handle.send_render_state(RenderState::render_move_timed(
+//         gs.board_state.piece_board.clone(),
+//         chess_move::NULL_MOVE,
+//         PLAY_BLACK,
+//         white_time_left,
+//         black_time_left
+//     ));
 
-    if PLAY_BLACK {
-        let (m, time_used) = get_bot_move(&mut gs, black_time_left);
-        gs.make_move(m);
+//     if PLAY_BLACK {
+//         let (m, time_used) = get_bot_move(&mut gs, black_time_left);
+//         gs.make_move(m);
 
-        white_time_left -= time_used.min(white_time_left);
+//         white_time_left -= time_used.min(white_time_left);
 
-        engine_handle.send_render_state(RenderState::render_move_timed(
-            gs.board_state.piece_board.clone(),
-            m,
-            PLAY_BLACK,
-            white_time_left,
-            black_time_left
-        ));
-    }
+//         engine_handle.send_render_state(RenderState::render_move_timed(
+//             gs.board_state.piece_board.clone(),
+//             m,
+//             PLAY_BLACK,
+//             white_time_left,
+//             black_time_left
+//         ));
+//     }
 
-    loop { 
-        let (m, time_used) = get_human_move(&mut gs, &engine_handle);
-        gs.make_move(m);
+//     loop { 
+//         let (m, time_used) = get_human_move(&mut gs, &engine_handle);
+//         gs.make_move(m);
 
-        if PLAY_BLACK {
-            black_time_left -= time_used.min(black_time_left);
-        } else {
-            white_time_left -= time_used.min(white_time_left);
-        }
+//         if PLAY_BLACK {
+//             black_time_left -= time_used.min(black_time_left);
+//         } else {
+//             white_time_left -= time_used.min(white_time_left);
+//         }
 
-        engine_handle.send_render_state(RenderState::render_move_timed(
-            gs.board_state.piece_board.clone(),
-            m,
-            PLAY_BLACK,
-            white_time_left,
-            black_time_left
-        ));
+//         engine_handle.send_render_state(RenderState::render_move_timed(
+//             gs.board_state.piece_board.clone(),
+//             m,
+//             PLAY_BLACK,
+//             white_time_left,
+//             black_time_left
+//         ));
 
-        let (m, time_used) = get_bot_move(&mut gs, black_time_left);
-        gs.make_move(m);
+//         let (m, time_used) = get_bot_move(&mut gs, black_time_left);
+//         gs.make_move(m);
 
-        if PLAY_BLACK {
-            white_time_left -= time_used.min(white_time_left);
-        } else {
-            black_time_left -= time_used.min(black_time_left);
-        }
+//         if PLAY_BLACK {
+//             white_time_left -= time_used.min(white_time_left);
+//         } else {
+//             black_time_left -= time_used.min(black_time_left);
+//         }
 
-        engine_handle.send_render_state(RenderState::render_move_timed(
-            gs.board_state.piece_board.clone(),
-            m,
-            PLAY_BLACK,
-            white_time_left,
-            black_time_left
-        ));
-    }
+//         engine_handle.send_render_state(RenderState::render_move_timed(
+//             gs.board_state.piece_board.clone(),
+//             m,
+//             PLAY_BLACK,
+//             white_time_left,
+//             black_time_left
+//         ));
+//     }
 
-    fn get_bot_move(gs: &mut GameState, time_left: u128) -> (ChessMove, u128) {
-        let start_time = std::time::Instant::now();
-        let (m, _, _) = search_functions::timed_search(gs, time_left);
-        let time_used = start_time.elapsed().as_millis();
-        (m, time_used)
-    }
+//     fn get_bot_move(gs: &mut GameState, time_left: u128) -> (ChessMove, u128) {
+//         let start_time = std::time::Instant::now();
+//         // let (m, _, _) = search_functions::timed_search(gs, time_left);
+//         let time_used = start_time.elapsed().as_millis();
+//         (m, time_used)
+//     }
 
-    fn get_human_move(gs: &mut GameState, engine_handle: &VisHandle) -> (ChessMove, u128) {
-        let start_time = std::time::Instant::now();
-        let moves = gs.gen_legal_moves();
-        loop {
-            let uci = engine_handle.recive_move();
+//     fn get_human_move(gs: &mut GameState, engine_handle: &VisHandle) -> (ChessMove, u128) {
+//         let start_time = std::time::Instant::now();
+//         let moves = gs.gen_legal_moves();
+//         loop {
+//             let uci = engine_handle.recive_move();
 
-            if moves.contains(&uci) {
-                return (uci, start_time.elapsed().as_millis());
-            }
-        }
-    }
-}
+//             if moves.contains(&uci) {
+//                 return (uci, start_time.elapsed().as_millis());
+//             }
+//         }
+//     }
+// }

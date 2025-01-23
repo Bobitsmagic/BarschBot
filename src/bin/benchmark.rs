@@ -1,10 +1,10 @@
-use barschbot::{board::{piece_type::PieceType, rank, square::Square}, evaluation::{search_functions::{aspiration_window, get_random_pos, iterative_deepening, nega_alpha_beta, nega_alpha_beta_tt, nega_alpha_beta_tt_qmt, nega_max, nega_scout}, search_stats::SearchStats}, game::game_state::GameState, moves::{chess_move::ChessMove, move_gen, perft_tests::PERFT_FENS}};
+use barschbot::{board::{piece_type::PieceType, rank, square::Square}, evaluation::search_stats::SearchStats, game::game_state::GameState, moves::{chess_move::ChessMove, move_gen, perft_tests::PERFT_FENS}};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 fn main() {
     // env::set_var("RUST_BACKTRACE", "1");
-    bench_search_functions();
+    // bench_search_functions();
     // benchmark_fens();
 }
 
@@ -117,50 +117,50 @@ fn count_moves(game_state: &mut GameState, depth: u8) -> u64 {
     return count;
 }
 
-pub fn bench_search_functions() {
-    const MAX_DEPTH: i32 = 7;
+// pub fn bench_search_functions() {
+//     const MAX_DEPTH: i32 = 7;
 
-    let mut rng = ChaCha8Rng::seed_from_u64(2);
+//     let mut rng = ChaCha8Rng::seed_from_u64(2);
 
-    const FUNCTIONS: [fn(&mut GameState, i32) -> (ChessMove, i32, SearchStats); 3] = [nega_alpha_beta_tt, nega_alpha_beta_tt_qmt, aspiration_window];
+//     const FUNCTIONS: [fn(&mut GameState, i32) -> (ChessMove, i32, SearchStats); 3] = [nega_alpha_beta_tt, nega_alpha_beta_tt_qmt, aspiration_window];
 
     
-    let mut sum_stats = Vec::new();
-    let mut times = vec![0; FUNCTIONS.len()];
+//     let mut sum_stats = Vec::new();
+//     let mut times = vec![0; FUNCTIONS.len()];
 
-    for _ in 0..FUNCTIONS.len() {
-        sum_stats.push(SearchStats::new());
-    }
+//     for _ in 0..FUNCTIONS.len() {
+//         sum_stats.push(SearchStats::new());
+//     }
 
-    for i in 0..100 {
-        println!("Iteration: {}", i);
+//     for i in 0..100 {
+//         println!("Iteration: {}", i);
 
-        let depth = rng.gen_range(10..50);
-        let gs = get_random_pos(depth, &mut rng);
+//         let depth = rng.gen_range(10..50);
+//         let gs = get_random_pos(depth, &mut rng);
 
-        let mut evals = Vec::new();
-        for j in 0..FUNCTIONS.len() {
-            let start = std::time::Instant::now();
-            let (_, eval, stats) = FUNCTIONS[j](&mut gs.clone(), MAX_DEPTH);
-            times[j] += start.elapsed().as_millis();
-            sum_stats[j] += stats;
-            evals.push(eval);
-        }
+//         let mut evals = Vec::new();
+//         for j in 0..FUNCTIONS.len() {
+//             let start = std::time::Instant::now();
+//             let (_, eval, stats) = FUNCTIONS[j](&mut gs.clone(), MAX_DEPTH);
+//             times[j] += start.elapsed().as_millis();
+//             sum_stats[j] += stats;
+//             evals.push(eval);
+//         }
 
-        for j in 1..FUNCTIONS.len() {
-            if evals[j] != evals[0] {
-                println!("Different move found!");
-                gs.board_state.piece_board.print();
-                println!("index: {}", j);
-                println!("Evals: {} {}", evals[0], evals[j]);
-                panic!();
-            }
-        }
-    }
+//         for j in 1..FUNCTIONS.len() {
+//             if evals[j] != evals[0] {
+//                 println!("Different move found!");
+//                 gs.board_state.piece_board.print();
+//                 println!("index: {}", j);
+//                 println!("Evals: {} {}", evals[0], evals[j]);
+//                 panic!();
+//             }
+//         }
+//     }
 
-    for i in 0..FUNCTIONS.len() {
-        println!("Function: {}", i);
-        println!("Time: {} ms", times[i]);
-        sum_stats[i].print();
-    }
-}
+//     for i in 0..FUNCTIONS.len() {
+//         println!("Function: {}", i);
+//         println!("Time: {} ms", times[i]);
+//         sum_stats[i].print();
+//     }
+// }

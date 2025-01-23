@@ -53,7 +53,7 @@ pub fn show_timed_game(gs: &mut GameState, bot_a: &mut Barschbot, bot_b: &mut Ba
     let mut time_left_b = start_time_ms;
 
     let a_color = gs.active_color();
-    engine_handle.send_render_state(RenderState::render_move_timed(
+    engine_handle.send_render_state(RenderState::render_move_named(
         gs.board_state.piece_board.clone(),
         chess_move::NULL_MOVE,
         false,
@@ -64,7 +64,15 @@ pub fn show_timed_game(gs: &mut GameState, bot_a: &mut Barschbot, bot_b: &mut Ba
         match a_color {
             PlayerColor::White => time_left_b,
             PlayerColor::Black => time_left_a,
-        }
+        },
+        match a_color {
+            PlayerColor::White => bot_a.name.clone(),
+            PlayerColor::Black => bot_b.name.clone(),
+        },
+        match a_color {
+            PlayerColor::White => bot_b.name.clone(),
+            PlayerColor::Black => bot_a.name.clone(),
+        },
     ));
 
     loop {
@@ -89,7 +97,7 @@ pub fn show_timed_game(gs: &mut GameState, bot_a: &mut Barschbot, bot_b: &mut Ba
         time_left_a -= time_used;   
         gs.make_move(m);
 
-        engine_handle.send_render_state(RenderState::render_move_timed(
+        engine_handle.send_render_state(RenderState::render_move_named(
             gs.board_state.piece_board.clone(),
             m,
             false,
@@ -100,7 +108,15 @@ pub fn show_timed_game(gs: &mut GameState, bot_a: &mut Barschbot, bot_b: &mut Ba
             match a_color {
                 PlayerColor::White => time_left_b,
                 PlayerColor::Black => time_left_a,
-            }
+            },
+            match a_color {
+                PlayerColor::White => bot_a.name.clone(),
+                PlayerColor::Black => bot_b.name.clone(),
+            },
+            match a_color {
+                PlayerColor::White => bot_b.name.clone(),
+                PlayerColor::Black => bot_a.name.clone(),
+            },
         ));
 
         //Bot b
@@ -124,7 +140,7 @@ pub fn show_timed_game(gs: &mut GameState, bot_a: &mut Barschbot, bot_b: &mut Ba
         time_left_b -= time_used;   
         gs.make_move(m);
         
-        engine_handle.send_render_state(RenderState::render_move_timed(
+        engine_handle.send_render_state(RenderState::render_move_named(
             gs.board_state.piece_board.clone(),
             m,
             false,
@@ -135,7 +151,15 @@ pub fn show_timed_game(gs: &mut GameState, bot_a: &mut Barschbot, bot_b: &mut Ba
             match a_color {
                 PlayerColor::White => time_left_b,
                 PlayerColor::Black => time_left_a,
-            }
+            },
+            match a_color {
+                PlayerColor::White => bot_a.name.clone(),
+                PlayerColor::Black => bot_b.name.clone(),
+            },
+            match a_color {
+                PlayerColor::White => bot_b.name.clone(),
+                PlayerColor::Black => bot_a.name.clone(),
+            },
         ));
 
     }
