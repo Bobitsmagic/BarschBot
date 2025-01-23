@@ -1,16 +1,21 @@
-use crate::{game::board_state::BoardState, moves::move_gen};
+use crate::{board::bit_array_lookup::ROWS, game::board_state::BoardState, moves::move_gen};
+
+use super::settings::Settings;
 
 pub struct Attributes {
     pub piece_count: [i32; 5],
     pub mobility: [i32; 6],
+    pub pawn_push: [i32; 6],
 }
 
 const PIECE_VALUES: [i32; 5] = [1000, 2800, 3200, 5000, 9000];
 const MOBILITY_VALUES: [i32; 6] = [0, 100, 80, 50, 30, 0];
+const PAWN_PUSH_VALUE: [i32; 6] = [0, 10, 50, 150, 500, 2000];
 
 pub const STANDARD_EVAL: Attributes = Attributes {
     piece_count: PIECE_VALUES,
     mobility: MOBILITY_VALUES,
+    pawn_push: PAWN_PUSH_VALUE,
 };
 
 impl Attributes {
@@ -24,13 +29,18 @@ impl Attributes {
             sum += self.mobility[i] * weights.mobility[i];
         }
 
+        for i in 0..6 {
+            sum += self.pawn_push[i] * weights.pawn_push[i];
+        }
+
         return sum;
     }
 
-    pub fn from_board_state(board_state: &BoardState) -> Attributes {
+    pub fn from_board_state(board_state: &BoardState, setting: &Settings) -> Attributes {
         let mut attributes = Attributes {
             piece_count: [0; 5],
             mobility: [0; 6],
+            pawn_push: [0; 6],
         };
 
         let bb = &board_state.bit_board;
@@ -81,6 +91,16 @@ impl Attributes {
 
         for m in &black_moves {
             attributes.mobility[m.move_piece.piece_type() as usize] -= 1;
+        }
+
+        if setting.use_pawn_table {
+            //Count pawns on rank 
+            for i in 0..6 {
+                let white_count = (white_pawns & ROWS[i + 1]).count_ones() as i32;
+                let black_count = (black_pawns & ROWS[6 - i]).count_ones() as i32;
+    
+                attributes.pawn_push[i] = white_count - black_count;
+            }
         }
 
         return attributes;

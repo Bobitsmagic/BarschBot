@@ -14,8 +14,8 @@ fn main() {
 }   
 
 fn play_all_fens_vis() {
-    let mut bot_a = Barschbot::named(Settings { time_percentage: 0.008, quiessence_depth: 3 }, String::from("QDepth: 3"));
-    let mut bot_b = Barschbot::named(Settings { time_percentage: 0.008, quiessence_depth: 0 }, String::from("No Qsearch"));
+    let mut bot_a = Barschbot::named(Settings { time_percentage: 0.01, quiessence_depth: 5, use_pawn_table: true }, String::from("Porn: 3"));
+    let mut bot_b = Barschbot::named(Settings { time_percentage: 0.01, quiessence_depth: 5, use_pawn_table: false }, String::from("No porn"));
 
     let (vis_handle, engine_handle) = VisHandle::create_handles();
     
@@ -24,7 +24,7 @@ fn play_all_fens_vis() {
     //Start random move thread
     std::thread::spawn(move || {
         // random_moves(vis_handle);
-        let (a_wins, b_wins, draws) = match_handler::show_all_fens(&mut bot_a, &mut bot_b, 1000*10, vis_handle);
+        let (a_wins, b_wins, draws) = match_handler::show_all_fens(&mut bot_a, &mut bot_b, 1000*30, vis_handle);
         println!("A wins: {}, B wins: {}, Draws: {}", a_wins, b_wins, draws);
     });
     
@@ -32,8 +32,8 @@ fn play_all_fens_vis() {
 }
 
 fn play_all_fens_par() {
-    let mut bot_a = Barschbot::named(Settings { time_percentage: 0.008, quiessence_depth: 3 }, String::from("QDepth: 3"));
-    let mut bot_b = Barschbot::named(Settings { time_percentage: 0.008, quiessence_depth: 0 }, String::from("No Qsearch"));
+    let mut bot_a = Barschbot::named(Settings { time_percentage: 0.01, quiessence_depth: 5, use_pawn_table: true }, String::from("Porn: 3"));
+    let mut bot_b = Barschbot::named(Settings { time_percentage: 0.01, quiessence_depth: 5, use_pawn_table: false }, String::from("No porn"));
 
     let (a_wins, b_wins, draws) = match_handler::play_all_fens(&mut bot_a, &mut bot_b, 1000*10);
     println!("A wins: {}, B wins: {}, Draws: {}", a_wins, b_wins, draws);

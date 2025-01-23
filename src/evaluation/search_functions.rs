@@ -174,7 +174,7 @@ fn quiessence_search(game_state: &mut GameState, depth_left: i32, depth: i32, mu
             PlayerColor::White => 1,
             PlayerColor::Black => -1,
         };
-        let local_score = Attributes::from_board_state(&game_state.board_state).multiply(&attributes::STANDARD_EVAL) * factor;
+        let local_score = Attributes::from_board_state(&game_state.board_state, settings).multiply(&attributes::STANDARD_EVAL) * factor;
 
         if local_score >= beta {
             return local_score;
@@ -299,7 +299,7 @@ fn bb_search_settings(game_state: &mut GameState, depth_left: i32, depth: i32, m
 
 
         if settings.quiessence_depth == 0 {
-            return Attributes::from_board_state(&game_state.board_state).multiply(&attributes::STANDARD_EVAL) * factor;
+            return Attributes::from_board_state(&game_state.board_state, settings).multiply(&attributes::STANDARD_EVAL) * factor;
         }
         else {
             return quiessence_search(game_state, settings.quiessence_depth, depth, alpha, beta, settings, stats, tt, quiet_move_table);

@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{board::player_color::PlayerColor, evaluation::barschbot::Barschbot, game::{game_result::GameResult, game_state::{self, GameState}}, gui::{render_state::RenderState, vis_handle::VisHandle}, moves::chess_move};
@@ -168,24 +170,30 @@ pub fn show_timed_game(gs: &mut GameState, bot_a: &mut Barschbot, bot_b: &mut Ba
 pub fn play_all_fens(bot_a: &mut Barschbot, bot_b: &mut Barschbot, start_time_ms: u128) -> (i32, i32, i32) {
     let fens = crate::match_handling::file_loader::load_test_fens();
 
+
+    let win_counter = Arc::new(Mutex::new((0, 0, 0)));
+      
     let mut list = Vec::new();
     for f in fens {
-        list.push((f, 0, 0, 0, bot_a.clone(), bot_b.clone()));
+        list.push((f, win_counter.clone(), bot_a.clone(), bot_b.clone()));
     }
     
-    list.par_iter_mut().for_each(|(fen, a_wins, b_wins, draws, bot_a, bot_b)| {
+    list.par_iter_mut().for_each(move |(fen, win_counter, bot_a, bot_b)| {
         let mut game_state = GameState::from_fen(&fen.to_fen());
         
         let mut bot_a = bot_a.clone();
         let mut bot_b = bot_b.clone();
+        let mut a_wins = 0;
+        let mut b_wins = 0;
+        let mut draws = 0;
 
         let start_color = game_state.active_color();
         let res = play_timed_game(&mut game_state, &mut bot_a, &mut bot_b, start_time_ms);
 
         match res {
-            GameResult::WhiteWin => if start_color == PlayerColor::White { *a_wins += 1 } else { *b_wins += 1 },
-            GameResult::BlackWin => if start_color == PlayerColor::Black { *a_wins += 1 } else { *b_wins += 1 },
-            GameResult::Draw => *draws += 1,
+            GameResult::WhiteWin => if start_color == PlayerColor::White { a_wins += 1 } else { b_wins += 1 },
+            GameResult::BlackWin => if start_color == PlayerColor::Black { a_wins += 1 } else { b_wins += 1 },
+            GameResult::Draw => draws += 1,
             _ => (),
         }
         // game_state.board_state.piece_board.print();
@@ -194,24 +202,26 @@ pub fn play_all_fens(bot_a: &mut Barschbot, bot_b: &mut Barschbot, start_time_ms
         let res = play_timed_game(&mut game_state, &mut bot_b, &mut bot_a, start_time_ms);
 
         match res {
-            GameResult::WhiteWin => if start_color == PlayerColor::White { *b_wins += 1 } else { *a_wins += 1 },
-            GameResult::BlackWin => if start_color == PlayerColor::Black { *b_wins += 1 } else { *a_wins += 1 },
-            GameResult::Draw => *draws += 1,
+            GameResult::WhiteWin => if start_color == PlayerColor::White { b_wins += 1 } else { a_wins += 1 },
+            GameResult::BlackWin => if start_color == PlayerColor::Black { b_wins += 1 } else { a_wins += 1 },
+            GameResult::Draw => draws += 1,
             _ => (),
         }
 
-        println!("Wins: A: {}, B: {}, Draws: {}", a_wins, b_wins, draws);
+        let mut tuple = win_counter.lock().unwrap();
+
+        tuple.0 += a_wins;
+        tuple.1 += b_wins;
+        tuple.2 += draws;
+
+        println!("Wins: A: {}, B: {}, Draws: {}", tuple.0, tuple.1, tuple.2);
     });
         
-    let mut a_wins = 0;
-    let mut b_wins = 0;
-    let mut draws = 0;
 
-    for (_, a, b, d, _, _) in list {
-        a_wins += a;
-        b_wins += b;
-        draws += d;
-    }
+    let tuple = win_counter.lock().unwrap();
+    let a_wins = tuple.0;
+    let b_wins = tuple.1;
+    let draws = tuple.2;
 
     (a_wins, b_wins, draws)
 }
