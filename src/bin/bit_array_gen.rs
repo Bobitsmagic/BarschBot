@@ -1,6 +1,6 @@
 use std::{fs::File, io::Write};
 
-use barschbot::{board::{bit_array::BitArray, bit_array_lookup::{self}, square::{self, Square, VALID_SQUARES}}, moves::slider_gen::{gen_bishop_moves, gen_rook_moves, order_bits}};
+use barschbot::{board::{bit_array::BitArray, bit_array_lookup::{self}, square::{self, Square, PAWN_SQUARES, VALID_SQUARES}}, moves::slider_gen::{gen_bishop_moves, gen_rook_moves, order_bits}};
 
 pub fn main() {
     // gen_bishop_move_table();
@@ -13,6 +13,8 @@ pub fn main() {
 
 pub fn print_all_tables() {
     let pawn_moves = gen_pawn_move_masks();
+    let adjacent_columns = gen_adjacent_columns();
+    let passed_pawn_mask = gen_passed_pawn_mask();
     let knight_moves = gen_knight_move_mask();
     let king_moves = gen_king_move_mask();
     let diagonal_moves = gen_diagonal_move_mask();
@@ -23,10 +25,13 @@ pub fn print_all_tables() {
     let rook_move_table = gen_rook_move_table();
     let bishop_move_table = gen_bishop_move_table();
 
-    
     let mut s = String::new();
+
     s += &bit_array_to_string("PAWN_MOVES_WHITE", &pawn_moves.0);
     s += &bit_array_to_string("PAWN_MOVES_BLACK", &pawn_moves.1);
+    s += &bit_array_to_string("ADJACENT_COLUMNS", &adjacent_columns);
+    s += &bit_array_to_string("PASSED_PAWN_MASK_WHITE", &passed_pawn_mask.0);
+    s += &bit_array_to_string("PASSED_PAWN_MASK_BLACK", &passed_pawn_mask.1);
     s += &bit_array_to_string("KNIGHT_MOVES", &knight_moves);
     s += &bit_array_to_string("KING_MOVES", &king_moves);
     s += &bit_array_to_string("DIAGONAL_MOVES", &diagonal_moves);
@@ -41,6 +46,48 @@ pub fn print_all_tables() {
     //Write to text file
     let mut file = File::create("generated_files/lookup.rs").unwrap();
     file.write_all(s.as_bytes()).unwrap();
+}
+
+pub fn gen_adjacent_columns() -> [u64; 8] {
+    let mut result = [0; 8];
+
+    for i in 0..8 {
+        let mut mask = 0;
+
+        if i > 0 {
+            mask |= bit_array_lookup::COLLUMNS[i - 1];
+        }
+
+        if i < 7 {
+            mask |= bit_array_lookup::COLLUMNS[i + 1];
+        }
+
+        result[i] = mask;
+    }
+
+    return result;
+}
+
+pub fn gen_passed_pawn_mask() -> ([u64; 64], [u64; 64]) {
+    let adj_columns = gen_adjacent_columns();
+
+    let mut white_res = [0; 64];
+    let mut black_res = [0; 64];
+
+    for s in PAWN_SQUARES {
+        let file = s.file();
+        let rank = s.rank();
+
+        let columns = adj_columns[file as usize];
+
+        let upper_rows = !bit_array_lookup::ACCUM_ROWS[rank as usize];
+        let lower_rows = bit_array_lookup::ACCUM_ROWS[rank as usize - 1];
+
+        white_res[s as usize] = columns & upper_rows;
+        black_res[s as usize] = columns & lower_rows;
+    }
+
+    return (white_res, black_res);
 }
 
 pub fn bit_array_to_string(name: &str, bit_array_array: &[u64]) -> String {

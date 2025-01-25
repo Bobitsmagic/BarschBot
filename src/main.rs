@@ -7,15 +7,16 @@ use rand::seq::SliceRandom;
 
 fn main() {    
     rayon::ThreadPoolBuilder::new().num_threads(12).build_global().unwrap();
+    let bot_b = Barschbot::named(Settings { time_percentage: 0.01, quiessence_depth: 5, use_new_feature: true }, String::from("New feature"));
+    let bot_a = Barschbot::named(Settings { time_percentage: 0.01, quiessence_depth: 5, use_new_feature: false }, String::from("No feature"));
 
-    // play_all_fens_vis();
+    // play_all_fens_vis(bot_a, bot_b);
 
-    play_all_fens_par();
+    play_all_fens_par(bot_a, bot_b);
 }   
 
-fn play_all_fens_vis() {
-    let mut bot_a = Barschbot::named(Settings { time_percentage: 0.01, quiessence_depth: 5, use_pawn_table: true }, String::from("Porn: 3"));
-    let mut bot_b = Barschbot::named(Settings { time_percentage: 0.01, quiessence_depth: 5, use_pawn_table: false }, String::from("No porn"));
+fn play_all_fens_vis(mut bot_a: Barschbot, mut bot_b: Barschbot) {
+
 
     let (vis_handle, engine_handle) = VisHandle::create_handles();
     
@@ -31,11 +32,8 @@ fn play_all_fens_vis() {
     visualizer.run();
 }
 
-fn play_all_fens_par() {
-    let mut bot_a = Barschbot::named(Settings { time_percentage: 0.01, quiessence_depth: 5, use_pawn_table: true }, String::from("Porn: 3"));
-    let mut bot_b = Barschbot::named(Settings { time_percentage: 0.01, quiessence_depth: 5, use_pawn_table: false }, String::from("No porn"));
-
-    let (a_wins, b_wins, draws) = match_handler::play_all_fens(&mut bot_a, &mut bot_b, 1000*10);
+fn play_all_fens_par(mut bot_a: Barschbot, mut bot_b: Barschbot) {
+    let (a_wins, b_wins, draws) = match_handler::play_all_fens(&mut bot_a, &mut bot_b, 1000*60);
     println!("A wins: {}, B wins: {}, Draws: {}", a_wins, b_wins, draws);
 }
 

@@ -214,7 +214,7 @@ pub fn play_all_fens(bot_a: &mut Barschbot, bot_b: &mut Barschbot, start_time_ms
         tuple.1 += b_wins;
         tuple.2 += draws;
 
-        println!("Wins: A: {}, B: {}, Draws: {}", tuple.0, tuple.1, tuple.2);
+        println!("Wins {}: {}, Wins {}: {}, Draws: {}", bot_a.name, tuple.0, bot_b.name, tuple.1, tuple.2);
     });
         
 

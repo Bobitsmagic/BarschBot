@@ -75,6 +75,7 @@ pub const H8: i8 = 63;
 pub const NONE: i8 = 64;
 
 pub const VALID_SQUARES: Range<i8> = 0_i8..64;
+pub const PAWN_SQUARES: Range<i8> = 8_i8..56;
 
 
 pub const EN_PASSANT_SQUARES: [i8; 16] = [
