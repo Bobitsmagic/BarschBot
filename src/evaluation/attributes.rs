@@ -1,4 +1,4 @@
-use crate::{board::{bit_array::BitArray, bit_array_lookup::{self, ROWS}}, game::board_state::BoardState, moves::move_gen};
+use crate::{board::{self, bit_array::BitArray, bit_array_lookup::{self, ROWS}, player_color::PlayerColor}, game::{board_state::BoardState, game_state::GameState}, moves::move_gen};
 use super::settings::Settings;
 use crate::board::bit_array;
 
@@ -9,6 +9,7 @@ pub struct Attributes {
     pub double_pawn: i32,
     pub isolated_pawn: i32,
     pub passed_pawn: i32,
+    pub turn: i32,
 }
 
 const PIECE_VALUES: [i32; 5] = [1000, 2800, 3200, 5000, 9000];
@@ -17,6 +18,7 @@ const PAWN_PUSH_VALUE: [i32; 6] = [0, 10, 50, 150, 500, 2000];
 const DOUBLE_PAWN_VALUE: i32 = -200;
 const ISOLATED_PAWN_VALUE: i32 = -100;
 const PASSED_PAWN_VALUE: i32 = 150;
+const TURN_VALUE: i32 = 20;
 
 pub const STANDARD_EVAL: Attributes = Attributes {
     piece_count: PIECE_VALUES,
@@ -25,6 +27,7 @@ pub const STANDARD_EVAL: Attributes = Attributes {
     double_pawn: DOUBLE_PAWN_VALUE,
     isolated_pawn: ISOLATED_PAWN_VALUE,
     passed_pawn: PASSED_PAWN_VALUE,
+    turn: TURN_VALUE,
 };
 
 impl Attributes {
@@ -49,7 +52,7 @@ impl Attributes {
         return sum;
     }
 
-    pub fn from_board_state(board_state: &BoardState, setting: &Settings) -> Attributes {
+    pub fn from_board_state(gs: &GameState, setting: &Settings) -> Attributes {
         let mut attributes = Attributes {
             piece_count: [0; 5],
             mobility: [0; 6],
@@ -57,8 +60,10 @@ impl Attributes {
             double_pawn: 0,
             isolated_pawn: 0,
             passed_pawn: 0,
+            turn: 0,
         };
 
+        let board_state = &gs.board_state;
         let bb = &board_state.bit_board;
         let white_pawns = bb.white_piece & bb.pawn;
         let black_pawns = bb.black_piece & bb.pawn;
@@ -120,9 +125,14 @@ impl Attributes {
         attributes.double_pawn = count_doubled_pawns(white_pawns) - count_doubled_pawns(black_pawns);
         
         if setting.use_new_feature {
-            attributes.isolated_pawn = count_isolated_pawns(white_pawns) - count_isolated_pawns(black_pawns);
-            attributes.passed_pawn = count_passed_pawns(white_pawns, black_pawns, &bit_array_lookup::PASSED_PAWN_MASK_WHITE);
-            attributes.passed_pawn -= count_passed_pawns(black_pawns, white_pawns, &bit_array_lookup::PASSED_PAWN_MASK_BLACK);
+            // attributes.isolated_pawn = count_isolated_pawns(white_pawns) - count_isolated_pawns(black_pawns);
+            // attributes.passed_pawn = count_passed_pawns(white_pawns, black_pawns, &bit_array_lookup::PASSED_PAWN_MASK_WHITE);
+            // attributes.passed_pawn -= count_passed_pawns(black_pawns, white_pawns, &bit_array_lookup::PASSED_PAWN_MASK_BLACK);
+
+            attributes.turn = match gs.active_color() {
+                PlayerColor::White => 1,
+                PlayerColor::Black => -1,
+            };
         }
 
         return attributes;

@@ -174,7 +174,7 @@ fn quiessence_search(game_state: &mut GameState, depth_left: i32, depth: i32, mu
             PlayerColor::White => 1,
             PlayerColor::Black => -1,
         };
-        let local_score = Attributes::from_board_state(&game_state.board_state, settings).multiply(&attributes::STANDARD_EVAL) * factor;
+        let local_score = Attributes::from_board_state(&game_state, settings).multiply(&attributes::STANDARD_EVAL) * factor;
 
         if local_score >= beta {
             return local_score;
@@ -236,7 +236,7 @@ pub fn bb_timed_search(game_state: &mut GameState, time_left: u128, settings: &S
     let mut depth = 1;
     let mut last_best_move = chess_move::NULL_MOVE;
     loop {
-        eval = bb_search_settings(game_state, depth, 0, -MAX_VALUE, MAX_VALUE, settings, &mut stats, &mut tt, &mut qmt);
+        eval = bb_search_settings(game_state, depth, 0, settings.check_extensions, -MAX_VALUE, MAX_VALUE, settings, &mut stats, &mut tt, &mut qmt);
 
         let entry = tt.get(&game_state.zobrist_hash.hash).unwrap();
         debug_assert!(entry.node_type == NodeType::Exact);
@@ -279,7 +279,7 @@ pub fn bb_timed_search(game_state: &mut GameState, time_left: u128, settings: &S
     return (last_best_move, eval, stats);
 }
 
-fn bb_search_settings(game_state: &mut GameState, depth_left: i32, depth: i32, mut alpha: i32, beta: i32, settings: &Settings, stats: &mut SearchStats, tt: &mut TranspositionTable, quiet_move_table: &mut QuietMoveTable) -> i32 {
+fn bb_search_settings(game_state: &mut GameState, depth_left: i32, depth: i32, extensions_left: i32, mut alpha: i32, beta: i32, settings: &Settings, stats: &mut SearchStats, tt: &mut TranspositionTable, quiet_move_table: &mut QuietMoveTable) -> i32 {
     stats.nodes += 1;
 
     let res = game_state.game_result();
@@ -299,7 +299,7 @@ fn bb_search_settings(game_state: &mut GameState, depth_left: i32, depth: i32, m
 
 
         if settings.quiessence_depth == 0 {
-            return Attributes::from_board_state(&game_state.board_state, settings).multiply(&attributes::STANDARD_EVAL) * factor;
+            return Attributes::from_board_state(&game_state, settings).multiply(&attributes::STANDARD_EVAL) * factor;
         }
         else {
             return quiessence_search(game_state, settings.quiessence_depth, depth, alpha, beta, settings, stats, tt, quiet_move_table);
@@ -335,7 +335,8 @@ fn bb_search_settings(game_state: &mut GameState, depth_left: i32, depth: i32, m
     let mut best_move = chess_move::NULL_MOVE;
     let mut best_score = -MAX_VALUE;
 
-    let mut lm = game_state.gen_legal_moves();
+    let (mut lm, in_check) = game_state.gen_legal_moves_check();
+    let use_extend = in_check && extensions_left > 0 && lm.len() <= 2;
 
     quiet_move_sorter(&mut lm, &game_state.board_state, tt_entry.best_move, quiet_move_table);
     // better_move_sorter(&mut lm, &game_state.board_state, tt_entry.best_move);
@@ -354,10 +355,10 @@ fn bb_search_settings(game_state: &mut GameState, depth_left: i32, depth: i32, m
 
         game_state.make_move(m);
 
-        let mut t = - bb_search_settings(game_state, depth_left - 1, depth + 1, -b, -alpha, settings, stats, tt, quiet_move_table);
+        let mut t = - bb_search_settings(game_state, depth_left - (!use_extend) as i32, depth + 1, extensions_left - use_extend as i32,  -b, -alpha, settings, stats, tt, quiet_move_table);
 
         if t > alpha && t < beta && i > 0 && depth_left > 1 {
-            t = - bb_search_settings(game_state, depth_left - 1, depth + 1, -beta, -alpha, settings, stats, tt, quiet_move_table);
+            t = - bb_search_settings(game_state, depth_left - (!use_extend) as i32, depth + 1, extensions_left - use_extend as i32, -beta, -alpha, settings, stats, tt, quiet_move_table);
         }
 
         game_state.undo_move();

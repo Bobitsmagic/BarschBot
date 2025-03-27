@@ -108,12 +108,23 @@ impl GameState {
         }
     }
 
-    pub fn gen_legal_moves(&mut self) -> MoveVector {
+    pub fn gen_legal_moves_check(&mut self) -> (MoveVector, bool) {
+        let mut check = false;
+
         if self.legal_moves.is_none() {
-            self.legal_moves = Some(move_gen::gen_legal_moves(&self.board_state, &self.get_flags()));
+            let (moves, c) = move_gen::gen_legal_moves_check(&self.board_state, &self.get_flags());
+            self.legal_moves = Some(moves);
+            check = c;
+        }
+        else {
+            println!("Panic");
         }
 
-        return self.legal_moves.as_ref().unwrap().clone();
+        return (self.legal_moves.as_ref().unwrap().clone(), check);
+    }
+
+    pub fn gen_legal_moves(&mut self) -> MoveVector {
+        self.gen_legal_moves_check().0
     }
     pub fn gen_legal_moves_iterator(&self) -> MoveIterator {
         return move_gen::gen_legal_moves_iterator(&self.board_state, &self.get_flags());
