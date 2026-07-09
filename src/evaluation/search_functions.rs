@@ -245,7 +245,7 @@ pub fn bb_timed_search(game_state: &mut GameState, time_left: u128, settings: &S
         let best_move = entry.best_move;
         last_best_move = best_move;
 
-        // println!("Depth: {} Best move: {} Score: {}", depth, best_move.to_string(), eval);
+        println!("Depth: {} Best move: {} Score: {}", depth, best_move.to_string(), eval);
 
         depth += 1;
 

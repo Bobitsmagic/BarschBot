@@ -86,9 +86,9 @@ fn human_against_bot(engine_handle: VisHandle) {
     // let mut gs = fen_list.choose(&mut rng).unwrap().clone();
     
     let mut gs = GameState::start_position();
-    // let mut gs = GameState::from_fen("1k5r/p1p2ppp/1pn1p3/8/3P4/Q1PqB2P/5PPK/8 w - - 0 1");
+    // let mut gs = GameState::from_fen("7k/p4p2/2p2pr1/3p3p/3P1QP1/P1P2P1q/7P/4R1K1 w - - 0 26");
     
-    const START_TIME : u128 = 1000 * 60 * 10;
+    const START_TIME : u128 = 1000 * 60 * 1;
     let mut white_time_left = START_TIME;
     let mut black_time_left = START_TIME;
 
@@ -135,7 +135,7 @@ fn human_against_bot(engine_handle: VisHandle) {
             black_time_left
         ));
 
-        let (m, time_used) = get_bot_move(&mut gs, black_time_left, &mut bot);
+        let (m, time_used) = get_bot_move(&mut gs, if PLAY_BLACK { white_time_left } else { black_time_left }, &mut bot);
         gs.make_move(m);
 
         if PLAY_BLACK {
