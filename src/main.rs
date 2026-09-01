@@ -1,20 +1,36 @@
 use core::time;
 use std::{thread, time::Duration};
 
-use barschbot::{board::{piece_type::ColoredPieceType, square}, evaluation::{barschbot::Barschbot, search_functions, settings::{self, Settings}}, game::game_state::GameState, gui::{engine_handle::{self, EngineHandle}, render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, match_handling::{self, match_handler}, moves::chess_move::{self, ChessMove}};
+use barschbot::{board::{piece_type::ColoredPieceType, square}, evaluation::{barschbot::Barschbot, hans_eval::{self, Attributes, EvaluationSettings}, search_functions, settings::{self, Settings}}, game::game_state::GameState, gui::{engine_handle::{self, EngineHandle}, render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, match_handling::{self, match_handler}, moves::chess_move::{self, ChessMove}};
 use piston_window::color::BLACK;
 use rand::seq::SliceRandom;
 
 fn main() {    
-    start_human_against_bot();
+    // start_human_against_bot();
 
-    rayon::ThreadPoolBuilder::new().num_threads(12).build_global().unwrap();
-    let bot_b = Barschbot::named(Settings { time_percentage: 0.01, quiessence_depth: 5, use_new_feature: false, check_extensions: 0 }, String::from("No"));
-    let bot_a = Barschbot::named(Settings { time_percentage: 0.01, quiessence_depth: 5, use_new_feature: true, check_extensions: 0 }, String::from("Turn val"));
+    // rayon::ThreadPoolBuilder::new().num_threads(12).build_global().unwrap();
+    let bot_a = Barschbot::named(Settings { 
+        time_percentage: 0.02, 
+        quiessence_depth: 5,
+        check_extensions: 0, 
+        evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings { 
+            use_new_feature: false, 
+            attr_weights: hans_eval::STANDARD_EVAL 
+        })},
+         String::from("Old version"));
 
-    // play_all_fens_vis(bot_a, bot_b);
+    let bot_b = Barschbot::named(Settings { 
+        time_percentage: 0.02, 
+        quiessence_depth: 5,
+        check_extensions: 0, 
+        evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings { 
+            use_new_feature: true, 
+            attr_weights: hans_eval::STANDARD_EVAL 
+        })},
+         String::from("New version"));
 
-    // play_all_fens_par(bot_a, bot_b);
+    play_all_fens_vis(bot_a.clone(), bot_b.clone());
+    play_all_fens_par(bot_a, bot_b);
 }   
 
 fn play_all_fens_vis(mut bot_a: Barschbot, mut bot_b: Barschbot) {
@@ -27,7 +43,7 @@ fn play_all_fens_vis(mut bot_a: Barschbot, mut bot_b: Barschbot) {
     //Start random move thread
     std::thread::spawn(move || {
         // random_moves(vis_handle);
-        let (a_wins, b_wins, draws) = match_handler::show_all_fens(&mut bot_a, &mut bot_b, 1000*120, vis_handle);
+        let (a_wins, b_wins, draws) = match_handler::show_all_fens(&mut bot_a, &mut bot_b, 1000*10, vis_handle);
         println!("A wins: {}, B wins: {}, Draws: {}", a_wins, b_wins, draws);
     });
     
@@ -35,7 +51,7 @@ fn play_all_fens_vis(mut bot_a: Barschbot, mut bot_b: Barschbot) {
 }
 
 fn play_all_fens_par(mut bot_a: Barschbot, mut bot_b: Barschbot) {
-    let (a_wins, b_wins, draws) = match_handler::play_all_fens(&mut bot_a, &mut bot_b, 1000*120);
+    let (a_wins, b_wins, draws) = match_handler::play_all_fens(&mut bot_a, &mut bot_b, 1000*10);
     println!("A wins: {}, B wins: {}, Draws: {}", a_wins, b_wins, draws);
 }
 
@@ -92,7 +108,15 @@ fn human_against_bot(engine_handle: VisHandle) {
     let mut white_time_left = START_TIME;
     let mut black_time_left = START_TIME;
 
-    let mut bot = Barschbot::named(Settings { time_percentage: 0.02, quiessence_depth: 5, use_new_feature: true, check_extensions: 0 }, String::from("Waldwiesel destroyer"));
+    let mut bot = Barschbot::named(Settings { 
+        time_percentage: 0.02, 
+        quiessence_depth: 5,
+        check_extensions: 0, 
+        evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings { 
+            use_new_feature: false, 
+            attr_weights: hans_eval::STANDARD_EVAL 
+        })},
+         String::from("Waldwiesel destroyer"));
 
     engine_handle.send_render_state(RenderState::render_move_timed(
         gs.board_state.piece_board.clone(),

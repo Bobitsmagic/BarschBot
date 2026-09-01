@@ -2,6 +2,7 @@ use crate::{board::{self, bit_array::BitArray, bit_array_lookup::{self, ROWS}, p
 use super::settings::Settings;
 use crate::board::bit_array;
 
+#[derive(Debug, Clone, Copy)]
 pub struct Attributes {
     pub piece_count: [i32; 5],
     pub mobility: [i32; 6],
@@ -10,6 +11,18 @@ pub struct Attributes {
     pub isolated_pawn: i32,
     pub passed_pawn: i32,
     pub turn: i32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct EvaluationSettings {
+    pub use_new_feature: bool,
+    pub attr_weights: Attributes   
+}
+
+pub fn evaluation_function(gs: &GameState, eval_settings: &EvaluationSettings) -> i32 {
+    let attr = Attributes::from_board_state(gs, eval_settings);
+
+    return  attr.multiply(&eval_settings.attr_weights);
 }
 
 const PIECE_VALUES: [i32; 5] = [1000, 2800, 3200, 5000, 9000];
@@ -52,7 +65,7 @@ impl Attributes {
         return sum;
     }
 
-    pub fn from_board_state(gs: &GameState, setting: &Settings) -> Attributes {
+    pub fn from_board_state(gs: &GameState, setting: &EvaluationSettings) -> Attributes {
         let mut attributes = Attributes {
             piece_count: [0; 5],
             mobility: [0; 6],
@@ -125,9 +138,9 @@ impl Attributes {
         attributes.double_pawn = count_doubled_pawns(white_pawns) - count_doubled_pawns(black_pawns);
         
         if setting.use_new_feature {
-            // attributes.isolated_pawn = count_isolated_pawns(white_pawns) - count_isolated_pawns(black_pawns);
-            // attributes.passed_pawn = count_passed_pawns(white_pawns, black_pawns, &bit_array_lookup::PASSED_PAWN_MASK_WHITE);
-            // attributes.passed_pawn -= count_passed_pawns(black_pawns, white_pawns, &bit_array_lookup::PASSED_PAWN_MASK_BLACK);
+            attributes.isolated_pawn = count_isolated_pawns(white_pawns) - count_isolated_pawns(black_pawns);
+            attributes.passed_pawn = count_passed_pawns(white_pawns, black_pawns, &bit_array_lookup::PASSED_PAWN_MASK_WHITE);
+            attributes.passed_pawn -= count_passed_pawns(black_pawns, white_pawns, &bit_array_lookup::PASSED_PAWN_MASK_BLACK);
 
             attributes.turn = match gs.active_color() {
                 PlayerColor::White => 1,

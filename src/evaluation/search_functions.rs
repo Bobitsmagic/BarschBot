@@ -6,7 +6,7 @@ use rand_chacha::ChaCha8Rng;
 
 use crate::{board::{bit_array_lookup::QUEEN_MOVES, bit_board::BitBoard, player_color::PlayerColor}, game::{self, board_state::BoardState, game_result::GameResult, game_state::GameState}, moves::{chess_move::{self, ChessMove}, move_gen::{self, MoveVector}}};
 
-use super::{attributes::{self, Attributes}, search_stats::SearchStats, settings::Settings};
+use super::{hans_eval::{self, Attributes}, search_stats::SearchStats, settings::Settings};
 const MAX_VALUE: i32 = 2_000_000_000;
 const CHECKMATE_VALUE: i32 = 1_000_000_000;
 
@@ -174,7 +174,7 @@ fn quiessence_search(game_state: &mut GameState, depth_left: i32, depth: i32, mu
             PlayerColor::White => 1,
             PlayerColor::Black => -1,
         };
-        let local_score = Attributes::from_board_state(&game_state, settings).multiply(&attributes::STANDARD_EVAL) * factor;
+        let local_score = settings.evaluate(game_state) * factor;
 
         if local_score >= beta {
             return local_score;
@@ -299,7 +299,7 @@ fn bb_search_settings(game_state: &mut GameState, depth_left: i32, depth: i32, e
 
 
         if settings.quiessence_depth == 0 {
-            return Attributes::from_board_state(&game_state, settings).multiply(&attributes::STANDARD_EVAL) * factor;
+            return settings.evaluate(game_state) * factor;
         }
         else {
             return quiessence_search(game_state, settings.quiessence_depth, depth, alpha, beta, settings, stats, tt, quiet_move_table);
