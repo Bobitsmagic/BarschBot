@@ -1,6 +1,9 @@
 use std::default;
 
-use crate::{board::piece_board::PieceBoard, moves::chess_move::{self, ChessMove}};
+use crate::{
+    board::piece_board::PieceBoard,
+    moves::chess_move::{self, ChessMove},
+};
 
 pub const ANIMATION_TIME: f64 = 10.0;
 
@@ -40,7 +43,7 @@ impl RenderState {
             piece_board,
             lm,
             flip,
-            
+
             ..Default::default()
         }
     }
@@ -51,12 +54,18 @@ impl RenderState {
             lm,
             flip,
             animation_time: 0.0,
-            
+
             ..Default::default()
         }
     }
 
-    pub fn render_move_timed(piece_board: PieceBoard, lm: ChessMove, flip: bool, white_time: u128, black_time: u128) -> Self {
+    pub fn render_move_timed(
+        piece_board: PieceBoard,
+        lm: ChessMove,
+        flip: bool,
+        white_time: u128,
+        black_time: u128,
+    ) -> Self {
         RenderState {
             piece_board,
             lm,
@@ -69,7 +78,15 @@ impl RenderState {
         }
     }
 
-    pub fn render_move_named(piece_board: PieceBoard, lm: ChessMove, flip: bool, white_time: u128, black_time: u128, white_name: String, black_name: String) -> Self {
+    pub fn render_move_named(
+        piece_board: PieceBoard,
+        lm: ChessMove,
+        flip: bool,
+        white_time: u128,
+        black_time: u128,
+        white_name: String,
+        black_name: String,
+    ) -> Self {
         RenderState {
             piece_board,
             lm,
@@ -79,7 +96,7 @@ impl RenderState {
             black_time,
             white_name,
             black_name,
-            
+
             ..Default::default()
         }
     }

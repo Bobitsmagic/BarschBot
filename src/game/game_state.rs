@@ -1,8 +1,17 @@
+use std::collections::HashSet;
 
-
-use std::collections::{HashMap, HashSet};
-
-use crate::{board::{dynamic_state::DynamicState, piece_board::PieceBoard, player_color::PlayerColor, zobrist_hash::ZobristHash}, fen::fen_helper, moves::{chess_move::ChessMove, move_gen::{self, MoveVector}, move_iterator::MoveIterator}};
+use crate::{
+    board::{
+        dynamic_state::DynamicState, piece_board::PieceBoard, player_color::PlayerColor,
+        zobrist_hash::ZobristHash,
+    },
+    fen::fen_helper,
+    moves::{
+        chess_move::ChessMove,
+        move_gen::{self, MoveVector},
+        move_iterator::MoveIterator,
+    },
+};
 
 use super::{board_state::BoardState, game_flags::GameFlags, game_result::GameResult};
 
@@ -18,10 +27,10 @@ pub struct GameState {
 
 impl PartialEq for GameState {
     fn eq(&self, other: &Self) -> bool {
-        self.board_state == other.board_state &&
-        self.zobrist_hash == other.zobrist_hash &&
-        self.move_stack == other.move_stack &&
-        self.flag_stack == other.flag_stack
+        self.board_state == other.board_state
+            && self.zobrist_hash == other.zobrist_hash
+            && self.move_stack == other.move_stack
+            && self.flag_stack == other.flag_stack
     }
 }
 
@@ -31,7 +40,10 @@ impl GameState {
             board_state: BoardState::start_position(),
             move_stack: Vec::new(),
             flag_stack: vec![GameFlags::start_flags()],
-            zobrist_hash: ZobristHash::from_position(&PieceBoard::start_position(), GameFlags::start_flags()),
+            zobrist_hash: ZobristHash::from_position(
+                &PieceBoard::start_position(),
+                GameFlags::start_flags(),
+            ),
             legal_moves: None,
             visited_pos: HashSet::new(),
         }
@@ -83,13 +95,10 @@ impl GameState {
         new_flags.make_move(m, &self.board_state.bit_board);
         self.zobrist_hash.toggle_flags(new_flags); //Add new flags
 
-
         self.flag_stack.push(new_flags);
     }
 
     pub fn undo_move(&mut self) {
-
-
         self.legal_moves = None;
 
         let m = self.move_stack.pop().unwrap();
@@ -100,7 +109,8 @@ impl GameState {
         let top_flag = self.flag_stack.pop().unwrap();
 
         self.zobrist_hash.toggle_flags(top_flag); //Remove latest
-        self.zobrist_hash.toggle_flags(*self.flag_stack.last().unwrap()); //Add old flags
+        self.zobrist_hash
+            .toggle_flags(*self.flag_stack.last().unwrap()); //Add old flags
 
         if !self.visited_pos.remove(&self.zobrist_hash.hash) {
             self.board_state.piece_board.print();
@@ -115,8 +125,7 @@ impl GameState {
             let (moves, c) = move_gen::gen_legal_moves_check(&self.board_state, &self.get_flags());
             self.legal_moves = Some(moves);
             check = c;
-        }
-        else {
+        } else {
             println!("Panic");
         }
 

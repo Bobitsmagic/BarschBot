@@ -12,8 +12,7 @@ impl PlayerColor {
     pub fn new(is_white: bool) -> PlayerColor {
         if is_white {
             PlayerColor::White
-        }
-        else {
+        } else {
             PlayerColor::Black
         }
     }
@@ -44,4 +43,3 @@ impl ToString for PlayerColor {
         }
     }
 }
-

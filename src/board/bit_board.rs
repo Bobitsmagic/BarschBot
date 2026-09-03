@@ -1,8 +1,20 @@
 use core::panic;
 
-use crate::{board::{piece_board::PieceBoard, piece_type::PieceType}, moves::slider_gen::{gen_bishop_moves_kogge, gen_bishop_moves_kogge_occ, gen_rook_moves_kogge, gen_rook_moves_kogge_occ}};
+use crate::{
+    board::{piece_board::PieceBoard, piece_type::PieceType},
+    moves::slider_gen::{gen_bishop_moves_kogge_occ, gen_rook_moves_kogge_occ},
+};
 
-use super::{bit_array::BitArray, bit_array_lookup::{DIAGONAL_MOVES, IN_BETWEEN_TABLE, KING_MOVES, KNIGHT_MOVES, ORTHOGONAL_MOVES}, dynamic_state::DynamicState, piece_type::ColoredPieceType, player_color::PlayerColor, square::{Square, VALID_SQUARES}};
+use super::{
+    bit_array::BitArray,
+    bit_array_lookup::{
+        DIAGONAL_MOVES, IN_BETWEEN_TABLE, KING_MOVES, KNIGHT_MOVES, ORTHOGONAL_MOVES,
+    },
+    dynamic_state::DynamicState,
+    piece_type::ColoredPieceType,
+    player_color::PlayerColor,
+    square::{Square, VALID_SQUARES},
+};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BitBoard {
@@ -12,7 +24,7 @@ pub struct BitBoard {
     pub pawn: u64,
     pub knight: u64,
     pub diagonal_slider: u64,
-    pub orthogonal_slider: u64, 
+    pub orthogonal_slider: u64,
     pub king: u64,
 }
 
@@ -21,7 +33,7 @@ impl BitBoard {
         BitBoard {
             white_piece: 0,
             black_piece: 0,
-            
+
             pawn: 0,
             knight: 0,
             diagonal_slider: 0,
@@ -76,9 +88,9 @@ impl BitBoard {
             PieceType::Queen => {
                 self.diagonal_slider.set_bit(square);
                 self.orthogonal_slider.set_bit(square);
-            },
+            }
             PieceType::King => self.king.set_bit(square),
-            PieceType::None => unreachable!()
+            PieceType::None => unreachable!(),
         }
     }
 
@@ -98,9 +110,9 @@ impl BitBoard {
             PieceType::Queen => {
                 self.diagonal_slider.clear_bit(square);
                 self.orthogonal_slider.clear_bit(square);
-            },
+            }
             PieceType::King => self.king.clear_bit(square),
-            PieceType::None => unreachable!()
+            PieceType::None => unreachable!(),
         }
     }
 
@@ -121,17 +133,19 @@ impl BitBoard {
             PieceType::Queen => {
                 self.diagonal_slider.flip_bit(square);
                 self.orthogonal_slider.flip_bit(square);
-            },
+            }
             PieceType::King => self.king.flip_bit(square),
-            PieceType::None => unreachable!()
+            PieceType::None => unreachable!(),
         }
     }
 
     pub fn move_piece(&mut self, pt: ColoredPieceType, start: i8, end: i8) {
-        
-        debug_assert!(!(self.white_piece | self.black_piece).get_bit(end), "Target square is not empty");
+        debug_assert!(
+            !(self.white_piece | self.black_piece).get_bit(end),
+            "Target square is not empty"
+        );
         debug_assert!(pt != ColoredPieceType::None);
-        
+
         let mask = start.bit_array() | end.bit_array();
 
         match pt.color() {
@@ -149,9 +163,9 @@ impl BitBoard {
             PieceType::Queen => {
                 self.orthogonal_slider ^= mask;
                 self.diagonal_slider ^= mask;
-            },
+            }
             PieceType::King => self.king ^= mask,
-            PieceType::None => unreachable!()
+            PieceType::None => unreachable!(),
         }
     }
 
@@ -175,12 +189,12 @@ impl BitBoard {
         };
 
         let occupied = (self.white_piece | self.black_piece) & !(self.king & allied);
-        
+
         let mut attacked_bits = 0;
         //Knights
-        
+
         for square in (self.knight & opponent).iterate_set_bits_indices() {
-            attacked_bits |= KNIGHT_MOVES[square as usize];    
+            attacked_bits |= KNIGHT_MOVES[square as usize];
         }
 
         //Sliders
@@ -197,23 +211,28 @@ impl BitBoard {
         //     let bits = bit_array::gen_rook_moves_pext(attacker, occupied);
         //     attacked_bits |= bits;
         // }
-        
+
         //Pawns
         let dy = match attacker_color {
             PlayerColor::White => 1,
             PlayerColor::Black => -1,
         };
 
-        attacked_bits |= (self.pawn & opponent).translate(1, dy) | (self.pawn & opponent).translate(-1, dy);
+        attacked_bits |=
+            (self.pawn & opponent).translate(1, dy) | (self.pawn & opponent).translate(-1, dy);
 
         //King
         let king_square = self.king_position(attacker_color);
         attacked_bits |= KING_MOVES[king_square as usize];
-        
+
         return attacked_bits;
     }
 
-    pub fn square_is_attacked_through_king(&self, target_square: i8, attacker_color: PlayerColor) -> bool {
+    pub fn square_is_attacked_through_king(
+        &self,
+        target_square: i8,
+        attacker_color: PlayerColor,
+    ) -> bool {
         let opponent = match attacker_color {
             PlayerColor::White => self.white_piece,
             PlayerColor::Black => self.black_piece,
@@ -227,7 +246,7 @@ impl BitBoard {
 
         // println!("Occupied:");
         // occupied.print();
-        
+
         //Knights
         if (self.knight & opponent & KNIGHT_MOVES[target_square as usize]) != 0 {
             return true;
@@ -235,14 +254,16 @@ impl BitBoard {
 
         // println!("King square: {:?}", king_square);
         //Sliders
-        let diagonal_sliders = self.diagonal_slider & opponent & DIAGONAL_MOVES[target_square as usize];
+        let diagonal_sliders =
+            self.diagonal_slider & opponent & DIAGONAL_MOVES[target_square as usize];
         for attacker in diagonal_sliders.iterate_squares() {
             let between = IN_BETWEEN_TABLE[attacker as usize][target_square as usize];
             if (between & occupied) == 0 {
                 return true;
             }
         }
-        let orthogonal_sliders = self.orthogonal_slider & opponent & ORTHOGONAL_MOVES[target_square as usize];
+        let orthogonal_sliders =
+            self.orthogonal_slider & opponent & ORTHOGONAL_MOVES[target_square as usize];
         for attacker in orthogonal_sliders.iterate_squares() {
             let between = IN_BETWEEN_TABLE[attacker as usize][target_square as usize];
             if (between & occupied) == 0 {
@@ -261,7 +282,7 @@ impl BitBoard {
         if (self.pawn & opponent & king_pawn_attack) != 0 {
             return true;
         }
-        
+
         //King
         let king_moves = KING_MOVES[target_square as usize];
         if (self.king & opponent & king_moves) != 0 {
@@ -286,14 +307,16 @@ impl BitBoard {
 
         // println!("King square: {:?}", king_square);
         //Sliders
-        let diagonal_sliders = self.diagonal_slider & opponent & DIAGONAL_MOVES[target_square as usize];
+        let diagonal_sliders =
+            self.diagonal_slider & opponent & DIAGONAL_MOVES[target_square as usize];
         for attacker in diagonal_sliders.iterate_squares() {
             let between = IN_BETWEEN_TABLE[attacker as usize][target_square as usize];
             if (between & occupied) == 0 {
                 return true;
             }
         }
-        let orthogonal_sliders = self.orthogonal_slider & opponent & ORTHOGONAL_MOVES[target_square as usize];
+        let orthogonal_sliders =
+            self.orthogonal_slider & opponent & ORTHOGONAL_MOVES[target_square as usize];
         for attacker in orthogonal_sliders.iterate_squares() {
             let between = IN_BETWEEN_TABLE[attacker as usize][target_square as usize];
             if (between & occupied) == 0 {
@@ -312,7 +335,7 @@ impl BitBoard {
         if (self.pawn & opponent & king_pawn_attack) != 0 {
             return true;
         }
-        
+
         //King
         let king_moves = KING_MOVES[target_square as usize];
         if (self.king & opponent & king_moves) != 0 {
@@ -325,9 +348,9 @@ impl BitBoard {
         return self.square_is_attacked_by(self.king_position(color), !color);
     }
 
-    pub fn attacks_king(&self, pt: ColoredPieceType, square: i8 )-> bool {
+    pub fn attacks_king(&self, pt: ColoredPieceType, square: i8) -> bool {
         let king_square = self.king_position(!pt.color());
-        
+
         match pt.piece_type() {
             PieceType::Pawn => {
                 let dy = match pt.color() {
@@ -335,25 +358,26 @@ impl BitBoard {
                     PlayerColor::Black => -1,
                 };
 
-                return square.translate(-1, dy) == king_square || square.translate(1, dy) == king_square;
-            },
+                return square.translate(-1, dy) == king_square
+                    || square.translate(1, dy) == king_square;
+            }
             PieceType::Knight => {
                 return KNIGHT_MOVES[square as usize].get_bit(king_square);
-            },
+            }
             PieceType::Bishop => {
                 if DIAGONAL_MOVES[square as usize].get_bit(king_square) {
                     let between = IN_BETWEEN_TABLE[square as usize][king_square as usize];
                     return between == 0;
                 }
                 return false;
-            },
+            }
             PieceType::Rook => {
                 if ORTHOGONAL_MOVES[square as usize].get_bit(king_square) {
                     let between = IN_BETWEEN_TABLE[square as usize][king_square as usize];
                     return between == 0;
                 }
                 return false;
-            },
+            }
             PieceType::Queen => {
                 if DIAGONAL_MOVES[square as usize].get_bit(king_square) {
                     let between = IN_BETWEEN_TABLE[square as usize][king_square as usize];
@@ -364,10 +388,10 @@ impl BitBoard {
                     return between == 0;
                 }
                 return false;
-            },
+            }
             PieceType::King => {
                 return false;
-            },
+            }
             PieceType::None => panic!("Invalid piece type"),
         }
     }
@@ -385,7 +409,10 @@ impl BitBoard {
             return PieceType::Knight;
         }
 
-        match (self.diagonal_slider.get_bit(square), self.orthogonal_slider.get_bit(square)) {
+        match (
+            self.diagonal_slider.get_bit(square),
+            self.orthogonal_slider.get_bit(square),
+        ) {
             (false, false) => {
                 debug_assert!(self.king.get_bit(square), "Bitboard is invalid");
                 return PieceType::King;
@@ -403,7 +430,10 @@ impl BitBoard {
     }
 
     pub fn get_colored_piecetype(&self, square: i8) -> ColoredPieceType {
-        let c_res = match (self.white_piece.get_bit(square), self.black_piece.get_bit(square)) {
+        let c_res = match (
+            self.white_piece.get_bit(square),
+            self.black_piece.get_bit(square),
+        ) {
             (false, false) => None,
             (true, false) => Some(PlayerColor::White),
             (false, true) => Some(PlayerColor::Black),
@@ -412,7 +442,7 @@ impl BitBoard {
 
         if let Some(color) = c_res {
             return self.get_piecetype(square).colored(color);
-        } 
+        }
 
         return ColoredPieceType::None;
     }

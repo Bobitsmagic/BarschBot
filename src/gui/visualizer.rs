@@ -1,9 +1,22 @@
 use std::collections::HashSet;
 
-use piston::{Button, Event, Key, MouseButton, MouseCursorEvent, PressEvent, ReleaseEvent, RenderEvent, UpdateEvent, WindowSettings};
-use piston_window::{graphics, Flip, G2dTexture, Glyphs, OpenGL, PistonWindow, Texture, TextureSettings};
+use piston::{
+    Button, Event, Key, MouseButton, MouseCursorEvent, PressEvent, ReleaseEvent, RenderEvent,
+    UpdateEvent, WindowSettings,
+};
+use piston_window::{
+    graphics, Flip, G2dTexture, Glyphs, OpenGL, PistonWindow, Texture, TextureSettings,
+};
 
-use crate::{board::{piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, square::{self, Square}}, gui::render_state::ANIMATION_TIME, moves::chess_move::ChessMove};
+use crate::{
+    board::{
+        piece_type::{ColoredPieceType, PieceType},
+        player_color::PlayerColor,
+        square::{self, Square},
+    },
+    gui::render_state::ANIMATION_TIME,
+    moves::chess_move::ChessMove,
+};
 
 use super::{engine_handle::EngineHandle, render_state::RenderState};
 
@@ -23,33 +36,22 @@ const INFO_PANEL_WIDTH: u32 = 500;
 const WINDOW_HEIGHT: u32 = 900;
 const WINDOW_WIDTH: u32 = BOARD_SIDE_LENGTH + INFO_PANEL_WIDTH;
 
-
-
 impl Visualizer {
     pub fn new(engine_handle: EngineHandle) -> Self {
         let opengl = OpenGL::V3_2;
         let mut window: PistonWindow =
             WindowSettings::new("Chess stuff", [WINDOW_WIDTH, WINDOW_HEIGHT])
-            .exit_on_esc(true)
-            .graphics_api(opengl)
-            .build()
-            .unwrap();
+                .exit_on_esc(true)
+                .graphics_api(opengl)
+                .build()
+                .unwrap();
 
         let assets_folder = "textures";
 
         const FILE_NAMES: [&str; 12] = [
-            "wP.png", 
-            "wN.png", 
-            "wB.png", 
-            "wR.png", 
-            "wQ.png", 
-            "wK.png",
-            "bP.png", 
-            "bN.png", 
-            "bB.png", 
-            "bR.png", 
-            "bQ.png", 
-            "bK.png"]; 
+            "wP.png", "wN.png", "wB.png", "wR.png", "wQ.png", "wK.png", "bP.png", "bN.png",
+            "bB.png", "bR.png", "bQ.png", "bK.png",
+        ];
 
         let mut textures = Vec::new();
 
@@ -59,23 +61,27 @@ impl Visualizer {
                 &mut window.create_texture_context(),
                 &image,
                 Flip::None,
-                &TextureSettings::new()
-            ).unwrap();
+                &TextureSettings::new(),
+            )
+            .unwrap();
 
             textures.push(texture);
         }
 
-        let glyphs: Glyphs = window.load_font(&format!("{}/font.ttf", assets_folder)).expect(&format!("Could not find font at"));
+        let glyphs: Glyphs = window
+            .load_font(&format!("{}/font.ttf", assets_folder))
+            .expect(&format!("Could not find font at"));
 
-        return Visualizer { 
+        return Visualizer {
             glyphs,
             input_state: HashSet::new(),
             cursor_pos: [0.0, 0.0],
             last_click_pos: [0.0, 0.0],
-            latest_render_state: RenderState::new(), 
-            handle: engine_handle, 
-            window, 
-            textures };
+            latest_render_state: RenderState::new(),
+            handle: engine_handle,
+            window,
+            textures,
+        };
     }
 
     pub fn run(&mut self) {
@@ -83,12 +89,11 @@ impl Visualizer {
             if let Some(rs) = self.handle.recive_render_state() {
                 self.latest_render_state = rs;
             }
-            
+
             //Event handling
             if let Some(_) = e.render_args() {
                 self.render_board(e);
-            }
-            else if let Some(button) = e.press_args() {
+            } else if let Some(button) = e.press_args() {
                 match button {
                     Button::Mouse(MouseButton::Left) => {
                         self.last_click_pos = self.cursor_pos.clone()
@@ -98,11 +103,13 @@ impl Visualizer {
                         self.input_state.insert(button);
                     }
                 }
-            }
-            else if let Some(button) = e.release_args() {
+            } else if let Some(button) = e.release_args() {
                 match button {
                     Button::Mouse(MouseButton::Left) => {
-                        println!("Handle move from {:?} to {:?}", self.last_click_pos, self.cursor_pos);
+                        println!(
+                            "Handle move from {:?} to {:?}",
+                            self.last_click_pos, self.cursor_pos
+                        );
 
                         let width = BOARD_SIDE_LENGTH;
                         let height = BOARD_SIDE_LENGTH;
@@ -113,7 +120,7 @@ impl Visualizer {
                         if self.latest_render_state.flip {
                             start = start.rotate_180();
                             end = end.rotate_180();
-                        }                
+                        }
 
                         let mpt = self.latest_render_state.piece_board[start];
                         let cpt = self.latest_render_state.piece_board[end];
@@ -127,24 +134,19 @@ impl Visualizer {
 
                             let pt = if self.input_state.contains(&Button::Keyboard(Key::R)) {
                                 PieceType::Rook
-                            }
-                            else if self.input_state.contains(&Button::Keyboard(Key::B)) {
+                            } else if self.input_state.contains(&Button::Keyboard(Key::B)) {
                                 PieceType::Bishop
-                            }
-                            else if self.input_state.contains(&Button::Keyboard(Key::N)) {
+                            } else if self.input_state.contains(&Button::Keyboard(Key::N)) {
                                 PieceType::Knight
-                            }
-                            else {
+                            } else {
                                 PieceType::Queen
                             };
-                            
+
                             let color = mpt.color();
                             let promotion_piece = pt.colored(color);
 
-
                             ChessMove::new_pawn(start, end, mpt, cpt, promotion_piece)
-                        }
-                        else {
+                        } else {
                             ChessMove::new(start, end, mpt, cpt)
                         };
 
@@ -155,7 +157,6 @@ impl Visualizer {
                         fn transfrom_choords(pos: [f64; 2], width: u32, height: u32) -> i8 {
                             let x = pos[0] / width as f64 * 8.0;
                             let y = pos[1] / height as f64 * 8.0;
-                            
 
                             return square::from_file_rank(x as i8, 7 - (y as i8));
                         }
@@ -164,33 +165,30 @@ impl Visualizer {
                         self.input_state.remove(&button);
                     }
                 }
-            } 
-            else if let Some(pos) = e.mouse_cursor_args() {
+            } else if let Some(pos) = e.mouse_cursor_args() {
                 self.cursor_pos = pos;
-            }
-            else if let Some(args) = e.update_args() {
+            } else if let Some(args) = e.update_args() {
                 self.latest_render_state.animation_time += args.dt;
 
                 if !self.latest_render_state.lm.move_piece.is_none() {
                     if self.latest_render_state.lm.move_piece.color() == PlayerColor::White {
-                        self.latest_render_state.black_time -= ((args.dt * 1000.0) as u128).min(self.latest_render_state.black_time);
+                        self.latest_render_state.black_time -=
+                            ((args.dt * 1000.0) as u128).min(self.latest_render_state.black_time);
+                    } else {
+                        self.latest_render_state.white_time -=
+                            ((args.dt * 1000.0) as u128).min(self.latest_render_state.white_time);
                     }
-                    else {
-                        self.latest_render_state.white_time -= ((args.dt * 1000.0) as u128).min(self.latest_render_state.white_time);
-                    }
+                } else {
+                    self.latest_render_state.white_time -=
+                        ((args.dt * 1000.0) as u128).min(self.latest_render_state.white_time);
                 }
-                else {
-                    self.latest_render_state.white_time -= ((args.dt * 1000.0) as u128).min(self.latest_render_state.white_time);
-                }
-
-                
             }
         }
     }
 
     pub fn render_board(&mut self, event: Event) -> bool {
         use graphics::*;
-        
+
         const BACKGROUND: [f32; 4] = [36.0 / 255.0, 41.0 / 255.0, 46.0 / 255.0, 1.0];
         const TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 
@@ -201,11 +199,9 @@ impl Visualizer {
 
         const FILE_NAMES: [&str; 8] = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
-        
-        const TIME_FONT_SIZE: u32 = 30;
         const SQUARE_FONT_SIZE: u32 = 20;
         const SQUARE_MARGIN: f64 = 5.0;
-        
+
         let square_side_length = BOARD_SIDE_LENGTH as f64 / 8.0;
         let square = rectangle::square(0.0, 0.0, square_side_length);
 
@@ -215,7 +211,7 @@ impl Visualizer {
 
         let completion = (self.latest_render_state.animation_time / ANIMATION_TIME).min(1.0);
         let ratio = completion - 0.1 * (completion * std::f64::consts::PI * 2.0).sin();
-        
+
         let mut time_digit_width = 0.0;
 
         for z in 0..=9 {
@@ -235,102 +231,124 @@ impl Visualizer {
                 for y in 0..8 {
                     let sq = x + y * 8;
 
-                    let mut transform = context
-                    .transform
-                        .trans(x as f64 * square_side_length, (7 - y)  as f64 * square_side_length);
+                    let mut transform = context.transform.trans(
+                        x as f64 * square_side_length,
+                        (7 - y) as f64 * square_side_length,
+                    );
 
                     if flip {
-                        transform = context
-                        .transform
-                        .trans((7 - x) as f64 * square_side_length, y  as f64 * square_side_length);
+                        transform = context.transform.trans(
+                            (7 - x) as f64 * square_side_length,
+                            y as f64 * square_side_length,
+                        );
                     }
 
                     if sq.is_light() {
                         rectangle(LIGHT_SQUARE, square, transform, graphics);
-                    }
-                    else {
+                    } else {
                         rectangle(DARK_SQUARE, square, transform, graphics);
                     }
 
-                    
                     if !lm.is_null_move() {
-                        if sq == lm.start || 
-                         sq == lm.end {
+                        if sq == lm.start || sq == lm.end {
                             if sq.is_light() {
                                 rectangle(LIGHT_MOVE_SQUARE, square, transform, graphics);
-                            }
-                            else {
+                            } else {
                                 rectangle(DARK_MOVE_SQUARE, square, transform, graphics);
                             }
-                        } 
-                        
+                        }
+
                         let tp = type_field[x + y * 8];
                         if tp != ColoredPieceType::None && sq != lm.end {
                             let texture = &self.textures[tp as usize];
-                            image(texture, 
-                                transform.scale(square_side_length / texture.get_width() as f64, square_side_length /texture.get_height() as f64), 
-                                graphics);
-                        }   
-                    }
-                    else {
+                            image(
+                                texture,
+                                transform.scale(
+                                    square_side_length / texture.get_width() as f64,
+                                    square_side_length / texture.get_height() as f64,
+                                ),
+                                graphics,
+                            );
+                        }
+                    } else {
                         let tp = type_field[x + y * 8];
                         if tp != ColoredPieceType::None {
                             let texture = &self.textures[tp as usize];
-                            image(texture, 
-                                transform.scale(square_side_length / texture.get_width() as f64, square_side_length /texture.get_height() as f64), 
-                                graphics);
+                            image(
+                                texture,
+                                transform.scale(
+                                    square_side_length / texture.get_width() as f64,
+                                    square_side_length / texture.get_height() as f64,
+                                ),
+                                graphics,
+                            );
                         }
                     }
-
-
                 }
             }
             //Draw file names
             for x in 0..8 {
-                let text = format!("{}", FILE_NAMES[if flip { 7 - x } else { x }]);        
-                let color = if x % 2 == 1 { DARK_SQUARE } else { LIGHT_SQUARE };
+                let text = format!("{}", FILE_NAMES[if flip { 7 - x } else { x }]);
+                let color = if x % 2 == 1 {
+                    DARK_SQUARE
+                } else {
+                    LIGHT_SQUARE
+                };
                 let position = x as f64 * square_side_length;
 
                 text::Text::new_color(color, SQUARE_FONT_SIZE)
-                .draw(
-                    &text,
-                    &mut self.glyphs,
-                    &context.draw_state,
-                    context.transform.trans(position + SQUARE_MARGIN, BOARD_SIDE_LENGTH as f64 - SQUARE_MARGIN),
-                    graphics,
-                )
-                .unwrap();
+                    .draw(
+                        &text,
+                        &mut self.glyphs,
+                        &context.draw_state,
+                        context.transform.trans(
+                            position + SQUARE_MARGIN,
+                            BOARD_SIDE_LENGTH as f64 - SQUARE_MARGIN,
+                        ),
+                        graphics,
+                    )
+                    .unwrap();
             }
             //Draw rank names
             for y in 0..8 {
-                let text = format!("{}", if flip { y + 1 } else { 8 - y });        
-                let color = if y % 2 == 1 { DARK_SQUARE } else { LIGHT_SQUARE };
+                let text = format!("{}", if flip { y + 1 } else { 8 - y });
+                let color = if y % 2 == 1 {
+                    DARK_SQUARE
+                } else {
+                    LIGHT_SQUARE
+                };
                 let position = y as f64 * square_side_length;
 
                 let text_width = self.glyphs.width(SQUARE_FONT_SIZE, &text).unwrap();
 
                 text::Text::new_color(color, SQUARE_FONT_SIZE)
-                .draw(
-                    &text,
-                    &mut self.glyphs,
-                    &context.draw_state,
-                    context.transform.trans(BOARD_SIDE_LENGTH as f64 - text_width - SQUARE_MARGIN, position + SQUARE_MARGIN + SQUARE_FONT_SIZE as f64),
-                    graphics,
-                ).unwrap();
+                    .draw(
+                        &text,
+                        &mut self.glyphs,
+                        &context.draw_state,
+                        context.transform.trans(
+                            BOARD_SIDE_LENGTH as f64 - text_width - SQUARE_MARGIN,
+                            position + SQUARE_MARGIN + SQUARE_FONT_SIZE as f64,
+                        ),
+                        graphics,
+                    )
+                    .unwrap();
             }
 
             if !lm.is_null_move() {
                 let x = lm.end.file();
                 let y = lm.end.rank();
 
-                let mut transform = context
-                .transform
-                    .trans(x as f64 * square_side_length, (7 - y)  as f64 * square_side_length);
+                let mut transform = context.transform.trans(
+                    x as f64 * square_side_length,
+                    (7 - y) as f64 * square_side_length,
+                );
 
                 if flip {
-                    transform = context
-                    .transform
-                    .trans((7 - x) as f64 * square_side_length, y  as f64 * square_side_length);
+                    transform = context.transform.trans(
+                        (7 - x) as f64 * square_side_length,
+                        y as f64 * square_side_length,
+                    );
                 }
 
                 let mut texture = &self.textures[lm.move_piece as usize];
@@ -339,26 +357,37 @@ impl Visualizer {
                     texture = &self.textures[lm.promotion_piece as usize];
                 }
 
-                image(texture, 
-                    transform.scale(square_side_length / texture.get_width() as f64, square_side_length /texture.get_height() as f64), 
-                    graphics);
+                image(
+                    texture,
+                    transform.scale(
+                        square_side_length / texture.get_width() as f64,
+                        square_side_length / texture.get_height() as f64,
+                    ),
+                    graphics,
+                );
             }
 
             let mut name_offset = 15.0;
-            if !self.latest_render_state.white_name.is_empty() && !self.latest_render_state.black_name.is_empty() {
+            if !self.latest_render_state.white_name.is_empty()
+                && !self.latest_render_state.black_name.is_empty()
+            {
                 let text = format!("White: {}", self.latest_render_state.white_name);
                 let text_width = self.glyphs.width(SQUARE_FONT_SIZE, &text).unwrap();
                 if text_width > name_offset {
                     name_offset = text_width;
                 }
                 text::Text::new_color(TEXT_COLOR, SQUARE_FONT_SIZE)
-                .draw(
-                    &text,
-                    &mut self.glyphs,
-                    &context.draw_state,
-                    context.transform.trans((BOARD_SIDE_LENGTH + 15) as f64, (WINDOW_HEIGHT / 2 + SQUARE_FONT_SIZE) as f64),
-                    graphics,
-                ).unwrap();
+                    .draw(
+                        &text,
+                        &mut self.glyphs,
+                        &context.draw_state,
+                        context.transform.trans(
+                            (BOARD_SIDE_LENGTH + 15) as f64,
+                            (WINDOW_HEIGHT / 2 + SQUARE_FONT_SIZE) as f64,
+                        ),
+                        graphics,
+                    )
+                    .unwrap();
 
                 let text = format!("Black: {}", self.latest_render_state.black_name);
                 let text_width = self.glyphs.width(SQUARE_FONT_SIZE, &text).unwrap();
@@ -367,50 +396,58 @@ impl Visualizer {
                 }
 
                 text::Text::new_color(TEXT_COLOR, SQUARE_FONT_SIZE)
-                .draw(
-                    &text,
-                    &mut self.glyphs,
-                    &context.draw_state,
-                    context.transform.trans((BOARD_SIDE_LENGTH + 15) as f64, (WINDOW_HEIGHT / 2 - SQUARE_FONT_SIZE) as f64),
-                    graphics,
-                ).unwrap();
+                    .draw(
+                        &text,
+                        &mut self.glyphs,
+                        &context.draw_state,
+                        context.transform.trans(
+                            (BOARD_SIDE_LENGTH + 15) as f64,
+                            (WINDOW_HEIGHT / 2 - SQUARE_FONT_SIZE) as f64,
+                        ),
+                        graphics,
+                    )
+                    .unwrap();
             }
 
             let text = time_to_string(self.latest_render_state.white_time);
             text::Text::new_color(TEXT_COLOR, SQUARE_FONT_SIZE)
-            .draw(
-                &text,
-                &mut self.glyphs,
-                &context.draw_state,
-                context.transform.trans((BOARD_SIDE_LENGTH) as f64 + name_offset + 30.0, (WINDOW_HEIGHT / 2 + SQUARE_FONT_SIZE) as f64),
-                graphics,
-            ).unwrap();
+                .draw(
+                    &text,
+                    &mut self.glyphs,
+                    &context.draw_state,
+                    context.transform.trans(
+                        (BOARD_SIDE_LENGTH) as f64 + name_offset + 30.0,
+                        (WINDOW_HEIGHT / 2 + SQUARE_FONT_SIZE) as f64,
+                    ),
+                    graphics,
+                )
+                .unwrap();
 
             let text = time_to_string(self.latest_render_state.black_time);
             text::Text::new_color(TEXT_COLOR, SQUARE_FONT_SIZE)
-            .draw(
-                &text,
-                &mut self.glyphs,
-                &context.draw_state,
-                context.transform.trans((BOARD_SIDE_LENGTH) as f64 + name_offset + 30.0, (WINDOW_HEIGHT / 2 - SQUARE_FONT_SIZE) as f64),
-                graphics,
-            ).unwrap();
+                .draw(
+                    &text,
+                    &mut self.glyphs,
+                    &context.draw_state,
+                    context.transform.trans(
+                        (BOARD_SIDE_LENGTH) as f64 + name_offset + 30.0,
+                        (WINDOW_HEIGHT / 2 - SQUARE_FONT_SIZE) as f64,
+                    ),
+                    graphics,
+                )
+                .unwrap();
 
             self.glyphs.factory.encoder.flush(device);
-
-
         });
 
-        return true;        
+        return true;
 
         fn time_to_string(time: u128) -> String {
             let minutes = time / 1000 / 60;
             let seconds = time / 1000 % 60;
             let milliseconds = time % 1000;
-    
+
             format!("{:02}:{:02}:{:03}", minutes, seconds, milliseconds)
         }
     }
-
-
 }

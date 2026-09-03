@@ -1,8 +1,3 @@
-use rand::RngCore;
-
-use crate::board::bit_array::BitArray;
-
-
 #[derive(Clone, PartialEq, Eq)]
 pub struct FieldCounter {
     bits: [u64; 3],
@@ -10,9 +5,7 @@ pub struct FieldCounter {
 
 impl FieldCounter {
     pub fn empty() -> FieldCounter {
-        FieldCounter {
-            bits: [0; 3],
-        }
+        FieldCounter { bits: [0; 3] }
     }
 
     pub fn attacked(&self) -> u64 {
@@ -25,10 +18,9 @@ impl FieldCounter {
         v1 = carry & self.bits[1];
         self.bits[1] ^= carry;
 
-        debug_assert!(v1 & self.bits[2] == 0, "Overflow");
+        debug_assert!(v1 & self.bits[2] == 0, "Overflow in field counter");
 
         self.bits[2] ^= v1;
-
     }
 
     pub fn decrement(&mut self, mut v1: u64) {
@@ -37,7 +29,7 @@ impl FieldCounter {
         v1 = carry & !self.bits[1];
         self.bits[1] ^= carry;
 
-        debug_assert!(v1 & !self.bits[2] == 0, "Overflow");
+        debug_assert!(v1 & !self.bits[2] == 0, "Overflow in field counter");
 
         self.bits[2] ^= v1;
     }
@@ -51,8 +43,11 @@ impl FieldCounter {
     }
 }
 
-#[test] 
+#[test]
 fn test_field_increment() {
+    use crate::board::bit_array::BitArray;
+    use rand::RngCore;
+
     let mut counter = FieldCounter::empty();
     let mut field = [0_u64; 64];
 
@@ -79,6 +74,9 @@ fn test_field_increment() {
 
 #[test]
 fn test_field_decrement() {
+    use crate::board::bit_array::BitArray;
+    use rand::RngCore;
+
     let mut counter = FieldCounter::empty();
     for _ in 0..7 {
         counter.increment(u64::MAX);

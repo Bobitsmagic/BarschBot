@@ -1,4 +1,12 @@
-use crate::{board::{bit_board::BitBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::{self, Square}}, moves::chess_move::ChessMove};
+use crate::{
+    board::{
+        bit_board::BitBoard,
+        piece_type::ColoredPieceType,
+        player_color::PlayerColor,
+        square::{self, Square},
+    },
+    moves::chess_move::ChessMove,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GameFlags {
@@ -46,8 +54,8 @@ impl GameFlags {
                 self.black_queen_side_castle = false;
             }
             _ => (),
-        } 
-        
+        }
+
         match m.start {
             square::A1 => self.white_queen_side_castle = false,
             square::H1 => self.white_king_side_castle = false,
@@ -63,21 +71,20 @@ impl GameFlags {
             square::H8 => self.black_king_side_castle = false,
             _ => (),
         }
-        
 
-        if m.move_piece.is_pawn() && m.start.rank().abs_diff(m.end.rank()) == 2 
-            && board.pawn_has_neighbour(m.move_piece.color(), m.end) {
-
+        if m.move_piece.is_pawn()
+            && m.start.rank().abs_diff(m.end.rank()) == 2
+            && board.pawn_has_neighbour(m.move_piece.color(), m.end)
+        {
             self.en_passant_square = match m.move_piece.color() {
                 PlayerColor::White => m.end.down(),
                 PlayerColor::Black => m.end.up(),
             };
-
         } else {
             self.en_passant_square = square::NONE;
         }
     }
-    
+
     pub fn print(&self) {
         println!("Active color: {:?}, White queen side castle: {}, White king side castle: {}, Black queen side castle: {}, Black king side castle: {}, En passant square: {:?}", 
             self.active_color, self.white_queen_side_castle, self.white_king_side_castle, self.black_queen_side_castle, self.black_king_side_castle, self.en_passant_square)

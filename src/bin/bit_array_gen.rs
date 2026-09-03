@@ -1,6 +1,13 @@
 use std::{fs::File, io::Write};
 
-use barschbot::{board::{bit_array::BitArray, bit_array_lookup::{self}, square::{self, Square, PAWN_SQUARES, VALID_SQUARES}}, moves::slider_gen::{gen_bishop_moves, gen_rook_moves, order_bits}};
+use barschbot::{
+    board::{
+        bit_array::BitArray,
+        bit_array_lookup::{self},
+        square::{self, Square, PAWN_SQUARES, VALID_SQUARES},
+    },
+    moves::slider_gen::{gen_bishop_moves, gen_rook_moves, order_bits},
+};
 
 pub fn main() {
     // gen_bishop_move_table();
@@ -8,8 +15,6 @@ pub fn main() {
 
     print_all_tables();
 }
-
-
 
 pub fn print_all_tables() {
     let pawn_moves = gen_pawn_move_masks();
@@ -92,7 +97,7 @@ pub fn gen_passed_pawn_mask() -> ([u64; 64], [u64; 64]) {
 
 pub fn bit_array_to_string(name: &str, bit_array_array: &[u64]) -> String {
     let length = bit_array_array.len();
-    
+
     let mut s = format!("pub const {}: [u64; {}] = [", name, length);
 
     for (i, bit_array) in bit_array_array.iter().enumerate() {
@@ -138,7 +143,7 @@ pub fn move_table_to_string(name: &str, table: &[Vec<u64>]) -> String {
     return s;
 }
 
-pub fn in_between_table_to_string() -> String{
+pub fn in_between_table_to_string() -> String {
     let table = gen_in_between_table();
 
     let mut s = String::new();
@@ -313,7 +318,10 @@ pub fn gen_bishop_blocker_mask() -> [u64; 64] {
 
     let mut mask = [0; 64];
 
-    let boarder = bit_array_lookup::ROWS[0] | bit_array_lookup::ROWS[7] | bit_array_lookup::COLLUMNS[0] | bit_array_lookup::COLLUMNS[7];
+    let boarder = bit_array_lookup::ROWS[0]
+        | bit_array_lookup::ROWS[7]
+        | bit_array_lookup::COLLUMNS[0]
+        | bit_array_lookup::COLLUMNS[7];
 
     for s in VALID_SQUARES {
         mask[s as usize] = moves[s as usize] & !boarder;
@@ -340,11 +348,11 @@ pub fn gen_rook_move_table() -> [Vec<u64>; 64] {
             let blocker = bitintr::Pdep::pdep(index, mask);
 
             let idx = order_bits(blocker, mask);
-            
+
             assert_eq!(idx, index);
-            
+
             let moves = gen_rook_moves(s, 0, blocker);
-            
+
             // println!("Blocker: ");
             // (blocker).print();
             // moves.print();
@@ -376,7 +384,6 @@ pub fn gen_bishop_move_table() -> [Vec<u64>; 64] {
         let bit_count = mask.count_ones();
         for index in 0..(1_u64 << bit_count) {
             let blocker = bitintr::Pdep::pdep(index, mask);
-            
 
             let idx = order_bits(blocker, mask);
 
@@ -416,7 +423,6 @@ pub fn gen_in_between_table() -> [[u64; 64]; 64] {
                         let mut x = x1 + dx;
                         let mut y = y1 + dy;
 
-
                         while x != x2 || y != y2 {
                             in_between.set_bit(square::from_file_rank(x, y));
 
@@ -430,6 +436,6 @@ pub fn gen_in_between_table() -> [[u64; 64]; 64] {
             }
         }
     }
-    
+
     return result;
 }

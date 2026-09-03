@@ -37,7 +37,6 @@ pub const ALL_PIECE_TYPES: [PieceType; 7] = [
     PieceType::Rook,
     PieceType::Queen,
     PieceType::King,
-
     PieceType::None,
 ];
 
@@ -48,14 +47,12 @@ pub const ALL_COLORED_PIECE_TYPES: [ColoredPieceType; 13] = [
     ColoredPieceType::WhiteRook,
     ColoredPieceType::WhiteQueen,
     ColoredPieceType::WhiteKing,
-
     ColoredPieceType::BlackPawn,
     ColoredPieceType::BlackKnight,
     ColoredPieceType::BlackBishop,
     ColoredPieceType::BlackRook,
     ColoredPieceType::BlackQueen,
     ColoredPieceType::BlackKing,
-
     ColoredPieceType::None,
 ];
 
@@ -63,22 +60,22 @@ impl PieceType {
     pub fn colored(self, color: PlayerColor) -> ColoredPieceType {
         match color {
             PlayerColor::White => match self {
-                PieceType::Pawn =>      ColoredPieceType::WhitePawn,
-                PieceType::Knight =>    ColoredPieceType::WhiteKnight,
-                PieceType::Bishop =>    ColoredPieceType::WhiteBishop,
-                PieceType::Rook =>      ColoredPieceType::WhiteRook,
-                PieceType::Queen =>     ColoredPieceType::WhiteQueen,
-                PieceType::King =>      ColoredPieceType::WhiteKing,
-                PieceType::None =>      ColoredPieceType::None,
+                PieceType::Pawn => ColoredPieceType::WhitePawn,
+                PieceType::Knight => ColoredPieceType::WhiteKnight,
+                PieceType::Bishop => ColoredPieceType::WhiteBishop,
+                PieceType::Rook => ColoredPieceType::WhiteRook,
+                PieceType::Queen => ColoredPieceType::WhiteQueen,
+                PieceType::King => ColoredPieceType::WhiteKing,
+                PieceType::None => ColoredPieceType::None,
             },
             PlayerColor::Black => match self {
-                PieceType::Pawn =>      ColoredPieceType::BlackPawn,
-                PieceType::Knight =>    ColoredPieceType::BlackKnight,
-                PieceType::Bishop =>    ColoredPieceType::BlackBishop,
-                PieceType::Rook =>      ColoredPieceType::BlackRook,
-                PieceType::Queen =>     ColoredPieceType::BlackQueen,
-                PieceType::King =>      ColoredPieceType::BlackKing,
-                PieceType::None =>      ColoredPieceType::None,
+                PieceType::Pawn => ColoredPieceType::BlackPawn,
+                PieceType::Knight => ColoredPieceType::BlackKnight,
+                PieceType::Bishop => ColoredPieceType::BlackBishop,
+                PieceType::Rook => ColoredPieceType::BlackRook,
+                PieceType::Queen => ColoredPieceType::BlackQueen,
+                PieceType::King => ColoredPieceType::BlackKing,
+                PieceType::None => ColoredPieceType::None,
             },
         }
     }
@@ -225,47 +222,47 @@ impl ColoredPieceType {
     pub fn is_none(&self) -> bool {
         *self == ColoredPieceType::None
     }
-    
+
     pub fn is_pawn(&self) -> bool {
         match self {
             ColoredPieceType::WhitePawn | ColoredPieceType::BlackPawn => true,
             _ => false,
-        } 
+        }
     }
 
     pub fn is_knight(&self) -> bool {
         match self {
             ColoredPieceType::WhiteKnight | ColoredPieceType::BlackKnight => true,
             _ => false,
-        } 
+        }
     }
 
     pub fn is_bishop(&self) -> bool {
         match self {
             ColoredPieceType::WhiteBishop | ColoredPieceType::BlackBishop => true,
             _ => false,
-        } 
+        }
     }
 
     pub fn is_rook(&self) -> bool {
         match self {
             ColoredPieceType::WhiteRook | ColoredPieceType::BlackRook => true,
             _ => false,
-        } 
+        }
     }
 
     pub fn is_queen(&self) -> bool {
         match self {
             ColoredPieceType::WhiteQueen | ColoredPieceType::BlackQueen => true,
             _ => false,
-        } 
+        }
     }
 
     pub fn is_king(&self) -> bool {
         match self {
             ColoredPieceType::WhiteKing | ColoredPieceType::BlackKing => true,
             _ => false,
-        } 
+        }
     }
 
     pub fn is_orthogonal_slider(&self) -> bool {

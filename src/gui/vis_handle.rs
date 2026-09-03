@@ -6,7 +6,7 @@ use super::{engine_handle::EngineHandle, render_state::RenderState};
 
 pub struct VisHandle {
     render_sender: Sender<RenderState>,
-    move_reciver: Receiver<ChessMove>
+    move_reciver: Receiver<ChessMove>,
 }
 
 impl VisHandle {

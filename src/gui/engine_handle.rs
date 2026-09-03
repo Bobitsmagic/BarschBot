@@ -1,6 +1,6 @@
 use std::sync::mpsc::{Receiver, Sender};
 
-use crate::moves::{chess_move::ChessMove, uci_move::UciMove};
+use crate::moves::chess_move::ChessMove;
 
 use super::render_state::RenderState;
 

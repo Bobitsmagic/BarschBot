@@ -1,7 +1,6 @@
-use crate::board::{piece_type::{ColoredPieceType, PieceType}, square::Square};
+use crate::board::{piece_type::ColoredPieceType, square::Square};
 
 use super::uci_move::UciMove;
-
 
 pub const NULL_MOVE: ChessMove = ChessMove {
     start: 0,
@@ -27,7 +26,12 @@ impl Default for ChessMove {
 }
 
 impl ChessMove {
-    pub fn new(start: i8, end: i8, move_piece: ColoredPieceType, captured_piece: ColoredPieceType) -> ChessMove {
+    pub fn new(
+        start: i8,
+        end: i8,
+        move_piece: ColoredPieceType,
+        captured_piece: ColoredPieceType,
+    ) -> ChessMove {
         debug_assert!(move_piece != ColoredPieceType::None);
         // debug_assert!(captured_piece.piece_type() != PieceType::King);
 
@@ -40,7 +44,13 @@ impl ChessMove {
         }
     }
 
-    pub fn new_pawn(start: i8, end: i8, move_piece: ColoredPieceType, captured_piece: ColoredPieceType, promotion_piece: ColoredPieceType) -> ChessMove {
+    pub fn new_pawn(
+        start: i8,
+        end: i8,
+        move_piece: ColoredPieceType,
+        captured_piece: ColoredPieceType,
+        promotion_piece: ColoredPieceType,
+    ) -> ChessMove {
         // debug_assert!(captured_piece.piece_type() != PieceType::King);
 
         ChessMove {
@@ -57,7 +67,9 @@ impl ChessMove {
     }
 
     pub fn is_en_passant(&self) -> bool {
-        self.move_piece.is_pawn() && self.captured_piece.is_none() && self.end.file() != self.start.file()
+        self.move_piece.is_pawn()
+            && self.captured_piece.is_none()
+            && self.end.file() != self.start.file()
     }
 
     pub fn is_capture(&self) -> bool {
@@ -88,7 +100,6 @@ impl ChessMove {
         }
     }
 
-
     pub fn to_string(&self) -> String {
         let mut s = String::new();
         s += &self.move_piece.to_char().to_string();
@@ -104,7 +115,7 @@ impl ChessMove {
             s += &self.captured_piece.to_char().to_string();
         }
 
-        s += &self.end.square_string(); 
+        s += &self.end.square_string();
 
         if self.is_promotion() {
             s += &self.promotion_piece.to_char().to_string();
@@ -115,7 +126,7 @@ impl ChessMove {
     pub fn print(&self) {
         println!("{}", self.to_string());
     }
-    
+
     pub fn is_null_move(&self) -> bool {
         *self == NULL_MOVE
     }

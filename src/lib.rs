@@ -1,8 +1,8 @@
 pub mod board;
-pub mod moves;
-pub mod game;
-pub mod fen;
-pub mod gui;
 pub mod evaluation;
+pub mod fen;
+pub mod game;
+pub mod gui;
 pub mod match_handling;
+pub mod moves;
 pub mod tablebase;

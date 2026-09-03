@@ -14,9 +14,9 @@ pub trait BitArray {
     fn up(self) -> Self;
     fn down(self) -> Self;
 
-    fn iterate_set_bit_fields(self) -> impl Iterator<Item=u64>;
-    fn iterate_set_bits_indices(self) -> impl Iterator<Item=u32>;
-    fn iterate_squares(self) -> impl Iterator<Item=i8>;
+    fn iterate_set_bit_fields(self) -> impl Iterator<Item = u64>;
+    fn iterate_set_bits_indices(self) -> impl Iterator<Item = u32>;
+    fn iterate_squares(self) -> impl Iterator<Item = i8>;
 
     fn lowest_square_index(self) -> u32;
 
@@ -45,15 +45,23 @@ impl BitArray for u64 {
     }
 
     fn translate(self, dx: i8, dy: i8) -> u64 {
-        debug_assert!(dx.abs() <= 7 && dy.abs() <= 7, "Invalid translation: ({}, {})", dx, dy);
-        
-        let mask = if dx >= 0 { ACCUM_COLLUMNS[(7 - dx) as usize] } else { !ACCUM_COLLUMNS[(-dx) as usize - 1] };
+        debug_assert!(
+            dx.abs() <= 7 && dy.abs() <= 7,
+            "Invalid translation: ({}, {})",
+            dx,
+            dy
+        );
+
+        let mask = if dx >= 0 {
+            ACCUM_COLLUMNS[(7 - dx) as usize]
+        } else {
+            !ACCUM_COLLUMNS[(-dx) as usize - 1]
+        };
 
         let shift_sum = dx + dy * 8;
         if shift_sum > 0 {
             (self & mask) << shift_sum
-        }
-        else {
+        } else {
             (self & mask) >> -shift_sum
         }
     }
@@ -62,8 +70,7 @@ impl BitArray for u64 {
         let shift_sum = dy * 8;
         if shift_sum > 0 {
             self << shift_sum
-        }
-        else {
+        } else {
             self >> -shift_sum
         }
     }
@@ -95,39 +102,37 @@ impl BitArray for u64 {
         println!("{}", s);
     }
 
-    fn iterate_set_bit_fields(mut self) -> impl Iterator<Item=u64> {
+    fn iterate_set_bit_fields(mut self) -> impl Iterator<Item = u64> {
         return std::iter::from_fn(move || {
             if self != 0 {
                 let value = self & (!self + 1);
                 self = bitintr::Blsr::blsr(self);
                 // value &= value - 1;
                 // value ^= 1_u64 << index;
-                
+
                 Some(value)
-            }
-            else {
+            } else {
                 None
             }
         });
     }
 
-    fn iterate_set_bits_indices(mut self) -> impl Iterator<Item=u32> {
+    fn iterate_set_bits_indices(mut self) -> impl Iterator<Item = u32> {
         return std::iter::from_fn(move || {
             if self != 0 {
                 let index = self.trailing_zeros();
                 self = bitintr::Blsr::blsr(self);
                 // value &= value - 1;
                 // value ^= 1_u64 << index;
-                
+
                 Some(index)
-            }
-            else {
+            } else {
                 None
             }
         });
     }
-    
-    fn iterate_squares(self) -> impl Iterator<Item=i8> {
+
+    fn iterate_squares(self) -> impl Iterator<Item = i8> {
         self.iterate_set_bits_indices().map(|v| v as i8)
     }
 }
@@ -135,8 +140,8 @@ impl BitArray for u64 {
 //Unit tests
 #[cfg(test)]
 mod bit_array_tests {
-    use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
     use rand::Rng;
+    use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
 
     use super::BitArray;
 
@@ -171,7 +176,6 @@ mod bit_array_tests {
                     // println!("Translated:");
                     // translated.print();
 
-                    
                     let mut expected = bb;
                     for _ in 0..dx {
                         expected = expected.right();

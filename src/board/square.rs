@@ -77,10 +77,8 @@ pub const NONE: i8 = 64;
 pub const VALID_SQUARES: Range<i8> = 0_i8..64;
 pub const PAWN_SQUARES: Range<i8> = 8_i8..56;
 
-
 pub const EN_PASSANT_SQUARES: [i8; 16] = [
-    A3, B3, C3, D3, E3, F3, G3, H3,
-    A6, B6, C6, D6, E6, F6, G6, H6,
+    A3, B3, C3, D3, E3, F3, G3, H3, A6, B6, C6, D6, E6, F6, G6, H6,
 ];
 
 const RANK_NAMES: [&str; 8] = ["1", "2", "3", "4", "5", "6", "7", "8"];
@@ -124,7 +122,7 @@ pub fn from_str(s: &str) -> i8 {
         'f' => 5,
         'g' => 6,
         'h' => 7,
-        _ => panic!("Invalid file: {}", file)
+        _ => panic!("Invalid file: {}", file),
     };
 
     let rank = match rank {
@@ -136,7 +134,7 @@ pub fn from_str(s: &str) -> i8 {
         '6' => 5,
         '7' => 6,
         '8' => 7,
-        _ => panic!("Invalid rank: {}", rank)
+        _ => panic!("Invalid rank: {}", rank),
     };
 
     from_file_rank(file, rank)
@@ -178,8 +176,7 @@ impl Square for i8 {
             let rank = self.rank();
             let file = self.file();
             format!("{}{}", FILE_NAMES[file as usize], RANK_NAMES[rank as usize])
-        }
-        else {
+        } else {
             "None".to_string()
         }
     }
@@ -191,22 +188,38 @@ impl Square for i8 {
     }
 
     fn up(self) -> i8 {
-        debug_assert!((self + 8).is_valid_square(), "Square cant be shifted up: {}", self.square_string());
+        debug_assert!(
+            (self + 8).is_valid_square(),
+            "Square cant be shifted up: {}",
+            self.square_string()
+        );
 
         self + 8
     }
     fn down(self) -> i8 {
-        debug_assert!((self - 8).is_valid_square(), "Square cant be shifted down: {}", self.square_string());
+        debug_assert!(
+            (self - 8).is_valid_square(),
+            "Square cant be shifted down: {}",
+            self.square_string()
+        );
 
         self - 8
     }
     fn left(self) -> i8 {
-        debug_assert!((self - 1).is_valid_square(), "Square cant be shifted left: {}", self.square_string());
+        debug_assert!(
+            (self - 1).is_valid_square(),
+            "Square cant be shifted left: {}",
+            self.square_string()
+        );
 
         self - 1
     }
     fn right(self) -> i8 {
-        debug_assert!((self + 1).is_valid_square(), "Square cant be shifted right: {}", self.square_string());
+        debug_assert!(
+            (self + 1).is_valid_square(),
+            "Square cant be shifted right: {}",
+            self.square_string()
+        );
 
         self + 1
     }
@@ -225,7 +238,13 @@ impl Square for i8 {
     fn translate(&self, dx: i8, dy: i8) -> i8 {
         let delta = dx + (dy * 8);
 
-        debug_assert!((self + delta).is_valid_square(), "Invalid square after translation: {} dx: {} dy: {}", self.square_string(), dx, dy);
+        debug_assert!(
+            (self + delta).is_valid_square(),
+            "Invalid square after translation: {} dx: {} dy: {}",
+            self.square_string(),
+            dx,
+            dy
+        );
 
         self + delta
     }

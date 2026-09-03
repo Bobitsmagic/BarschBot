@@ -1,6 +1,13 @@
-use crate::{board::{self, bit_array::BitArray, bit_array_lookup::{self, ROWS}, player_color::PlayerColor}, game::{board_state::BoardState, game_state::GameState}, moves::move_gen};
-use super::settings::Settings;
-use crate::board::bit_array;
+use crate::{
+    board::{
+        bit_array::BitArray,
+        bit_array_lookup::{self, ROWS},
+    },
+    game::game_state::GameState,
+    moves::move_gen,
+};
+
+use crate::board::square::Square;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Attributes {
@@ -11,27 +18,29 @@ pub struct Attributes {
     pub isolated_pawn: i32,
     pub passed_pawn: i32,
     pub turn: i32,
+    pub king_border_distance: i32,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct EvaluationSettings {
     pub use_new_feature: bool,
-    pub attr_weights: Attributes   
+    pub attr_weights: Attributes,
 }
 
 pub fn evaluation_function(gs: &GameState, eval_settings: &EvaluationSettings) -> i32 {
     let attr = Attributes::from_board_state(gs, eval_settings);
 
-    return  attr.multiply(&eval_settings.attr_weights);
+    return attr.multiply(&eval_settings.attr_weights);
 }
 
 const PIECE_VALUES: [i32; 5] = [1000, 2800, 3200, 5000, 9000];
-const MOBILITY_VALUES: [i32; 6] = [0, 100, 80, 50, 30, 0];
+const MOBILITY_VALUES: [i32; 6] = [0, 40, 30, 10, 30, 0];
 const PAWN_PUSH_VALUE: [i32; 6] = [0, 10, 50, 150, 500, 2000];
 const DOUBLE_PAWN_VALUE: i32 = -200;
 const ISOLATED_PAWN_VALUE: i32 = -100;
 const PASSED_PAWN_VALUE: i32 = 150;
 const TURN_VALUE: i32 = 20;
+const KING_BORDER_DISTANCE: i32 = 1;
 
 pub const STANDARD_EVAL: Attributes = Attributes {
     piece_count: PIECE_VALUES,
@@ -41,6 +50,7 @@ pub const STANDARD_EVAL: Attributes = Attributes {
     isolated_pawn: ISOLATED_PAWN_VALUE,
     passed_pawn: PASSED_PAWN_VALUE,
     turn: TURN_VALUE,
+    king_border_distance: KING_BORDER_DISTANCE,
 };
 
 impl Attributes {
@@ -61,6 +71,7 @@ impl Attributes {
         sum += self.double_pawn * weights.double_pawn;
         sum += self.isolated_pawn * weights.isolated_pawn;
         sum += self.passed_pawn * weights.passed_pawn;
+        sum += self.king_border_distance * weights.king_border_distance;
 
         return sum;
     }
@@ -74,6 +85,7 @@ impl Attributes {
             isolated_pawn: 0,
             passed_pawn: 0,
             turn: 0,
+            king_border_distance: 0,
         };
 
         let board_state = &gs.board_state;
@@ -96,28 +108,22 @@ impl Attributes {
         let white_queens = bb.white_piece & queens;
         let black_queens = bb.black_piece & queens;
 
-        
-        attributes.piece_count[0] = 
-            white_pawns.count_ones() as i32 - 
-            black_pawns.count_ones() as i32;
+        attributes.piece_count[0] =
+            white_pawns.count_ones() as i32 - black_pawns.count_ones() as i32;
 
         attributes.piece_count[1] =
-            white_knights.count_ones() as i32 - 
-            black_knights.count_ones() as i32;
+            white_knights.count_ones() as i32 - black_knights.count_ones() as i32;
 
         attributes.piece_count[2] =
-            white_bishops.count_ones() as i32 - 
-            black_bishops.count_ones() as i32;
+            white_bishops.count_ones() as i32 - black_bishops.count_ones() as i32;
 
         attributes.piece_count[3] =
-            white_rooks.count_ones() as i32 - 
-            black_rooks.count_ones() as i32;
+            white_rooks.count_ones() as i32 - black_rooks.count_ones() as i32;
 
         attributes.piece_count[4] =
-            white_queens.count_ones() as i32 - 
-            black_queens.count_ones() as i32;
-        
-        let (white_moves, black_moves) = move_gen::gen_eval_moves(&board_state);
+            white_queens.count_ones() as i32 - black_queens.count_ones() as i32;
+
+        let [white_moves, black_moves] = move_gen::gen_eval_moves(&board_state);
 
         for m in &white_moves {
             attributes.mobility[m.move_piece.piece_type() as usize] += 1;
@@ -126,8 +132,8 @@ impl Attributes {
         for m in &black_moves {
             attributes.mobility[m.move_piece.piece_type() as usize] -= 1;
         }
-        
-        //Count pawns on rank 
+
+        //Count pawns on rank
         for i in 0..6 {
             let white_count = (white_pawns & ROWS[i + 1]).count_ones() as i32;
             let black_count = (black_pawns & ROWS[6 - i]).count_ones() as i32;
@@ -135,17 +141,29 @@ impl Attributes {
             attributes.pawn_push[i] = white_count - black_count;
         }
 
-        attributes.double_pawn = count_doubled_pawns(white_pawns) - count_doubled_pawns(black_pawns);
-        
-        if setting.use_new_feature {
-            attributes.isolated_pawn = count_isolated_pawns(white_pawns) - count_isolated_pawns(black_pawns);
-            attributes.passed_pawn = count_passed_pawns(white_pawns, black_pawns, &bit_array_lookup::PASSED_PAWN_MASK_WHITE);
-            attributes.passed_pawn -= count_passed_pawns(black_pawns, white_pawns, &bit_array_lookup::PASSED_PAWN_MASK_BLACK);
+        // attributes.double_pawn = count_doubled_pawns(white_pawns) - count_doubled_pawns(black_pawns);
 
-            attributes.turn = match gs.active_color() {
-                PlayerColor::White => 1,
-                PlayerColor::Black => -1,
-            };
+        if setting.use_new_feature {
+            let w_square = (bb.king & bb.white_piece).iterate_squares().next().unwrap();
+            let b_square = (bb.king & bb.black_piece).iterate_squares().next().unwrap();
+            let w_dist = w_square.rank().min(7 - w_square.rank())
+                + (w_square.file().min(7 - w_square.file()));
+            let b_dist = b_square.rank().min(7 - b_square.rank())
+                + (b_square.file().min(7 - b_square.file()));
+                
+            if (bb.white_piece | bb.black_piece).count_ones() < 5 {
+                attributes.king_border_distance = w_dist as i32 - b_dist as i32;
+                // attributes.king_border_distance *= -1;
+            }
+
+            // attributes.isolated_pawn = count_isolated_pawns(white_pawns) - count_isolated_pawns(black_pawns);
+            // attributes.passed_pawn = count_passed_pawns(white_pawns, black_pawns, &bit_array_lookup::PASSED_PAWN_MASK_WHITE);
+            // attributes.passed_pawn -= count_passed_pawns(black_pawns, white_pawns, &bit_array_lookup::PASSED_PAWN_MASK_BLACK);
+
+            // attributes.turn = match gs.active_color() {
+            //     PlayerColor::White => 1,
+            //     PlayerColor::Black => -1,
+            // };
         }
 
         return attributes;

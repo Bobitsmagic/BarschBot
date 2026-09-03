@@ -4,7 +4,7 @@ use crate::game::game_state::GameState;
 
 pub fn load_test_fens() -> Vec<GameState> {
     let mut fens = Vec::new();
-    
+
     //read all lines from the file
     let mut file = File::open("data/Fens.txt").unwrap();
     let mut contents = String::new();
@@ -16,7 +16,7 @@ pub fn load_test_fens() -> Vec<GameState> {
     //parse each line into a game state
     for line in lines {
         fens.push(GameState::from_fen(line));
-    }   
+    }
 
     fens
 }

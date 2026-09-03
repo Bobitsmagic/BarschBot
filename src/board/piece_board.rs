@@ -4,7 +4,12 @@ use colored::{Colorize, CustomColor};
 
 use crate::{board::player_color::PlayerColor, moves::chess_move::ChessMove};
 
-use super::{bit_board::BitBoard, dynamic_state::DynamicState, piece_type::ColoredPieceType, square::{self, VALID_SQUARES}};
+use super::{
+    bit_board::BitBoard,
+    dynamic_state::DynamicState,
+    piece_type::ColoredPieceType,
+    square::{self, VALID_SQUARES},
+};
 use crate::board::square::Square;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -47,10 +52,10 @@ impl PieceBoard {
         for s in square::A7..=square::H7 {
             pb[s] = ColoredPieceType::BlackPawn;
         }
-        
+
         return pb;
     }
-    
+
     pub fn print(&self) {
         self.print_perspective(PlayerColor::White);
     }
@@ -69,7 +74,6 @@ impl PieceBoard {
 
         for rank in (0..8).rev() {
             for file in 0..8 {
-
                 let square = match perspective {
                     PlayerColor::White => square::from_file_rank(file, rank),
                     PlayerColor::Black => square::from_file_rank(7 - file, 7 - rank),
@@ -77,28 +81,34 @@ impl PieceBoard {
 
                 let piece = self[square];
 
-                let square_color = if square.is_light() { CustomColor::new(0, 0, 0)} else { CustomColor::new(25, 25, 25,)};
-                
+                let square_color = if square.is_light() {
+                    CustomColor::new(0, 0, 0)
+                } else {
+                    CustomColor::new(25, 25, 25)
+                };
+
                 if piece.is_none() {
                     s += &format!("{}", "  ".on_custom_color(square_color));
-                }
-                else {
+                } else {
                     let piece_color = match piece.color() {
                         PlayerColor::White => CustomColor::new(220, 220, 220),
                         PlayerColor::Black => CustomColor::new(200, 200, 200),
                     };
-    
-    
-                    s += &format!("{}", format!("{} ", piece.to_symbol()).custom_color(piece_color).on_custom_color(square_color));
-                }
 
+                    s += &format!(
+                        "{}",
+                        format!("{} ", piece.to_symbol())
+                            .custom_color(piece_color)
+                            .on_custom_color(square_color)
+                    );
+                }
             }
             s += "\n";
         }
 
         println!("{}", s);
     }
-    
+
     pub fn get_move(&self, start: i8, target: i8) -> ChessMove {
         ChessMove::new(start, target, self[start], self[target])
     }
@@ -120,7 +130,7 @@ impl DynamicState for PieceBoard {
 
 impl Index<i8> for PieceBoard {
     type Output = ColoredPieceType;
-    
+
     fn index(&self, square: i8) -> &Self::Output {
         &self.squares[square as usize]
     }

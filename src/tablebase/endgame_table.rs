@@ -2,7 +2,7 @@
 
 // pub fn piece_list_index(mut list: Vec<ColoredPieceType>) -> u32 {
 //     let mut index = 0;
-//     list.sort(); 
+//     list.sort();
 
 //     for i in 0..list.len() {
 //         index += list[i].index() << (i * 3);
@@ -15,7 +15,7 @@
 //             ColoredPieceType::WhiteBishop => 2,
 //             ColoredPieceType::WhiteRook => 3,
 //             ColoredPieceType::WhiteQueen => 4,
-            
+
 //             ColoredPieceType::BlackPawn => 6,
 //             ColoredPieceType::BlackKnight => 7,
 //             ColoredPieceType::BlackBishop => 8,

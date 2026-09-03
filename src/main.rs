@@ -1,65 +1,118 @@
-use core::time;
-use std::{thread, time::Duration};
+use std::{f64::consts::SQRT_2, thread, time::Duration};
 
-use barschbot::{board::{piece_type::ColoredPieceType, square}, evaluation::{barschbot::Barschbot, hans_eval::{self, Attributes, EvaluationSettings}, search_functions, settings::{self, Settings}}, game::game_state::GameState, gui::{engine_handle::{self, EngineHandle}, render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, match_handling::{self, match_handler}, moves::chess_move::{self, ChessMove}};
-use piston_window::color::BLACK;
+use barschbot::{
+    evaluation::{
+        barschbot::Barschbot,
+        hans_eval::{self, EvaluationSettings},
+        settings::{self, Settings},
+    },
+    game::game_state::GameState,
+    gui::{
+        render_state::RenderState,
+        vis_handle::VisHandle,
+        visualizer::Visualizer,
+    },
+    match_handling::match_handler,
+    moves::chess_move::{self, ChessMove},
+};
 use rand::seq::SliceRandom;
+//Wins Old version: 358, Wins New version: 499, Draws: 143
 
-fn main() {    
-    // start_human_against_bot();
+fn main() {
+    start_human_against_bot();
 
     // rayon::ThreadPoolBuilder::new().num_threads(12).build_global().unwrap();
-    let bot_a = Barschbot::named(Settings { 
-        time_percentage: 0.02, 
-        quiessence_depth: 5,
-        check_extensions: 0, 
-        evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings { 
-            use_new_feature: false, 
-            attr_weights: hans_eval::STANDARD_EVAL 
-        })},
-         String::from("Old version"));
+    let bot_a = Barschbot::named(
+        Settings {
+            time_percentage: 0.02,
+            quiessence_depth: 5,
+            check_extensions: 0,
+            evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
+                use_new_feature: false,
+                attr_weights: hans_eval::STANDARD_EVAL,
+            }),
+        },
+        String::from("Hans"),
+    );
 
-    let bot_b = Barschbot::named(Settings { 
-        time_percentage: 0.02, 
-        quiessence_depth: 5,
-        check_extensions: 0, 
-        evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings { 
-            use_new_feature: true, 
-            attr_weights: hans_eval::STANDARD_EVAL 
-        })},
-         String::from("New version"));
+    let bot_b = Barschbot::named(
+        Settings {
+            time_percentage: 0.02,
+            quiessence_depth: 5,
+            check_extensions: 0,
+            evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
+                use_new_feature: true,
+                attr_weights: hans_eval::STANDARD_EVAL,
+            }),
+        },
+        String::from("New Hans"),
+    );
 
-    play_all_fens_vis(bot_a.clone(), bot_b.clone());
-    play_all_fens_par(bot_a, bot_b);
-}   
+    // let bot_b = Barschbot::named(Settings {
+    //     time_percentage: 0.02,
+    //     quiessence_depth: 5,
+    //     check_extensions: 0,
+    //     evaluation_mode: settings::EvaluationMode::WieselEvaluation(WieselSettings {
+    //         pawn_value: 1000,
+    //         version: 3,
+    //         piece_weight: [1000, 3000, 3000, 5000, 9000],
+    //     })},
+    //      String::from("Wiesel"));
+
+    // play_all_fens_vis(bot_b.clone(), bot_a.clone());
+    // play_all_fens_par(bot_a, bot_b);
+}
 
 fn play_all_fens_vis(mut bot_a: Barschbot, mut bot_b: Barschbot) {
-
-
     let (vis_handle, engine_handle) = VisHandle::create_handles();
-    
+
     let mut visualizer = Visualizer::new(engine_handle);
-    
+
     //Start random move thread
     std::thread::spawn(move || {
         // random_moves(vis_handle);
-        let (a_wins, b_wins, draws) = match_handler::show_all_fens(&mut bot_a, &mut bot_b, 1000*10, vis_handle);
-        println!("A wins: {}, B wins: {}, Draws: {}", a_wins, b_wins, draws);
+        let (a_wins, b_wins, draws) =
+            match_handler::show_all_fens(&mut bot_a, &mut bot_b, 1000 * 60, vis_handle);
+        println!(
+            "Finished: {} wins: {}, {} wins: {}, Draws: {}",
+            bot_a.name, a_wins, bot_b.name, b_wins, draws
+        );
     });
-    
+
     visualizer.run();
 }
 
+fn probability_of_superiority(a_wins: i32, b_wins: i32, draws: i32) -> f64 {
+    use errorfunctions::RealErrorFunctions;
+
+    let sum = a_wins + b_wins + draws;
+    let mean = sum as f64 / 2.0;
+    let std = mean * 0.5;
+    let b_score = b_wins as f64 + draws as f64 * 0.5;
+
+    let a_better_than_b = 1.0 - 0.5 * (1.0 + ((b_score - mean) / (std * SQRT_2)).erf());
+
+    return a_better_than_b;
+}
+
 fn play_all_fens_par(mut bot_a: Barschbot, mut bot_b: Barschbot) {
-    let (a_wins, b_wins, draws) = match_handler::play_all_fens(&mut bot_a, &mut bot_b, 1000*10);
-    println!("A wins: {}, B wins: {}, Draws: {}", a_wins, b_wins, draws);
+    let (a_wins, b_wins, draws) = match_handler::play_all_fens(&mut bot_a, &mut bot_b, 1000 * 10);
+    println!(
+        "{} wins: {}, {} wins: {}, draws: {} PoS: {:.3}",
+        bot_a.name,
+        a_wins,
+        bot_b.name,
+        b_wins,
+        draws,
+        probability_of_superiority(a_wins, b_wins, draws)
+    );
 }
 
 fn random_moves(engine_handle: VisHandle) {
     // let mut gs = GameState::start_position();
     let mut gs = GameState::from_fen("6k1/8/1R3K2/8/8/8/8/8 w - - 0 1");
     let mut rng = rand::thread_rng();
-    
+
     loop {
         let moves = gs.gen_legal_moves();
         if moves.len() == 0 {
@@ -68,29 +121,24 @@ fn random_moves(engine_handle: VisHandle) {
         let random_move = moves.choose(&mut rng).unwrap();
         gs.make_move(*random_move);
 
-        let rs = RenderState::render_move(
-            gs.board_state.piece_board.clone(),
-            *random_move,
-            false
-        );
+        let rs = RenderState::render_move(gs.board_state.piece_board.clone(), *random_move, false);
 
         thread::sleep(Duration::from_millis(100));
         engine_handle.send_render_state(rs);
     }
 }
 
-
 //Error at r6k/1bpp1pp1/2q1r2p/p3PQ2/4BP2/P1B3R1/1PP3PP/2KR4 b - - 0 23
 fn start_human_against_bot() {
     let (vis_handle, engine_handle) = VisHandle::create_handles();
-    
+
     let mut visualizer = Visualizer::new(engine_handle);
-    
+
     //Start random move thread
     std::thread::spawn(move || {
         human_against_bot(vis_handle);
     });
-    
+
     visualizer.run();
 }
 fn human_against_bot(engine_handle: VisHandle) {
@@ -98,32 +146,36 @@ fn human_against_bot(engine_handle: VisHandle) {
 
     // let mut rng = rand::thread_rng();
     // let fen_list = match_handling::file_loader::load_test_fens();
-    
+
     // let mut gs = fen_list.choose(&mut rng).unwrap().clone();
-    
-    let mut gs = GameState::start_position();
-    // let mut gs = GameState::from_fen("7k/p4p2/2p2pr1/3p3p/3P1QP1/P1P2P1q/7P/4R1K1 w - - 0 26");
-    
-    const START_TIME : u128 = 1000 * 60 * 1;
+
+    // let mut gs = GameState::start_position();
+    let mut gs = GameState::from_fen("8/8/2r1k3/8/3K4/8/8/8 w - - 0 1"); //Rook endgame
+    // let mut gs = GameState::from_fen("8/8/2bbk3/8/3K4/8/8/8 w - - 0 1"); //Bishop endgame
+
+    const START_TIME: u128 = 1000 * 60 * 1;
     let mut white_time_left = START_TIME;
     let mut black_time_left = START_TIME;
 
-    let mut bot = Barschbot::named(Settings { 
-        time_percentage: 0.02, 
-        quiessence_depth: 5,
-        check_extensions: 0, 
-        evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings { 
-            use_new_feature: false, 
-            attr_weights: hans_eval::STANDARD_EVAL 
-        })},
-         String::from("Waldwiesel destroyer"));
+    let mut bot = Barschbot::named(
+        Settings {
+            time_percentage: 0.02,
+            quiessence_depth: 5,
+            check_extensions: 0,
+            evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
+                use_new_feature: true,
+                attr_weights: hans_eval::STANDARD_EVAL,
+            }),
+        },
+        String::from("Waldwiesel destroyer"),
+    );
 
     engine_handle.send_render_state(RenderState::render_move_timed(
         gs.board_state.piece_board.clone(),
         chess_move::NULL_MOVE,
         PLAY_BLACK,
         white_time_left,
-        black_time_left
+        black_time_left,
     ));
 
     if PLAY_BLACK {
@@ -137,11 +189,11 @@ fn human_against_bot(engine_handle: VisHandle) {
             m,
             PLAY_BLACK,
             white_time_left,
-            black_time_left
+            black_time_left,
         ));
     }
 
-    loop { 
+    loop {
         let (m, time_used) = get_human_move(&mut gs, &engine_handle);
         gs.make_move(m);
 
@@ -156,10 +208,18 @@ fn human_against_bot(engine_handle: VisHandle) {
             m,
             PLAY_BLACK,
             white_time_left,
-            black_time_left
+            black_time_left,
         ));
 
-        let (m, time_used) = get_bot_move(&mut gs, if PLAY_BLACK { white_time_left } else { black_time_left }, &mut bot);
+        let (m, time_used) = get_bot_move(
+            &mut gs,
+            if PLAY_BLACK {
+                white_time_left
+            } else {
+                black_time_left
+            },
+            &mut bot,
+        );
         gs.make_move(m);
 
         if PLAY_BLACK {
@@ -173,7 +233,7 @@ fn human_against_bot(engine_handle: VisHandle) {
             m,
             PLAY_BLACK,
             white_time_left,
-            black_time_left
+            black_time_left,
         ));
     }
 

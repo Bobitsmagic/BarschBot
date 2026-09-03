@@ -1,4 +1,8 @@
-use crate::board::{piece_type::{ColoredPieceType, PieceType}, player_color::PlayerColor, square::{self, Square}};
+use crate::board::{
+    piece_type::{ColoredPieceType, PieceType},
+    player_color::PlayerColor,
+    square::{self, Square},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UciMove {
@@ -22,7 +26,8 @@ impl UciMove {
         let promotion_piece = match s.len() {
             5 => ColoredPieceType::from_char(s.chars().nth(4).unwrap()),
             _ => ColoredPieceType::None,
-        }.piece_type();
+        }
+        .piece_type();
 
         UciMove {
             start,
@@ -37,7 +42,11 @@ impl ToString for UciMove {
         let s = format!("{}{}", self.start.square_string(), self.end.square_string());
 
         if self.promotion_piece != PieceType::None {
-            s + &self.promotion_piece.colored(PlayerColor::Black).to_char().to_string()
+            s + &self
+                .promotion_piece
+                .colored(PlayerColor::Black)
+                .to_char()
+                .to_string()
         } else {
             s
         }

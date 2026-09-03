@@ -1,4 +1,13 @@
-use crate::{board::{dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::ColoredPieceType, player_color::PlayerColor, square::{self, Square}}, game::game_flags::GameFlags};
+use crate::{
+    board::{
+        dynamic_state::DynamicState,
+        piece_board::PieceBoard,
+        piece_type::ColoredPieceType,
+        player_color::PlayerColor,
+        square::{self, Square},
+    },
+    game::game_flags::GameFlags,
+};
 
 pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
     let parts = fen.split(" ").collect::<Vec<_>>();
@@ -15,15 +24,14 @@ pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
             square -= 16;
             continue;
         }
-        
+
         let piece = ColoredPieceType::from_char(c);
-        
+
         if piece != ColoredPieceType::None {
             board.add_piece(piece, square);
-            
+
             square += 1;
-        }
-        else {
+        } else {
             square += c.to_string().parse::<i8>().unwrap();
         }
     }
@@ -32,7 +40,7 @@ pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
     game_flags.active_color = match parts[1] {
         "w" => PlayerColor::White,
         "b" => PlayerColor::Black,
-        _ => panic!("Invalid active color")
+        _ => panic!("Invalid active color"),
     };
 
     for c in parts[2].chars() {
@@ -41,7 +49,7 @@ pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
             'Q' => game_flags.white_queen_side_castle = true,
             'k' => game_flags.black_king_side_castle = true,
             'q' => game_flags.black_queen_side_castle = true,
-            _ => ()
+            _ => (),
         }
     }
 
@@ -63,8 +71,7 @@ pub fn to_fen(board: &PieceBoard, game_flags: &GameFlags) -> String {
 
             if piece == ColoredPieceType::None {
                 empty_count += 1;
-            }
-            else {
+            } else {
                 if empty_count > 0 {
                     fen.push_str(&empty_count.to_string());
                     empty_count = 0;
@@ -104,8 +111,7 @@ pub fn to_fen(board: &PieceBoard, game_flags: &GameFlags) -> String {
 
     if castle_flags.len() == 0 {
         fen.push('-');
-    }
-    else {
+    } else {
         fen.push_str(&castle_flags);
     }
 
@@ -113,8 +119,7 @@ pub fn to_fen(board: &PieceBoard, game_flags: &GameFlags) -> String {
 
     if game_flags.en_passant_square != square::NONE {
         fen.push_str(&game_flags.en_passant_square.square_string());
-    }
-    else {
+    } else {
         fen.push('-');
     }
 
