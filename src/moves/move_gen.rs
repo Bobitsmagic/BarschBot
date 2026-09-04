@@ -9,9 +9,7 @@ use crate::{
         player_color::PlayerColor,
         rank,
         square::Square,
-    },
-    game::{board_state::BoardState, game_flags::GameFlags, game_result::GameResult},
-    moves::{
+    }, game::{board_state::BoardState, game_flags::GameFlags, game_result::{DrawType::StaleMate, GameResult, WinType::Checkmate}}, moves::{
         check_pin_mask::CheckPinMask,
         slider_gen::{
             gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_rook_moves_kogge,
@@ -218,12 +216,9 @@ pub fn game_result(board_state: &BoardState, flags: &GameFlags) -> GameResult {
     // pin_mask.check.print();
 
     if pin_mask.check != u64::MAX {
-        match flags.active_color {
-            PlayerColor::White => GameResult::BlackWin,
-            PlayerColor::Black => GameResult::WhiteWin,
-        }
+        GameResult::Win(!flags.active_color, Checkmate)
     } else {
-        GameResult::Draw
+        GameResult::Draw(StaleMate)
     }
 }
 

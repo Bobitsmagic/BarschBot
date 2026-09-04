@@ -185,9 +185,8 @@ fn quiessence_search(
     let res = game_state.game_result();
 
     match res {
-        GameResult::WhiteWin => return -CHECKMATE_VALUE + depth,
-        GameResult::BlackWin => return -CHECKMATE_VALUE + depth,
-        GameResult::Draw => return 0,
+        GameResult::Win(_, _) => return -CHECKMATE_VALUE + depth,
+        GameResult::Draw(_) => return 0,
         GameResult::Undecided => {}
     };
 
@@ -306,7 +305,7 @@ pub fn bb_timed_search(
 
         depth += 1;
 
-        if eval.abs() >= CHECKMATE_VALUE || start_time.elapsed().as_millis() > min_time {
+        if eval.abs() >= CHECKMATE_VALUE || start_time.elapsed().as_micros() > min_time {
             break (eval, best_move);
         }
     };
@@ -352,9 +351,8 @@ fn bb_search_settings(
 
     let res = game_state.game_result();
     match res {
-        GameResult::WhiteWin => return -CHECKMATE_VALUE + depth,
-        GameResult::BlackWin => return -CHECKMATE_VALUE + depth,
-        GameResult::Draw => return 0,
+        GameResult::Win(_, _) => return -CHECKMATE_VALUE + depth,
+        GameResult::Draw(_) => return 0,
         GameResult::Undecided => (),
     }
 

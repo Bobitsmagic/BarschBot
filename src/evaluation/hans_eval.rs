@@ -2,7 +2,10 @@ use crate::{
     board::{
         bit_array::BitArray,
         bit_array_lookup::{self, ROWS},
-    }, evaluation::settings::EvaluationMode::HansEvaluation, game::game_state::GameState, moves::move_gen,
+    },
+    evaluation::settings::EvaluationMode::HansEvaluation,
+    game::game_state::GameState,
+    moves::move_gen,
 };
 
 use crate::board::square::Square;
@@ -34,9 +37,9 @@ pub fn evaluation_function(gs: &GameState, eval_settings: &EvaluationSettings) -
 const PIECE_VALUES: [i32; 5] = [1000, 2800, 3200, 5000, 9000];
 const MOBILITY_VALUES: [i32; 6] = [0, 40, 30, 10, 30, 0];
 const PAWN_PUSH_VALUE: [i32; 6] = [0, 10, 50, 150, 500, 2000];
-const DOUBLE_PAWN_VALUE: i32 = -200;
-const ISOLATED_PAWN_VALUE: i32 = -100;
-const PASSED_PAWN_VALUE: i32 = 150;
+const DOUBLE_PAWN_VALUE: i32 = -20;
+const ISOLATED_PAWN_VALUE: i32 = -10;
+const PASSED_PAWN_VALUE: i32 = 15;
 const TURN_VALUE: i32 = 20;
 const KING_BORDER_DISTANCE: i32 = 1;
 
@@ -129,41 +132,41 @@ impl Attributes {
             attributes.pawn_push[i] = white_count - black_count;
         }
 
-        // attributes.double_pawn = count_doubled_pawns(white_pawns) - count_doubled_pawns(black_pawns);
+        attributes.mobility = move_gen::count_eval_moves(board_state);
+
+        if (bb.white_piece | bb.black_piece).count_ones() == 3
+            && bb.orthogonal_slider.count_ones() == 1
+        {
+            let w_square = (bb.king & bb.white_piece).trailing_zeros() as i8;
+            let b_square = (bb.king & bb.black_piece).trailing_zeros() as i8;
+            let w_dist = w_square.rank().min(7 - w_square.rank())
+                + (w_square.file().min(7 - w_square.file()));
+            let b_dist = b_square.rank().min(7 - b_square.rank())
+                + (b_square.file().min(7 - b_square.file()));
+
+            attributes.king_border_distance = w_dist as i32 - b_dist as i32;
+        }
 
         if setting.use_new_feature {
-            attributes.mobility = move_gen::count_eval_moves(board_state);
-            
-            // if (bb.white_piece | bb.black_piece).count_ones() == 3 && bb.orthogonal_slider.count_ones() == 1 {
-            //     let w_square = (bb.king & bb.white_piece).iterate_squares().next().unwrap();
-            //     let b_square = (bb.king & bb.black_piece).iterate_squares().next().unwrap();
-            //     let w_dist = w_square.rank().min(7 - w_square.rank())
-            //         + (w_square.file().min(7 - w_square.file()));
-            //     let b_dist = b_square.rank().min(7 - b_square.rank())
-            //         + (b_square.file().min(7 - b_square.file()));
-
-            //     attributes.king_border_distance = w_dist as i32 - b_dist as i32;
-            //     // attributes.king_border_distance *= -1;
-            // }
-
-            // attributes.isolated_pawn = count_isolated_pawns(white_pawns) - count_isolated_pawns(black_pawns);
-            // attributes.passed_pawn = count_passed_pawns(white_pawns, black_pawns, &bit_array_lookup::PASSED_PAWN_MASK_WHITE);
-            // attributes.passed_pawn -= count_passed_pawns(black_pawns, white_pawns, &bit_array_lookup::PASSED_PAWN_MASK_BLACK);
+            attributes.double_pawn =
+                count_doubled_pawns(white_pawns) - count_doubled_pawns(black_pawns);
+            attributes.isolated_pawn =
+                count_isolated_pawns(white_pawns) - count_isolated_pawns(black_pawns);
+            attributes.passed_pawn = count_passed_pawns(
+                white_pawns,
+                black_pawns,
+                &bit_array_lookup::PASSED_PAWN_MASK_WHITE,
+            );
+            attributes.passed_pawn -= count_passed_pawns(
+                black_pawns,
+                white_pawns,
+                &bit_array_lookup::PASSED_PAWN_MASK_BLACK,
+            );
 
             // attributes.turn = match gs.active_color() {
             //     PlayerColor::White => 1,
             //     PlayerColor::Black => -1,
             // };
-        }
-        else {
-            let [white_moves, black_moves] = move_gen::gen_eval_moves(&board_state);
-            for m in &white_moves {
-                attributes.mobility[m.move_piece.piece_type() as usize] += 1;
-            }
-
-            for m in &black_moves {
-                attributes.mobility[m.move_piece.piece_type() as usize] -= 1;
-            }
         }
 
         return attributes;
@@ -204,11 +207,26 @@ fn count_passed_pawns(allied_pawns: u64, enemy_pawns: u64, pawn_mask: &[u64; 64]
 }
 
 #[test]
-fn check_board_symmetry() {  
+fn check_board_symmetry() {
     let fens = crate::match_handling::file_loader::load_test_fens();
 
     for gs in fens {
-        let v1 = evaluation_function(&gs, h);
+        let v1 = evaluation_function(
+            &gs,
+            &EvaluationSettings {
+                use_new_feature: true,
+                attr_weights: STANDARD_EVAL,
+            },
+        );
+
+        let v2 = evaluation_function(
+            &gs.fliped_state(),
+            &EvaluationSettings {
+                use_new_feature: true,
+                attr_weights: STANDARD_EVAL,
+            },
+        );
+
+        assert!(v1 == -v2)
     }
-    
 }

@@ -4,9 +4,7 @@ use crate::{
     board::{
         dynamic_state::DynamicState, piece_board::PieceBoard, player_color::PlayerColor,
         zobrist_hash::ZobristHash,
-    },
-    fen::fen_helper,
-    moves::{
+    }, fen::fen_helper, game::game_result::DrawType::{InsufficientMaterial, Repetition}, moves::{
         chess_move::ChessMove,
         move_gen::{self, MoveVector},
         move_iterator::MoveIterator,
@@ -59,6 +57,13 @@ impl GameState {
 
     pub fn active_color(&self) -> PlayerColor {
         return self.flag_stack.last().unwrap().active_color;
+    }
+
+    pub fn fliped_state(&self) -> GameState {
+        let mut gs = self.clone();
+        gs.board_state = gs.board_state.flip_position();
+
+        return gs;
     }
 
     pub fn to_fen(&self) -> String {
@@ -142,7 +147,14 @@ impl GameState {
     pub fn game_result(&self) -> GameResult {
         if self.visited_pos.contains(&self.zobrist_hash.hash) {
             // self.board_state.piece_board.print();
-            return GameResult::Draw;
+            return GameResult::Draw(Repetition);
+        }
+
+        let bb = &self.board_state.bit_board;
+        if (bb.white_piece | bb.black_piece).count_ones() == 3 {
+            if (bb.diagonal_slider & !bb.orthogonal_slider | bb.knight).count_ones() == 1 {
+                return GameResult::Draw(InsufficientMaterial);
+            }
         }
 
         move_gen::game_result(&self.board_state, &self.get_flags())
