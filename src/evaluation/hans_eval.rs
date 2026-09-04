@@ -2,9 +2,7 @@ use crate::{
     board::{
         bit_array::BitArray,
         bit_array_lookup::{self, ROWS},
-    },
-    game::game_state::GameState,
-    moves::move_gen,
+    }, evaluation::settings::EvaluationMode::HansEvaluation, game::game_state::GameState, moves::move_gen,
 };
 
 use crate::board::square::Square;
@@ -123,16 +121,6 @@ impl Attributes {
         attributes.piece_count[4] =
             white_queens.count_ones() as i32 - black_queens.count_ones() as i32;
 
-        let [white_moves, black_moves] = move_gen::gen_eval_moves(&board_state);
-
-        for m in &white_moves {
-            attributes.mobility[m.move_piece.piece_type() as usize] += 1;
-        }
-
-        for m in &black_moves {
-            attributes.mobility[m.move_piece.piece_type() as usize] -= 1;
-        }
-
         //Count pawns on rank
         for i in 0..6 {
             let white_count = (white_pawns & ROWS[i + 1]).count_ones() as i32;
@@ -144,17 +132,19 @@ impl Attributes {
         // attributes.double_pawn = count_doubled_pawns(white_pawns) - count_doubled_pawns(black_pawns);
 
         if setting.use_new_feature {
-            let w_square = (bb.king & bb.white_piece).iterate_squares().next().unwrap();
-            let b_square = (bb.king & bb.black_piece).iterate_squares().next().unwrap();
-            let w_dist = w_square.rank().min(7 - w_square.rank())
-                + (w_square.file().min(7 - w_square.file()));
-            let b_dist = b_square.rank().min(7 - b_square.rank())
-                + (b_square.file().min(7 - b_square.file()));
-                
-            if (bb.white_piece | bb.black_piece).count_ones() < 5 {
-                attributes.king_border_distance = w_dist as i32 - b_dist as i32;
-                // attributes.king_border_distance *= -1;
-            }
+            attributes.mobility = move_gen::count_eval_moves(board_state);
+            
+            // if (bb.white_piece | bb.black_piece).count_ones() == 3 && bb.orthogonal_slider.count_ones() == 1 {
+            //     let w_square = (bb.king & bb.white_piece).iterate_squares().next().unwrap();
+            //     let b_square = (bb.king & bb.black_piece).iterate_squares().next().unwrap();
+            //     let w_dist = w_square.rank().min(7 - w_square.rank())
+            //         + (w_square.file().min(7 - w_square.file()));
+            //     let b_dist = b_square.rank().min(7 - b_square.rank())
+            //         + (b_square.file().min(7 - b_square.file()));
+
+            //     attributes.king_border_distance = w_dist as i32 - b_dist as i32;
+            //     // attributes.king_border_distance *= -1;
+            // }
 
             // attributes.isolated_pawn = count_isolated_pawns(white_pawns) - count_isolated_pawns(black_pawns);
             // attributes.passed_pawn = count_passed_pawns(white_pawns, black_pawns, &bit_array_lookup::PASSED_PAWN_MASK_WHITE);
@@ -164,6 +154,16 @@ impl Attributes {
             //     PlayerColor::White => 1,
             //     PlayerColor::Black => -1,
             // };
+        }
+        else {
+            let [white_moves, black_moves] = move_gen::gen_eval_moves(&board_state);
+            for m in &white_moves {
+                attributes.mobility[m.move_piece.piece_type() as usize] += 1;
+            }
+
+            for m in &black_moves {
+                attributes.mobility[m.move_piece.piece_type() as usize] -= 1;
+            }
         }
 
         return attributes;
@@ -201,4 +201,14 @@ fn count_passed_pawns(allied_pawns: u64, enemy_pawns: u64, pawn_mask: &[u64; 64]
     }
 
     return passed_pawns;
+}
+
+#[test]
+fn check_board_symmetry() {  
+    let fens = crate::match_handling::file_loader::load_test_fens();
+
+    for gs in fens {
+        let v1 = evaluation_function(&gs, h);
+    }
+    
 }

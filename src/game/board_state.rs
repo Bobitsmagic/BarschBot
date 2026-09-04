@@ -1,7 +1,12 @@
 use crate::{
     board::{
-        bit_board::BitBoard, dynamic_state::DynamicState, piece_board::PieceBoard,
-        piece_type::ColoredPieceType, player_color::PlayerColor, square::VALID_SQUARES,
+        bit_array::BitArray,
+        bit_board::BitBoard,
+        dynamic_state::DynamicState,
+        piece_board::PieceBoard,
+        piece_type::ColoredPieceType,
+        player_color::PlayerColor,
+        square::{Square, VALID_SQUARES},
     },
     moves::chess_move::ChessMove,
 };
@@ -44,6 +49,19 @@ impl BoardState {
         }
 
         return true;
+    }
+
+    pub fn flip_position(&self) -> BoardState {
+        let mut ret = BoardState::empty();
+
+        let all_pieces = self.bit_board.white_piece | self.bit_board.black_piece;
+        for square in all_pieces.iterate_squares() {
+            let pt = self.piece_board[square];
+
+            ret.add_piece(pt.opposite(), square.rotate_180());
+        }
+
+        return ret;
     }
 }
 

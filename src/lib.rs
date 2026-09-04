@@ -5,5 +5,5 @@ pub mod game;
 pub mod gui;
 pub mod match_handling;
 pub mod moves;
-pub mod tablebase;
 pub mod stockfish;
+pub mod tablebase;

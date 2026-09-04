@@ -436,6 +436,64 @@ pub fn count_moves(board_state: &BoardState, flags: &GameFlags) -> u32 {
     }
 }
 
+pub fn count_eval_moves(board_state: &BoardState) -> [i32; 6] {
+    let board = &board_state.bit_board;
+    let piece_board = &board_state.piece_board;
+
+    let mut ret = [0; 6];
+
+    //Knights
+    let white_knights = board.knight & board.white_piece;
+    for square in white_knights.iterate_squares() {
+        ret[1] += bit_array_lookup::KNIGHT_MOVES[square as usize].count_ones() as i32;
+    }
+
+    let black_knights = board.knight & board.black_piece;
+    for square in black_knights.iterate_squares() {
+        ret[1] -= bit_array_lookup::KNIGHT_MOVES[square as usize].count_ones() as i32;
+    }
+
+    //Diagonal sliders
+    let occupied = board.white_piece | board.black_piece;
+    let white_diagonal_slider = board.diagonal_slider & board.white_piece;
+    for square in white_diagonal_slider.iterate_squares() {
+        let pt = piece_board[square];
+        let moveset = gen_bishop_moves_pext(square, occupied);
+
+        ret[pt.piece_type() as usize] += moveset.count_ones() as i32;
+    }
+
+    let black_diagonal_slider = board.diagonal_slider & board.black_piece;
+    for square in black_diagonal_slider.iterate_squares() {
+        let pt = piece_board[square];
+        let moveset = gen_bishop_moves_pext(square, occupied);
+        ret[pt.piece_type() as usize] -= moveset.count_ones() as i32;
+    }
+
+    //Orthogonal sliders
+    let white_orthogonal_slider = board.orthogonal_slider & board.white_piece;
+    for square in white_orthogonal_slider.iterate_squares() {
+        let pt = piece_board[square];
+        let moveset = gen_rook_moves_pext(square, occupied);
+        ret[pt.piece_type() as usize] += moveset.count_ones() as i32;
+    }
+    let black_orthogonal_slider = board.orthogonal_slider & board.black_piece;
+    for square in black_orthogonal_slider.iterate_squares() {
+        let pt = piece_board[square];
+        let moveset = gen_rook_moves_pext(square, occupied);
+        ret[pt.piece_type() as usize] -= moveset.count_ones() as i32;
+    }
+
+    //King
+    let wks = board.king_position(PlayerColor::White);
+    ret[5] += KING_MOVES[wks as usize].count_ones() as i32;
+
+    let bks = board.king_position(PlayerColor::Black);
+    ret[5] -= KING_MOVES[bks as usize].count_ones() as i32;
+
+    return ret;
+}
+
 pub fn gen_eval_moves(board_state: &BoardState) -> [MoveVector; 2] {
     let mut white_moves = ArrayVec::new();
     let mut black_moves = ArrayVec::new();

@@ -112,7 +112,7 @@ pub fn quiet_move_sorter(
         sum *= 1_000_000_000;
 
         if quiet_move_table[cm.start as usize][cm.end as usize] > 1_000_000_000 {
-            println!("Overflow");
+            println!("Overflow in quiet move table");
         }
         sum += quiet_move_table[cm.start as usize][cm.end as usize];
 
