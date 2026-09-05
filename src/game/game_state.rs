@@ -6,7 +6,7 @@ use crate::{
         zobrist_hash::ZobristHash,
     },
     fen::fen_helper,
-    game::game_result::DrawType::{InsufficientMaterial, Repetition},
+    game::game_result::DrawType::{FiftyMoveRule, InsufficientMaterial, Repetition},
     moves::{
         chess_move::ChessMove,
         move_gen::{self, MoveVector},
@@ -151,6 +151,10 @@ impl GameState {
         if self.visited_pos.contains(&self.zobrist_hash.hash) {
             // self.board_state.piece_board.print();
             return GameResult::Draw(Repetition);
+        }
+
+        if self.flag_stack.last().unwrap().quiet_move_counter >= 100 {
+            return GameResult::Draw(FiftyMoveRule);
         }
 
         let bb = &self.board_state.bit_board;

@@ -16,6 +16,7 @@ pub struct GameFlags {
     pub black_queen_side_castle: bool,
     pub black_king_side_castle: bool,
     pub en_passant_square: i8,
+    pub quiet_move_counter: u8,
 }
 
 impl GameFlags {
@@ -27,6 +28,7 @@ impl GameFlags {
             black_queen_side_castle: true,
             black_king_side_castle: true,
             en_passant_square: square::NONE,
+            quiet_move_counter: 0,
         }
     }
 
@@ -38,6 +40,7 @@ impl GameFlags {
             black_queen_side_castle: false,
             black_king_side_castle: false,
             en_passant_square: square::NONE,
+            quiet_move_counter: 0,
         }
     }
 
@@ -72,6 +75,12 @@ impl GameFlags {
             _ => (),
         }
 
+        if m.is_capture() || m.move_piece.is_pawn() {
+            self.quiet_move_counter = 0;
+        } else {
+            self.quiet_move_counter += 1;
+        }
+
         if m.move_piece.is_pawn()
             && m.start.rank().abs_diff(m.end.rank()) == 2
             && board.pawn_has_neighbour(m.move_piece.color(), m.end)
@@ -86,7 +95,7 @@ impl GameFlags {
     }
 
     pub fn print(&self) {
-        println!("Active color: {:?}, White queen side castle: {}, White king side castle: {}, Black queen side castle: {}, Black king side castle: {}, En passant square: {:?}", 
-            self.active_color, self.white_queen_side_castle, self.white_king_side_castle, self.black_queen_side_castle, self.black_king_side_castle, self.en_passant_square)
+        println!("Active color: {:?}, White queen side castle: {}, White king side castle: {}, Black queen side castle: {}, Black king side castle: {}, En passant square: {:?}, Quiet move count: {}", 
+            self.active_color, self.white_queen_side_castle, self.white_king_side_castle, self.black_queen_side_castle, self.black_king_side_castle, self.en_passant_square, self.quiet_move_counter)
     }
 }
