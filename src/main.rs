@@ -1,4 +1,8 @@
-use std::{f64::consts::SQRT_2, thread, time::Duration};
+use std::{
+    f64::consts::SQRT_2,
+    thread,
+    time::{Duration, Instant},
+};
 
 use barschbot::{
     evaluation::{
@@ -96,10 +100,16 @@ fn probability_of_superiority(a_wins: i32, b_wins: i32, draws: i32) -> f64 {
 }
 
 fn play_all_fens_par(mut bot_a: Barschbot, mut bot_b: Barschbot) {
-    let stats = match_handler::play_all_fens(&mut bot_a, &mut bot_b, 1000 * 1000 * 10);
-    
+    let start_time = Instant::now();
+    let stats = match_handler::play_all_fens(&mut bot_a, &mut bot_b, 1000 * 1000 * 1);
+    println!("Time: {:?}", start_time.elapsed());
     stats.print_wins(&bot_a.name, &bot_b.name);
-    println!("Probability of {} being superior to {}: {:.3}", bot_a.name, bot_b.name, probability_of_superiority(stats.a_wins(), stats.b_wins(), stats.draws()));
+    println!(
+        "Probability of {} being superior to {}: {:.3}",
+        bot_a.name,
+        bot_b.name,
+        probability_of_superiority(stats.a_wins(), stats.b_wins(), stats.draws())
+    );
 
     stats.print_stats(&bot_a.name, &bot_b.name);
 }

@@ -1,9 +1,20 @@
-use std::{default, sync::{Arc, Mutex}};
+use std::sync::{Arc, Mutex};
 
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{
-    board::player_color::PlayerColor::{self, Black, White}, evaluation::barschbot::Barschbot, game::{game_result::{DrawType::{FiftyMoveRule, InsufficientMaterial, Repetition, StaleMate}, GameResult::{self, Win}, WinType::{Checkmate, TimeOut}}, game_state::GameState}, gui::{render_state::RenderState, vis_handle::VisHandle}, moves::chess_move,
+    board::player_color::PlayerColor::{self},
+    evaluation::barschbot::Barschbot,
+    game::{
+        game_result::{
+            DrawType::{FiftyMoveRule, InsufficientMaterial, Repetition, StaleMate},
+            GameResult::{self, Win},
+            WinType::{Checkmate, TimeOut},
+        },
+        game_state::GameState,
+    },
+    gui::{render_state::RenderState, vis_handle::VisHandle},
+    moves::chess_move,
 };
 
 #[derive(Clone)]
@@ -20,13 +31,29 @@ pub struct MatchStats {
 
 impl Default for MatchStats {
     fn default() -> Self {
-        MatchStats { a_cm: 0, a_time: 0, b_cm: 0, b_time: 0, insuff: 0, repe: 0, stalemate: 0, fifty: 0 }
+        MatchStats {
+            a_cm: 0,
+            a_time: 0,
+            b_cm: 0,
+            b_time: 0,
+            insuff: 0,
+            repe: 0,
+            stalemate: 0,
+            fifty: 0,
+        }
     }
 }
 
 impl MatchStats {
     pub fn print_wins(&self, name_a: &str, name_b: &str) {
-        println!("Wins {}: {} Wins {}: {} Draws: {}", name_a, self.a_wins(), name_b, self.b_wins(), self.draws())
+        println!(
+            "Wins {}: {} Wins {}: {} Draws: {}",
+            name_a,
+            self.a_wins(),
+            name_b,
+            self.b_wins(),
+            self.draws()
+        )
     }
 
     pub fn a_wins(&self) -> i32 {
@@ -41,20 +68,17 @@ impl MatchStats {
 
     pub fn handle_game_result(&mut self, res: GameResult, a_color: PlayerColor) {
         match res {
-
             Win(wc, Checkmate) => {
                 if wc == a_color {
                     self.a_cm += 1;
-                }
-                else {
+                } else {
                     self.b_cm += 1;
                 }
-            },
+            }
             Win(wc, TimeOut) => {
                 if wc == a_color {
                     self.a_time += 1;
-                }
-                else {
+                } else {
                     self.b_time += 1;
                 }
             }
@@ -70,15 +94,17 @@ impl MatchStats {
 
     pub fn print_stats(&self, name_a: &str, name_b: &str) {
         println!("Checkmate {name_a}: {} {name_b}: {}", self.a_cm, self.b_cm);
-        println!("Time out {name_a}: {} {name_b}: {}", self.a_time, self.b_time);
-        
+        println!(
+            "Time out {name_a}: {} {name_b}: {}",
+            self.a_time, self.b_time
+        );
+
         println!("Insufficient material {}", self.insuff);
         println!("Repetition {}", self.repe);
         println!("Stalemate {}", self.stalemate);
         println!("50 move rule {}", self.fifty);
     }
 }
-
 
 pub fn play_timed_game(
     game_state: &mut GameState,
@@ -102,7 +128,7 @@ pub fn play_timed_game(
         let time_used = start_time.elapsed().as_micros();
 
         if time_used > time_left_a {
-            return GameResult::Win(!game_state.active_color(), TimeOut)
+            return GameResult::Win(!game_state.active_color(), TimeOut);
         }
         time_left_a -= time_used;
         game_state.make_move(m);
@@ -118,7 +144,7 @@ pub fn play_timed_game(
         let time_used = start_time.elapsed().as_micros();
 
         if time_used > time_left_b {
-            return GameResult::Win(!game_state.active_color(), TimeOut)
+            return GameResult::Win(!game_state.active_color(), TimeOut);
         }
         time_left_b -= time_used;
         game_state.make_move(m);
@@ -172,7 +198,7 @@ pub fn show_timed_game(
         let time_used = start_time.elapsed().as_millis();
 
         if time_used > time_left_a {
-            return GameResult::Win(!gs.active_color(), TimeOut)
+            return GameResult::Win(!gs.active_color(), TimeOut);
         }
         time_left_a -= time_used;
         gs.make_move(m);
@@ -211,7 +237,7 @@ pub fn show_timed_game(
         let time_used = start_time.elapsed().as_millis();
 
         if time_used > time_left_b {
-            return GameResult::Win(!gs.active_color(), TimeOut)
+            return GameResult::Win(!gs.active_color(), TimeOut);
         }
 
         time_left_b -= time_used;
@@ -245,7 +271,7 @@ pub fn play_all_fens(
     bot_a: &mut Barschbot,
     bot_b: &mut Barschbot,
     start_time_mu_s: u128,
-) ->  MatchStats {
+) -> MatchStats {
     let fens = crate::match_handling::file_loader::load_test_fens();
 
     let win_counter = Arc::new(Mutex::new(MatchStats::default()));
@@ -264,7 +290,10 @@ pub fn play_all_fens(
 
             let start_color = game_state.active_color();
             let res = play_timed_game(&mut game_state, &mut bot_a, &mut bot_b, start_time_mu_s);
-            win_counter.lock().unwrap().handle_game_result(res, start_color);
+            win_counter
+                .lock()
+                .unwrap()
+                .handle_game_result(res, start_color);
 
             game_state = GameState::from_fen(&fen.to_fen());
             let res = play_timed_game(&mut game_state, &mut bot_b, &mut bot_a, start_time_mu_s);
@@ -274,7 +303,7 @@ pub fn play_all_fens(
         });
 
     let stats = win_counter.lock().unwrap();
-    
+
     return stats.clone();
 }
 
@@ -299,14 +328,13 @@ pub fn show_all_fens(
             GameResult::Win(win_color, _) => {
                 if win_color == start_color {
                     b_wins += 1;
-                }
-                else {
+                } else {
                     a_wins += 1;
                 }
-            },
-            
+            }
+
             GameResult::Draw(_) => draws += 1,
-            GameResult::Undecided => panic!("Finished on undecided game")
+            GameResult::Undecided => panic!("Finished on undecided game"),
         }
 
         game_state = GameState::from_fen(&fen.to_fen());
@@ -316,14 +344,13 @@ pub fn show_all_fens(
             GameResult::Win(win_color, _) => {
                 if win_color == start_color {
                     b_wins += 1;
-                }
-                else {
+                } else {
                     a_wins += 1;
                 }
-            },
-            
+            }
+
             GameResult::Draw(_) => draws += 1,
-            GameResult::Undecided => panic!("Finished on undecided game")
+            GameResult::Undecided => panic!("Finished on undecided game"),
         }
 
         println!(

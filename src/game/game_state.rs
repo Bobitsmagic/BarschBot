@@ -4,7 +4,10 @@ use crate::{
     board::{
         dynamic_state::DynamicState, piece_board::PieceBoard, player_color::PlayerColor,
         zobrist_hash::ZobristHash,
-    }, fen::fen_helper, game::game_result::DrawType::{InsufficientMaterial, Repetition}, moves::{
+    },
+    fen::fen_helper,
+    game::game_result::DrawType::{InsufficientMaterial, Repetition},
+    moves::{
         chess_move::ChessMove,
         move_gen::{self, MoveVector},
         move_iterator::MoveIterator,

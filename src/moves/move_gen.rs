@@ -9,7 +9,13 @@ use crate::{
         player_color::PlayerColor,
         rank,
         square::Square,
-    }, game::{board_state::BoardState, game_flags::GameFlags, game_result::{DrawType::StaleMate, GameResult, WinType::Checkmate}}, moves::{
+    },
+    game::{
+        board_state::BoardState,
+        game_flags::GameFlags,
+        game_result::{DrawType::StaleMate, GameResult, WinType::Checkmate},
+    },
+    moves::{
         check_pin_mask::CheckPinMask,
         slider_gen::{
             gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_rook_moves_kogge,
