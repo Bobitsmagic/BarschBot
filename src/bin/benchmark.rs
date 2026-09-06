@@ -271,7 +271,7 @@ fn compare_eval_functions() {
             sum += hans_eval::evaluation_function(gs, &settings)
         }
     }
-    println!("{:?}", start_time.elapsed());
+    println!("Hans false {:?}", start_time.elapsed());
     println!("{}", sum);
 
     let settings = EvaluationSettings { use_new_feature: true, attr_weights: STANDARD_EVAL };
@@ -282,7 +282,7 @@ fn compare_eval_functions() {
             sum += hans_eval::evaluation_function(gs, &settings)
         }
     }
-    println!("{:?}", start_time.elapsed());
+    println!("Hans true {:?}", start_time.elapsed());
     println!("{}", sum);
 
     let settings = WieselSettings { pawn_value: 0, version: 3, piece_weight: [1000, 3000, 3000, 5000, 9000] };

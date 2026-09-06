@@ -6,15 +6,8 @@ use std::{
 
 use barschbot::{
     evaluation::{
-        barschbot::Barschbot,
-        hans_eval::{self, EvaluationSettings},
-        settings::{self, Settings},
-        wiesel_eval::WieselSettings,
-    },
-    game::game_state::GameState,
-    gui::{render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer},
-    match_handling::match_handler,
-    moves::chess_move::{self, ChessMove},
+        barschbot::Barschbot, hans_eval::{self, Attributes, EvaluationSettings, STANDARD_EVAL}, settings::{self, Settings}, wiesel_eval::WieselSettings,
+    }, game::game_state::GameState, gui::{render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, match_handling::match_handler, moves::chess_move::{self, ChessMove},
 };
 use rand::seq::SliceRandom;
 //Wins Old version: 358, Wins New version: 499, Draws: 143
@@ -30,7 +23,8 @@ fn main() {
             check_extensions: 0,
             evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
                 use_new_feature: true,
-                attr_weights: hans_eval::STANDARD_EVAL,
+                attr_weights: STANDARD_EVAL,
+                // attr_weights: Attributes {passed_pawn: 100, ..hans_eval::STANDARD_EVAL},
             }),
         },
         String::from("New Hans"),

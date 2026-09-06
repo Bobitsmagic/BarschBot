@@ -359,7 +359,7 @@ pub fn show_all_fens(
             GameResult::Undecided => panic!("Finished on undecided game"),
         }
 
-        println!("{}", game_state.to_pgn(&bot_a.name, &bot_b.name));
+        println!("{}", game_state.to_pgn(&bot_b.name, &bot_a.name));
 
         println!(
             "{} wins: {}, {} wins: {}, Draws: {}",
