@@ -173,14 +173,14 @@ impl Visualizer {
                 if !self.latest_render_state.lm.move_piece.is_none() {
                     if self.latest_render_state.lm.move_piece.color() == PlayerColor::White {
                         self.latest_render_state.black_time -=
-                            ((args.dt * 1000.0) as u128).min(self.latest_render_state.black_time);
+                            ((args.dt * 1000.0 * 1000.0) as u128).min(self.latest_render_state.black_time);
                     } else {
                         self.latest_render_state.white_time -=
-                            ((args.dt * 1000.0) as u128).min(self.latest_render_state.white_time);
+                            ((args.dt * 1000.0 * 1000.0) as u128).min(self.latest_render_state.white_time);
                     }
                 } else {
                     self.latest_render_state.white_time -=
-                        ((args.dt * 1000.0) as u128).min(self.latest_render_state.white_time);
+                        ((args.dt * 1000.0 * 1000.0) as u128).min(self.latest_render_state.white_time);
                 }
             }
         }
@@ -443,9 +443,9 @@ impl Visualizer {
         return true;
 
         fn time_to_string(time: u128) -> String {
-            let minutes = time / 1000 / 60;
-            let seconds = time / 1000 % 60;
-            let milliseconds = time % 1000;
+            let minutes = time / 1000 / 1000 / 60;
+            let seconds = time / 1000 / 1000 % 60;
+            let milliseconds = time / 1000 % 1000;
 
             format!("{:02}:{:02}:{:03}", minutes, seconds, milliseconds)
         }

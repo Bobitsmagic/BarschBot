@@ -63,8 +63,8 @@ fn main() {
         String::from("Wiesel"),
     );
 
-    // play_all_fens_vis(bot_b.clone(), bot_a.clone());
-    play_all_fens_par(bot_a, bot_b);
+    play_all_fens_vis(bot_b.clone(), bot_a.clone());
+    // play_all_fens_par(bot_a, bot_b);
 }
 
 fn play_all_fens_vis(mut bot_a: Barschbot, mut bot_b: Barschbot) {
@@ -76,7 +76,7 @@ fn play_all_fens_vis(mut bot_a: Barschbot, mut bot_b: Barschbot) {
     std::thread::spawn(move || {
         // random_moves(vis_handle);
         let (a_wins, b_wins, draws) =
-            match_handler::show_all_fens(&mut bot_a, &mut bot_b, 1000 * 60, vis_handle);
+            match_handler::show_all_fens(&mut bot_a, &mut bot_b, 1000 * 1000 * 60, vis_handle);
         println!(
             "Finished: {} wins: {}, {} wins: {}, Draws: {}",
             bot_a.name, a_wins, bot_b.name, b_wins, draws

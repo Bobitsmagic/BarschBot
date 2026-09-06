@@ -86,6 +86,47 @@ impl GameState {
         }
     }
 
+    pub fn return_to_start_position(&mut self) {
+        while !self.move_stack.is_empty() {
+            self.undo_move();
+        }
+    }
+
+    pub fn to_pgn(&self, white_name: &str, black_name: &str) -> String {
+        let mut s = format!("[White \"{}\"]\n", white_name);
+        s += &format!("[Black \"{}\"]\n", black_name);
+
+        let mut gs = self.clone();
+        let mut all_moves = gs.move_stack.clone();
+        gs.return_to_start_position();
+
+        s += "[Variant \"From Position\"]\n";
+
+        s += &format!("[FEN \"{}\"]\n", gs.to_fen());
+
+
+        let mut offset = 1;
+        if gs.active_color() == PlayerColor::Black {
+            s += &format!("1... {} ", all_moves[0].san_move(&gs.gen_legal_moves()));
+            gs.make_move(all_moves[0]);
+            all_moves.remove(0);
+
+            offset += 1;
+        }
+
+
+        for i in 0..all_moves.len() {
+            s += &if i % 2 == 0 { format!("{}. ", i / 2 + offset) } else { "".to_owned() };
+            let m = all_moves[i];
+            
+            s += &format!("{} ", m.san_move(&gs.gen_legal_moves()));
+
+            gs.make_move(m);
+        }
+
+        return s;
+    }
+
     pub fn make_move(&mut self, m: ChessMove) {
         self.legal_moves = None;
 

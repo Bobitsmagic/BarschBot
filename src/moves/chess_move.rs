@@ -1,4 +1,4 @@
-use crate::board::{piece_type::ColoredPieceType, square::Square};
+use crate::{board::{piece_type::{ColoredPieceType, PieceType::Pawn}, square::{self, Square}}, moves::move_gen::MoveVector};
 
 use super::uci_move::UciMove;
 
@@ -98,6 +98,66 @@ impl ChessMove {
             end: self.end,
             promotion_piece: self.promotion_piece.piece_type(),
         }
+    }
+
+    pub fn san_move(&self, move_list: &MoveVector) -> String {
+        if self.is_short_castle() {
+            return "O-O".to_owned();
+        }
+        if self.is_long_castle() {
+            return "O-O-O".to_owned();
+        }
+
+        let piece_name = match self.move_piece.piece_type() {
+            Pawn => (if self.is_capture() {square::FILE_NAMES[self.start.file() as usize]} else { "" }).to_owned(),
+            _ => self.move_piece.white().to_char().to_string(),
+        };
+
+        //Disambiguation
+        let mut same_file = false;
+        let mut same_rank = false;
+        let mut same_target = false;
+
+        for m in move_list {
+            if m.start == self.start || m.move_piece != self.move_piece || m.end != self.end {
+                continue;
+            }
+            
+            same_target = true;
+
+
+            if m.start.file() == self.start.file() {
+                same_file = true;
+            }
+
+            if m.start.rank() == self.start.rank() {
+                same_rank = true;
+            }
+        }
+
+        let mut start_square = "".to_owned();
+        
+        if same_target && self.move_piece.piece_type() != Pawn {
+            start_square += square::FILE_NAMES[self.start.file() as usize];
+            start_square += square::RANK_NAMES[self.start.rank() as usize];
+            
+            // if same_rank {
+            // }
+
+            // if same_file {
+            // } 
+
+        }
+        
+
+        let capture = (if self.is_capture() { "x" } else { "" }).to_owned();
+        let end_square = self.end.square_string();
+
+        let promotion = if self.is_promotion() { self.promotion_piece.to_char().to_string() } else { "".to_owned() };
+
+        let res = format!("{piece_name}{start_square}{capture}{end_square}{promotion}");
+
+        return res;
     }
 
     pub fn to_string(&self) -> String {

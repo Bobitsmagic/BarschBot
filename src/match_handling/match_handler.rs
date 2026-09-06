@@ -3,18 +3,13 @@ use std::sync::{Arc, Mutex};
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{
-    board::player_color::PlayerColor::{self},
-    evaluation::barschbot::Barschbot,
-    game::{
-        game_result::{
+    board::player_color::PlayerColor::{self}, evaluation::barschbot::Barschbot, game::{
+        self, game_result::{
             DrawType::{FiftyMoveRule, InsufficientMaterial, Repetition, StaleMate},
             GameResult::{self, Win},
             WinType::{Checkmate, TimeOut},
-        },
-        game_state::GameState,
-    },
-    gui::{render_state::RenderState, vis_handle::VisHandle},
-    moves::chess_move,
+        }, game_state::GameState,
+    }, gui::{render_state::RenderState, vis_handle::VisHandle}, moves::chess_move,
 };
 
 #[derive(Clone)]
@@ -195,7 +190,7 @@ pub fn show_timed_game(
 
         let mut start_time = std::time::Instant::now();
         let m = bot_a.search(gs, time_left_a);
-        let time_used = start_time.elapsed().as_millis();
+        let time_used = start_time.elapsed().as_micros();
 
         if time_used > time_left_a {
             return GameResult::Win(!gs.active_color(), TimeOut);
@@ -234,7 +229,7 @@ pub fn show_timed_game(
 
         start_time = std::time::Instant::now();
         let m = bot_b.search(gs, time_left_b);
-        let time_used = start_time.elapsed().as_millis();
+        let time_used = start_time.elapsed().as_micros();
 
         if time_used > time_left_b {
             return GameResult::Win(!gs.active_color(), TimeOut);
@@ -336,6 +331,9 @@ pub fn show_all_fens(
             GameResult::Draw(_) => draws += 1,
             GameResult::Undecided => panic!("Finished on undecided game"),
         }
+
+        println!("Finished game");
+        println!("{}", game_state.to_pgn(&bot_a.name, &bot_b.name));
 
         game_state = GameState::from_fen(&fen.to_fen());
         let res = show_timed_game(&mut game_state, bot_b, bot_a, start_time_ms, &engine_handle);

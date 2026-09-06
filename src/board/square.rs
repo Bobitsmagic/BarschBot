@@ -81,8 +81,8 @@ pub const EN_PASSANT_SQUARES: [i8; 16] = [
     A3, B3, C3, D3, E3, F3, G3, H3, A6, B6, C6, D6, E6, F6, G6, H6,
 ];
 
-const RANK_NAMES: [&str; 8] = ["1", "2", "3", "4", "5", "6", "7", "8"];
-const FILE_NAMES: [&str; 8] = ["a", "b", "c", "d", "e", "f", "g", "h"];
+pub const RANK_NAMES: [&str; 8] = ["1", "2", "3", "4", "5", "6", "7", "8"];
+pub const FILE_NAMES: [&str; 8] = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 pub trait Square {
     fn is_valid_square(self) -> bool;
