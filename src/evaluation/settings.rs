@@ -27,7 +27,7 @@ impl Settings {
                 hans_eval::evaluation_function(game_state, &attr)
             }
             EvaluationMode::WieselEvaluation(set) => {
-                wiesel_eval::evaluation_function(game_state, set)
+                wiesel_eval::evaluation_function(game_state, &set)
             }
         };
     }

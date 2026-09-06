@@ -1,7 +1,12 @@
 use crate::{
     board::{
-        bit_array::BitArray, bit_array_lookup::{self, ACCUM_COLUMNS, COLUMNS, ROWS}, piece_type::ColoredPieceType::BlackPawn,
-    }, evaluation::settings::EvaluationMode::HansEvaluation, game::game_state::GameState, moves::move_gen,
+        bit_array::BitArray,
+        bit_array_lookup::{self, ACCUM_COLUMNS, COLUMNS, ROWS},
+        piece_type::ColoredPieceType::BlackPawn,
+    },
+    evaluation::settings::EvaluationMode::HansEvaluation,
+    game::game_state::GameState,
+    moves::move_gen,
 };
 
 use crate::board::square::Square;
@@ -25,9 +30,13 @@ pub struct EvaluationSettings {
 }
 
 pub fn evaluation_function(gs: &GameState, eval_settings: &EvaluationSettings) -> i32 {
-    let attr = Attributes::from_board_state(gs, eval_settings);
-
-    return attr.multiply(&eval_settings.attr_weights);
+    if eval_settings.use_new_feature {
+        return hans_fast(gs);
+    }
+    else {
+        let attr = Attributes::from_board_state(gs, eval_settings);
+        return attr.multiply(&eval_settings.attr_weights);
+    }
 }
 
 const PIECE_VALUES: [i32; 5] = [1000, 2800, 3200, 5000, 9000];
@@ -143,12 +152,13 @@ impl Attributes {
             attributes.king_border_distance = w_dist as i32 - b_dist as i32;
         }
 
+        attributes.passed_pawn = count_passed_pawns_kogge(white_pawns, black_pawns);
+
         if setting.use_new_feature {
             // attributes.double_pawn =
             //     count_doubled_pawns(white_pawns) - count_doubled_pawns(black_pawns);
             // attributes.isolated_pawn =
             //     count_isolated_pawns(white_pawns) - count_isolated_pawns(black_pawns);
-            attributes.passed_pawn = count_passed_pawns_kogge(white_pawns, black_pawns);
 
             // attributes.turn = match gs.active_color() {
             //     PlayerColor::White => 1,
@@ -160,7 +170,65 @@ impl Attributes {
     }
 }
 
+fn hans_fast(gs: &GameState) -> i32 {
+    let board_state = &gs.board_state;
+    let bb = &board_state.bit_board;
+    let white_pawns = bb.white_piece & bb.pawn;
+    let black_pawns = bb.black_piece & bb.pawn;
 
+    let white_knights = bb.white_piece & bb.knight;
+    let black_knights = bb.black_piece & bb.knight;
+
+    let bishops = bb.diagonal_slider & !bb.orthogonal_slider;
+    let white_bishops = bb.white_piece & bishops;
+    let black_bishops = bb.black_piece & bishops;
+
+    let rooks = bb.orthogonal_slider & !bb.diagonal_slider;
+    let white_rooks = bb.white_piece & rooks;
+    let black_rooks = bb.black_piece & rooks;
+
+    let queens = bb.orthogonal_slider & bb.diagonal_slider;
+    let white_queens = bb.white_piece & queens;
+    let black_queens = bb.black_piece & queens;
+
+    let mut sum = 0;
+    sum += (white_pawns.count_ones() as i32 - black_pawns.count_ones() as i32) * PIECE_VALUES[0];
+    sum += (white_knights.count_ones() as i32 - black_knights.count_ones() as i32) * PIECE_VALUES[1];
+    sum += (white_bishops.count_ones() as i32 - black_bishops.count_ones() as i32) * PIECE_VALUES[2];
+    sum += (white_rooks.count_ones() as i32 - black_rooks.count_ones() as i32) * PIECE_VALUES[3];
+    sum += (white_queens.count_ones() as i32 - black_queens.count_ones() as i32) * PIECE_VALUES[4];
+
+    //Count pawns on rank
+    for i in 0..6 {
+        let white_count = (white_pawns & ROWS[i + 1]).count_ones() as i32;
+        let black_count = (black_pawns & ROWS[6 - i]).count_ones() as i32;
+
+        sum += (white_count - black_count) * PAWN_PUSH_VALUE[i];
+    }
+
+    let mobi = move_gen::count_eval_moves(board_state);
+
+    for i in 0..mobi.len() {
+        sum += mobi[i] * MOBILITY_VALUES[i];
+    }
+
+    if (bb.white_piece | bb.black_piece).count_ones() == 3
+        && bb.orthogonal_slider.count_ones() == 1
+    {
+        let w_square = (bb.king & bb.white_piece).trailing_zeros() as i8;
+        let b_square = (bb.king & bb.black_piece).trailing_zeros() as i8;
+        let w_dist = w_square.rank().min(7 - w_square.rank())
+            + (w_square.file().min(7 - w_square.file()));
+        let b_dist = b_square.rank().min(7 - b_square.rank())
+            + (b_square.file().min(7 - b_square.file()));
+
+        sum += w_dist as i32 - b_dist as i32;
+    }
+
+    sum += count_passed_pawns_kogge(white_pawns, black_pawns) * PASSED_PAWN_VALUE;
+
+    return sum;
+}
 
 fn count_doubled_pawns(pawns: u64) -> i32 {
     let mut doubled_pawns = 0;

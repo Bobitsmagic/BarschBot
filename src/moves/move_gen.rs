@@ -3,7 +3,7 @@ use arrayvec::ArrayVec;
 use crate::{
     board::{
         bit_array::BitArray,
-        bit_array_lookup::{self, IN_BETWEEN_TABLE, KING_MOVES, ORTHOGONAL_MOVES, ROWS},
+        bit_array_lookup::{self, COLUMNS, IN_BETWEEN_TABLE, KING_MOVES, ORTHOGONAL_MOVES, ROWS},
         piece_board::PieceBoard,
         piece_type::{ColoredPieceType, PieceType},
         player_color::PlayerColor,
@@ -1145,6 +1145,7 @@ pub fn gen_legal_moves_check(board_state: &BoardState, flags: &GameFlags) -> (Mo
     //King moves
     let king_square = (board.king & allied).lowest_square_index() as i8;
     let king_moves = bit_array_lookup::KING_MOVES[king_square as usize] & !allied;
+    // let king_moves = gen_king_moves(board.king & allied) & !allied;
 
     //Castling
     const QUEEN_SIDE_BLOCKER: u64 = 14; //B1, C1, D1
@@ -1202,6 +1203,16 @@ pub fn gen_legal_moves_check(board_state: &BoardState, flags: &GameFlags) -> (Mo
     }
 
     return (moves, pin_mask.check != u64::MAX);
+}
+
+pub fn gen_king_moves(mut king_pos: u64) -> u64 {
+    king_pos |= (king_pos << 1) & !COLUMNS[0];
+    king_pos |= (king_pos >> 1) & !COLUMNS[7];
+
+    king_pos |= king_pos << 8;
+    king_pos |= king_pos >> 8;
+
+    return king_pos;
 }
 
 fn add_pawn_move(

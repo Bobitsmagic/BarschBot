@@ -2,23 +2,14 @@ use std::time::Instant;
 
 use barschbot::{
     board::{
-        bit_array::BitArray,
-        bit_array_lookup::{PASSED_PAWN_MASK_BLACK, PASSED_PAWN_MASK_WHITE},
-        dynamic_state::DynamicState,
-        piece_board::PieceBoard,
-        piece_type::{
+        bit_array::BitArray, bit_array_lookup::{KING_MOVES, PASSED_PAWN_MASK_BLACK, PASSED_PAWN_MASK_WHITE}, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::{
             ColoredPieceType::{BlackPawn, WhitePawn},
             PieceType,
-        },
-        rank,
-        square::{self, Square, PAWN_SQUARES},
-    },
-    evaluation::{hans_eval, search_stats::SearchStats},
-    game::{
+        }, rank, square::{self, PAWN_SQUARES, Square},
+    }, evaluation::{hans_eval::{self, EvaluationSettings, STANDARD_EVAL}, search_stats::SearchStats, settings::EvaluationMode::HansEvaluation, wiesel_eval::{self, WieselSettings}}, game::{
         board_state::{self, BoardState},
         game_state::GameState,
-    },
-    moves::{chess_move::ChessMove, move_gen, perft_tests::PERFT_FENS},
+    }, match_handling, moves::{chess_move::ChessMove, move_gen::{self, gen_king_moves}, perft_tests::PERFT_FENS},
 };
 
 use piston_window::math::square_len;
@@ -28,7 +19,9 @@ fn main() {
     // env::set_var("RUST_BACKTRACE", "1");
     // bench_search_functions();
     // benchmark_fens();
-    passed_pawn_benchmark();
+    // passed_pawn_benchmark();
+    // gen_king_moves_vs_lookup();
+    compare_eval_functions();
 }
 
 pub fn benchmark_fens() {
@@ -150,6 +143,39 @@ fn count_moves(game_state: &mut GameState, depth: u8) -> u64 {
     return count;
 }
 
+fn gen_king_moves_vs_lookup() {
+    const TRY_COUNT: usize = 1 << 24;
+    
+    let start_time = Instant::now();
+    let mut sum = 0;
+    for _ in 0..TRY_COUNT {
+        for i in 0..64 {
+            let king = 1_u64 << i;
+            let square = king.lowest_square_index();
+
+            sum += KING_MOVES[square as usize] & !king;
+            sum += square as u64;
+
+        }
+    }
+    println!("{:?}", start_time.elapsed());
+    println!("{}", sum);
+
+    let start_time = Instant::now();
+    let mut sum = 0;
+    for _ in 0..TRY_COUNT {
+        for i in 0..64 {
+            let king = 1_u64 << i;
+            let square = king.lowest_square_index();
+
+            sum += gen_king_moves(king) & !king;
+            sum += square as u64;
+        }
+    }
+    println!("{:?}", start_time.elapsed());
+    println!("{}", sum);
+}
+
 fn passed_pawn_benchmark() {
     const CONFIG_SIZE: usize = 1 << 10;
     const TRY_COUNT: usize = 1 << 20;
@@ -230,6 +256,45 @@ fn passed_pawn_benchmark() {
     println!("Old: {:?}", start_time.elapsed());
     println!("Count: {}", count);
     println!("{}", count / TRY_COUNT as i64)
+}
+
+fn compare_eval_functions() {
+    let fens = match_handling::file_loader::load_test_fens();
+
+    const TRY_COUNT: usize = 1 << 16;
+
+    let settings = EvaluationSettings { use_new_feature: false, attr_weights: STANDARD_EVAL };
+    let mut sum = 0;
+    let start_time = Instant::now();
+    for _ in 0..TRY_COUNT {
+        for gs in &fens {
+            sum += hans_eval::evaluation_function(gs, &settings)
+        }
+    }
+    println!("{:?}", start_time.elapsed());
+    println!("{}", sum);
+
+    let settings = EvaluationSettings { use_new_feature: true, attr_weights: STANDARD_EVAL };
+    let mut sum = 0;
+    let start_time = Instant::now();
+    for _ in 0..TRY_COUNT {
+        for gs in &fens {
+            sum += hans_eval::evaluation_function(gs, &settings)
+        }
+    }
+    println!("{:?}", start_time.elapsed());
+    println!("{}", sum);
+
+    let settings = WieselSettings { pawn_value: 0, version: 3, piece_weight: [1000, 3000, 3000, 5000, 9000] };
+    let mut sum = 0;
+    let start_time = Instant::now();
+    for _ in 0..TRY_COUNT {
+        for gs in &fens {
+            sum += wiesel_eval::evaluation_function(gs, &settings)
+        }
+    }
+    println!("{:?}", start_time.elapsed());
+    println!("{}", sum);
 }
 
 // pub fn bench_search_functions() {
