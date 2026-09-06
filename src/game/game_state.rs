@@ -104,7 +104,6 @@ impl GameState {
 
         s += &format!("[FEN \"{}\"]\n", gs.to_fen());
 
-
         let mut offset = 1;
         if gs.active_color() == PlayerColor::Black {
             s += &format!("1... {} ", all_moves[0].san_move(&gs.gen_legal_moves()));
@@ -114,11 +113,14 @@ impl GameState {
             offset += 1;
         }
 
-
         for i in 0..all_moves.len() {
-            s += &if i % 2 == 0 { format!("{}. ", i / 2 + offset) } else { "".to_owned() };
+            s += &if i % 2 == 0 {
+                format!("{}. ", i / 2 + offset)
+            } else {
+                "".to_owned()
+            };
             let m = all_moves[i];
-            
+
             s += &format!("{} ", m.san_move(&gs.gen_legal_moves()));
 
             gs.make_move(m);

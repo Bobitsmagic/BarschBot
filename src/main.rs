@@ -63,7 +63,7 @@ fn main() {
         String::from("Wiesel"),
     );
 
-    play_all_fens_vis(bot_b.clone(), bot_a.clone());
+    play_all_fens_vis(bot_a.clone(), bot_b.clone());
     // play_all_fens_par(bot_a, bot_b);
 }
 

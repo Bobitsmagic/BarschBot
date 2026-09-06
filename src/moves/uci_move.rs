@@ -11,6 +11,12 @@ pub struct UciMove {
     pub promotion_piece: PieceType,
 }
 
+pub const NULL_MOVE: UciMove = UciMove {
+    start: 0,
+    end: 0,
+    promotion_piece: PieceType::None,
+};
+
 impl UciMove {
     pub fn new(start: i8, end: i8, promotion_piece: PieceType) -> UciMove {
         UciMove {
@@ -34,6 +40,10 @@ impl UciMove {
             end,
             promotion_piece,
         }
+    }
+
+    pub fn is_null_move(&self) -> bool {
+        return *self == NULL_MOVE;
     }
 }
 

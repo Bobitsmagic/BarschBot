@@ -1,4 +1,7 @@
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    sync::mpsc::{Receiver, Sender},
+};
 
 use piston::{
     Button, Event, Key, MouseButton, MouseCursorEvent, PressEvent, ReleaseEvent, RenderEvent,
@@ -11,11 +14,12 @@ use piston_window::{
 use crate::{
     board::{
         piece_type::{ColoredPieceType, PieceType},
-        player_color::PlayerColor,
+        player_color::PlayerColor::{self, White},
         square::{self, Square},
     },
     gui::render_state::ANIMATION_TIME,
     moves::chess_move::ChessMove,
+    stockfish::StockFishBot,
 };
 
 use super::{engine_handle::EngineHandle, render_state::RenderState};
@@ -29,12 +33,40 @@ pub struct Visualizer {
     textures: Vec<G2dTexture>,
     last_click_pos: [f64; 2],
     cursor_pos: [f64; 2],
+    stock_fish_eval: i32,
+    sf_sender: Sender<String>,
+    sf_receiver: Receiver<i32>,
 }
 
 const BOARD_SIDE_LENGTH: u32 = 900;
 const INFO_PANEL_WIDTH: u32 = 500;
 const WINDOW_HEIGHT: u32 = 900;
 const WINDOW_WIDTH: u32 = BOARD_SIDE_LENGTH + INFO_PANEL_WIDTH;
+
+fn stock_fish_eval(receiver: Receiver<String>, sender: Sender<i32>) {
+    let mut sf = StockFishBot {
+        max_time: Some(200),
+        ..Default::default()
+    };
+
+    loop {
+        if let Ok(mut s) = receiver.try_recv() {
+            while let Ok(s2) = receiver.try_recv() {
+                s = s2;
+            }
+
+            let is_black = s.clone().split(" ").skip(1).next().unwrap() == "b";
+
+            let (_, mut score) = sf.get_uci_move(s);
+
+            if is_black {
+                score *= -1;
+            }
+
+            sender.send(score).unwrap();
+        }
+    }
+}
 
 impl Visualizer {
     pub fn new(engine_handle: EngineHandle) -> Self {
@@ -72,6 +104,13 @@ impl Visualizer {
             .load_font(&format!("{}/font.ttf", assets_folder))
             .expect(&format!("Could not find font at"));
 
+        let (s1, r1) = std::sync::mpsc::channel();
+        let (s2, r2) = std::sync::mpsc::channel();
+
+        std::thread::spawn(move || {
+            stock_fish_eval(r1, s2);
+        });
+
         return Visualizer {
             glyphs,
             input_state: HashSet::new(),
@@ -81,6 +120,9 @@ impl Visualizer {
             handle: engine_handle,
             window,
             textures,
+            sf_sender: s1,
+            sf_receiver: r2,
+            stock_fish_eval: 0,
         };
     }
 
@@ -88,6 +130,14 @@ impl Visualizer {
         while let Some(e) = self.window.next() {
             if let Some(rs) = self.handle.recive_render_state() {
                 self.latest_render_state = rs;
+
+                self.sf_sender
+                    .send(self.latest_render_state.fen.clone())
+                    .unwrap();
+            }
+
+            if let Ok(score) = self.sf_receiver.try_recv() {
+                self.stock_fish_eval = score;
             }
 
             //Event handling
@@ -172,15 +222,17 @@ impl Visualizer {
 
                 if !self.latest_render_state.lm.move_piece.is_none() {
                     if self.latest_render_state.lm.move_piece.color() == PlayerColor::White {
-                        self.latest_render_state.black_time -=
-                            ((args.dt * 1000.0 * 1000.0) as u128).min(self.latest_render_state.black_time);
+                        self.latest_render_state.black_time -= ((args.dt * 1000.0 * 1000.0)
+                            as u128)
+                            .min(self.latest_render_state.black_time);
                     } else {
-                        self.latest_render_state.white_time -=
-                            ((args.dt * 1000.0 * 1000.0) as u128).min(self.latest_render_state.white_time);
+                        self.latest_render_state.white_time -= ((args.dt * 1000.0 * 1000.0)
+                            as u128)
+                            .min(self.latest_render_state.white_time);
                     }
                 } else {
-                    self.latest_render_state.white_time -=
-                        ((args.dt * 1000.0 * 1000.0) as u128).min(self.latest_render_state.white_time);
+                    self.latest_render_state.white_time -= ((args.dt * 1000.0 * 1000.0) as u128)
+                        .min(self.latest_render_state.white_time);
                 }
             }
         }
@@ -226,6 +278,15 @@ impl Visualizer {
 
         self.window.draw_2d(&event, |context, graphics, device| {
             clear(BACKGROUND, graphics);
+
+            let rec = [
+                2.0 + 8.0 * square_side_length,
+                4.0 * square_side_length,
+                10.0,
+                square_side_length * (self.stock_fish_eval as f64 * 0.01),
+            ];
+
+            rectangle(LIGHT_SQUARE, rec, context.transform, graphics);
 
             for x in 0..8 {
                 for y in 0..8 {

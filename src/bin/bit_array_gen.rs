@@ -3,7 +3,7 @@ use std::{fs::File, io::Write};
 use barschbot::{
     board::{
         bit_array::BitArray,
-        bit_array_lookup::{self},
+        bit_array_lookup::{self, COLLUMNS},
         square::{self, Square, PAWN_SQUARES, VALID_SQUARES},
     },
     moves::slider_gen::{gen_bishop_moves, gen_rook_moves, order_bits},
@@ -20,6 +20,15 @@ pub fn print_all_tables() {
     let pawn_moves = gen_pawn_move_masks();
     let adjacent_columns = gen_adjacent_columns();
     let passed_pawn_mask = gen_passed_pawn_mask();
+
+    let mut s = String::new();
+    s += &bit_array_to_string("PASSED_PAWN_MASK_WHITE", &passed_pawn_mask.0);
+    s += &bit_array_to_string("PASSED_PAWN_MASK_BLACK", &passed_pawn_mask.1);
+
+    println!("{s}");
+
+    return;
+
     let knight_moves = gen_knight_move_mask();
     let king_moves = gen_king_move_mask();
     let diagonal_moves = gen_diagonal_move_mask();
@@ -83,7 +92,7 @@ pub fn gen_passed_pawn_mask() -> ([u64; 64], [u64; 64]) {
         let file = s.file();
         let rank = s.rank();
 
-        let columns = adj_columns[file as usize];
+        let columns = adj_columns[file as usize] | COLLUMNS[file as usize];
 
         let upper_rows = !bit_array_lookup::ACCUM_ROWS[rank as usize];
         let lower_rows = bit_array_lookup::ACCUM_ROWS[rank as usize - 1];
@@ -98,10 +107,10 @@ pub fn gen_passed_pawn_mask() -> ([u64; 64], [u64; 64]) {
 pub fn bit_array_to_string(name: &str, bit_array_array: &[u64]) -> String {
     let length = bit_array_array.len();
 
-    let mut s = format!("pub const {}: [u64; {}] = [", name, length);
+    let mut s = format!("pub const {}: [u64; {}] = [\n", name, length);
 
     for (i, bit_array) in bit_array_array.iter().enumerate() {
-        s += &format!("\tu64 {{ bits: 0x{:016x}}}", bit_array);
+        s += &format!("\t0x{:016x}", bit_array);
 
         if i < length - 1 {
             s += &format!(",\n");

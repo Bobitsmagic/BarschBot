@@ -1,7 +1,7 @@
 use crate::{
     board::{
         bit_array::BitArray,
-        bit_array_lookup::{self, ROWS},
+        bit_array_lookup::{self, ACCUM_COLLUMNS, COLLUMNS, ROWS},
     },
     evaluation::settings::EvaluationMode::HansEvaluation,
     game::game_state::GameState,
@@ -196,7 +196,7 @@ fn count_isolated_pawns(pawns: u64) -> i32 {
     return isolated_pawns;
 }
 
-fn count_passed_pawns(allied_pawns: u64, enemy_pawns: u64, pawn_mask: &[u64; 64]) -> i32 {
+pub fn count_passed_pawns(allied_pawns: u64, enemy_pawns: u64, pawn_mask: &[u64; 64]) -> i32 {
     let mut passed_pawns = 0;
 
     for s in allied_pawns.iterate_set_bits_indices() {
@@ -204,6 +204,24 @@ fn count_passed_pawns(allied_pawns: u64, enemy_pawns: u64, pawn_mask: &[u64; 64]
     }
 
     return passed_pawns;
+}
+
+pub fn count_passed_pawns_kogge(white_pawn: u64, black_pawn: u64) -> i32 {
+    let mut black_wall =
+        (black_pawn | (black_pawn << 1) & !COLLUMNS[0] | (black_pawn >> 1) & !COLLUMNS[7]) >> 8;
+    let mut white_wall =
+        (white_pawn | (white_pawn << 1) & !COLLUMNS[0] | (white_pawn >> 1) & !COLLUMNS[7]) << 8;
+
+    black_wall |= black_wall >> 8;
+    black_wall |= black_wall >> 16;
+    black_wall |= black_wall >> 32;
+
+    white_wall |= white_wall << 8;
+    white_wall |= white_wall << 16;
+    white_wall |= white_wall << 32;
+
+    return (white_pawn & !black_wall).count_ones() as i32
+        - (black_pawn & !white_wall).count_ones() as i32;
 }
 
 #[test]

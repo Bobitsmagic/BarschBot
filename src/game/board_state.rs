@@ -97,7 +97,6 @@ impl DynamicState for BoardState {
 #[cfg(test)]
 mod tests {
     use rand::{Rng, SeedableRng};
-    use rand_chacha::ChaCha8Rng;
 
     use crate::{board::square::VALID_SQUARES, game::game_flags::GameFlags, moves::move_gen};
 
@@ -123,7 +122,7 @@ mod tests {
         let mut board_state = BoardState::start_position();
         let mut game_flags = GameFlags::start_flags();
 
-        let mut rng = ChaCha8Rng::seed_from_u64(0);
+        let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(0);
         for _ in 0..30 {
             let moves = move_gen::gen_legal_moves(&board_state, &game_flags);
             if moves.is_empty() {
@@ -156,7 +155,8 @@ mod tests {
         let mut board_state = BoardState::start_position();
         let mut game_flags = GameFlags::start_flags();
 
-        let mut rng = ChaCha8Rng::seed_from_u64(1);
+        let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(0);
+
         for i in 0..60 {
             let moves = move_gen::gen_legal_moves(&board_state, &game_flags);
             if moves.is_empty() {

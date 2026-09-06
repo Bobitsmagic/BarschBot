@@ -2,6 +2,7 @@ use std::default;
 
 use crate::{
     board::piece_board::PieceBoard,
+    game::game_state::GameState,
     moves::chess_move::{self, ChessMove},
 };
 
@@ -16,6 +17,7 @@ pub struct RenderState {
     pub black_time: u128,
     pub white_name: String,
     pub black_name: String,
+    pub fen: String,
 }
 
 impl default::Default for RenderState {
@@ -29,6 +31,7 @@ impl default::Default for RenderState {
             black_time: 0,
             white_name: String::from("White player"),
             black_name: String::from("Black player"),
+            fen: GameState::start_position().to_fen(),
         }
     }
 }
@@ -86,6 +89,7 @@ impl RenderState {
         black_time: u128,
         white_name: String,
         black_name: String,
+        fen: String,
     ) -> Self {
         RenderState {
             piece_board,
@@ -96,6 +100,7 @@ impl RenderState {
             black_time,
             white_name,
             black_name,
+            fen,
 
             ..Default::default()
         }

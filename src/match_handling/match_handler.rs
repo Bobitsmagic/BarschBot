@@ -3,13 +3,19 @@ use std::sync::{Arc, Mutex};
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{
-    board::player_color::PlayerColor::{self}, evaluation::barschbot::Barschbot, game::{
-        self, game_result::{
+    board::player_color::PlayerColor::{self},
+    evaluation::barschbot::Barschbot,
+    game::{
+        self,
+        game_result::{
             DrawType::{FiftyMoveRule, InsufficientMaterial, Repetition, StaleMate},
             GameResult::{self, Win},
             WinType::{Checkmate, TimeOut},
-        }, game_state::GameState,
-    }, gui::{render_state::RenderState, vis_handle::VisHandle}, moves::chess_move,
+        },
+        game_state::GameState,
+    },
+    gui::{render_state::RenderState, vis_handle::VisHandle},
+    moves::chess_move,
 };
 
 #[derive(Clone)]
@@ -177,6 +183,7 @@ pub fn show_timed_game(
             PlayerColor::White => bot_b.name.clone(),
             PlayerColor::Black => bot_a.name.clone(),
         },
+        gs.to_fen(),
     ));
 
     loop {
@@ -218,6 +225,7 @@ pub fn show_timed_game(
                 PlayerColor::White => bot_b.name.clone(),
                 PlayerColor::Black => bot_a.name.clone(),
             },
+            gs.to_fen(),
         ));
 
         //Bot b
@@ -258,6 +266,7 @@ pub fn show_timed_game(
                 PlayerColor::White => bot_b.name.clone(),
                 PlayerColor::Black => bot_a.name.clone(),
             },
+            gs.to_fen(),
         ));
     }
 }
@@ -332,7 +341,6 @@ pub fn show_all_fens(
             GameResult::Undecided => panic!("Finished on undecided game"),
         }
 
-        println!("Finished game");
         println!("{}", game_state.to_pgn(&bot_a.name, &bot_b.name));
 
         game_state = GameState::from_fen(&fen.to_fen());
@@ -350,6 +358,8 @@ pub fn show_all_fens(
             GameResult::Draw(_) => draws += 1,
             GameResult::Undecided => panic!("Finished on undecided game"),
         }
+
+        println!("{}", game_state.to_pgn(&bot_a.name, &bot_b.name));
 
         println!(
             "{} wins: {}, {} wins: {}, Draws: {}",

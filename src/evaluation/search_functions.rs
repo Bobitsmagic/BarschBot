@@ -1,8 +1,7 @@
 use std::{collections::HashMap, i32, i64};
 
 use arrayvec::ArrayVec;
-use rand::seq::SliceRandom;
-use rand_chacha::ChaCha8Rng;
+use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
 
 use crate::{
     board::player_color::PlayerColor,
@@ -528,7 +527,7 @@ fn bb_search_settings(
     return alpha;
 }
 
-pub fn get_random_pos(depth: i32, rng: &mut ChaCha8Rng) -> GameState {
+pub fn get_random_pos(depth: i32, rng: &mut StdRng) -> GameState {
     loop {
         let mut gs = GameState::start_position();
 

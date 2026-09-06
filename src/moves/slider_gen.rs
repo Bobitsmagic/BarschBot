@@ -143,8 +143,7 @@ pub fn gen_bishop_moves_kogge(bb: u64, allied: u64, opponent: u64) -> u64 {
 
 #[cfg(test)]
 mod slider_gen_test {
-    use rand::{Rng, SeedableRng};
-    use rand_chacha::ChaCha8Rng;
+    use rand::{rngs::StdRng, Rng, SeedableRng};
 
     use crate::board::{
         bit_array::BitArray,
@@ -156,7 +155,7 @@ mod slider_gen_test {
         gen_rook_moves_kogge, gen_rook_moves_pext,
     };
 
-    fn fill_board(rng: &mut ChaCha8Rng) -> (u64, u64) {
+    fn fill_board(rng: &mut StdRng) -> (u64, u64) {
         let mut allied = 0;
         let mut opponent = 0;
 
@@ -176,7 +175,7 @@ mod slider_gen_test {
 
     #[test]
     fn all_slider_test() {
-        let mut rng = ChaCha8Rng::seed_from_u64(0);
+        let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(0);
 
         for _ in 0..1000 {
             let (allied, opponent) = fill_board(&mut rng);

@@ -141,7 +141,6 @@ impl BitArray for u64 {
 #[cfg(test)]
 mod bit_array_tests {
     use rand::Rng;
-    use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
 
     use super::BitArray;
 
@@ -152,7 +151,7 @@ mod bit_array_tests {
         v.push(0);
         v.push(u64::MAX);
 
-        let mut rng = ChaCha8Rng::seed_from_u64(0);
+        let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(0);
 
         for _ in 0..100 {
             let mut bb = 0;

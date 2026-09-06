@@ -1,16 +1,34 @@
+use std::time::Instant;
+
 use barschbot::{
-    board::{piece_type::PieceType, rank, square::Square},
-    evaluation::search_stats::SearchStats,
-    game::game_state::GameState,
+    board::{
+        bit_array::BitArray,
+        bit_array_lookup::{PASSED_PAWN_MASK_BLACK, PASSED_PAWN_MASK_WHITE},
+        dynamic_state::DynamicState,
+        piece_board::PieceBoard,
+        piece_type::{
+            ColoredPieceType::{BlackPawn, WhitePawn},
+            PieceType,
+        },
+        rank,
+        square::{self, Square, PAWN_SQUARES},
+    },
+    evaluation::{hans_eval, search_stats::SearchStats},
+    game::{
+        board_state::{self, BoardState},
+        game_state::GameState,
+    },
     moves::{chess_move::ChessMove, move_gen, perft_tests::PERFT_FENS},
 };
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+
+use piston_window::math::square_len;
+use rand::{rngs::StdRng, Rng};
 
 fn main() {
     // env::set_var("RUST_BACKTRACE", "1");
     // bench_search_functions();
     // benchmark_fens();
+    passed_pawn_benchmark();
 }
 
 pub fn benchmark_fens() {
@@ -130,6 +148,101 @@ fn count_moves(game_state: &mut GameState, depth: u8) -> u64 {
     }
 
     return count;
+}
+
+fn passed_pawn_benchmark() {
+    const CONFIG_SIZE: usize = 1 << 10;
+    const TRY_COUNT: usize = 1 << 20;
+    let mut pawn_configs = Vec::new();
+
+    let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(1);
+
+    let square_list = PAWN_SQUARES.collect::<Vec<_>>();
+    for _ in 0..CONFIG_SIZE {
+        let mut list = square_list.clone();
+
+        let pawn_count_white = rng.gen_range(0..8);
+        let mut white = 0_u64;
+        for _ in 0..pawn_count_white {
+            let index = rng.gen_range(0..list.len());
+            let val = list.remove(index);
+            white |= val.bit_array();
+        }
+
+        let pawn_count_black = rng.gen_range(0..8);
+        let mut black = 0_u64;
+        for _ in 0..pawn_count_black {
+            let index = rng.gen_range(0..list.len());
+            let val = list.remove(index);
+            black |= val.bit_array();
+        }
+
+        pawn_configs.push([white, black]);
+
+        let val1 = hans_eval::count_passed_pawns(white, black, &PASSED_PAWN_MASK_WHITE)
+            - hans_eval::count_passed_pawns(black, white, &PASSED_PAWN_MASK_BLACK);
+
+        let val2 = hans_eval::count_passed_pawns_kogge(white, black);
+
+        if val1 != val2 {
+            let mut ps = PieceBoard::empty();
+
+            for s in white.iterate_squares() {
+                ps.add_piece(WhitePawn, s);
+
+                println!("{}", s.square_string());
+                PASSED_PAWN_MASK_WHITE[s as usize].print();
+            }
+
+            for s in black.iterate_squares() {
+                ps.add_piece(BlackPawn, s);
+                println!("{}", s.square_string());
+                PASSED_PAWN_MASK_BLACK[s as usize].print();
+            }
+
+            println!("{} {}", val1, val2);
+            ps.print();
+        }
+    }
+
+    let mut count = 0_i64;
+    let start_time = Instant::now();
+    for _ in 0..TRY_COUNT {
+        for &[white, black] in &pawn_configs {
+            let val = hans_eval::count_passed_pawns(white, black, &PASSED_PAWN_MASK_WHITE)
+                - hans_eval::count_passed_pawns(black, white, &PASSED_PAWN_MASK_BLACK);
+
+            count += val as i64;
+        }
+    }
+    println!("Old: {:?}", start_time.elapsed());
+    println!("Count: {}", count);
+
+    let mut count = 0_i64;
+    let start_time = Instant::now();
+    for _ in 0..TRY_COUNT {
+        for &[white, black] in &pawn_configs {
+            let val = hans_eval::count_passed_pawns_kogge(white, black);
+
+            count += val as i64;
+        }
+    }
+    println!("Old: {:?}", start_time.elapsed());
+    println!("Count: {}", count);
+
+    let mut count = 0_i64;
+    let start_time = Instant::now();
+    for _ in 0..TRY_COUNT {
+        for &[white, black] in &pawn_configs {
+            let val = hans_eval::count_passed_pawns_kogge_slow(white, black);
+
+            count += val as i64;
+        }
+    }
+    println!("Old: {:?}", start_time.elapsed());
+    println!("Count: {}", count);
+
+    println!("{}", count / TRY_COUNT as i64)
 }
 
 // pub fn bench_search_functions() {
