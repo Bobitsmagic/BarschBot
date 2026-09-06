@@ -229,19 +229,6 @@ fn passed_pawn_benchmark() {
     }
     println!("Old: {:?}", start_time.elapsed());
     println!("Count: {}", count);
-
-    let mut count = 0_i64;
-    let start_time = Instant::now();
-    for _ in 0..TRY_COUNT {
-        for &[white, black] in &pawn_configs {
-            let val = hans_eval::count_passed_pawns_kogge_slow(white, black);
-
-            count += val as i64;
-        }
-    }
-    println!("Old: {:?}", start_time.elapsed());
-    println!("Count: {}", count);
-
     println!("{}", count / TRY_COUNT as i64)
 }
 
