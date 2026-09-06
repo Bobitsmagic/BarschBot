@@ -21,7 +21,7 @@ pub const ACCUM_ROWS: [u64; 8] = [
     0xFFFFFFFFFFFFFFFF,
 ];
 
-pub const COLLUMNS: [u64; 8] = [
+pub const COLUMNS: [u64; 8] = [
     0x0101010101010101,
     0x0202020202020202,
     0x0404040404040404,
@@ -32,7 +32,7 @@ pub const COLLUMNS: [u64; 8] = [
     0x8080808080808080,
 ];
 
-pub const ACCUM_COLLUMNS: [u64; 8] = [
+pub const ACCUM_COLUMNS: [u64; 8] = [
     0x0101010101010101,
     0x0303030303030303,
     0x0707070707070707,

@@ -99,7 +99,7 @@ impl StockFishBot {
 }
 
 fn get_stock_fish_process() -> Child {
-    return Command::new("stockfish\\stockfish-windows-x86-64-avx2.exe")
+    return Command::new("stockfish\\stockfish.exe")
         .stdout(Stdio::piped())
         .stdin(Stdio::piped())
         .spawn()

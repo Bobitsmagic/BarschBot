@@ -53,9 +53,9 @@ impl BitArray for u64 {
         );
 
         let mask = if dx >= 0 {
-            ACCUM_COLLUMNS[(7 - dx) as usize]
+            ACCUM_COLUMNS[(7 - dx) as usize]
         } else {
-            !ACCUM_COLLUMNS[(-dx) as usize - 1]
+            !ACCUM_COLUMNS[(-dx) as usize - 1]
         };
 
         let shift_sum = dx + dy * 8;
@@ -76,10 +76,10 @@ impl BitArray for u64 {
     }
 
     fn left(self) -> u64 {
-        (self & !ACCUM_COLLUMNS[0]) >> 1
+        (self & !ACCUM_COLUMNS[0]) >> 1
     }
     fn right(self) -> u64 {
-        (self << 1) & !ACCUM_COLLUMNS[0]
+        (self << 1) & !ACCUM_COLUMNS[0]
     }
     fn up(self) -> u64 {
         self << 8

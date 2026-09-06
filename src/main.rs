@@ -27,13 +27,26 @@ fn main() {
         Settings {
             time_percentage: 0.015,
             quiessence_depth: 5,
-            check_extensions: 2,
+            check_extensions: 0,
+            evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
+                use_new_feature: true,
+                attr_weights: hans_eval::STANDARD_EVAL,
+            }),
+        },
+        String::from("New Hans"),
+    );
+
+    let bot_b = Barschbot::named(
+        Settings {
+            time_percentage: 0.015,
+            quiessence_depth: 5,
+            check_extensions: 0,
             evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
                 use_new_feature: false,
                 attr_weights: hans_eval::STANDARD_EVAL,
             }),
         },
-        String::from("New Hans"),
+        String::from("Old hans"),
     );
 
     // let bot_b = Barschbot::named(
@@ -41,30 +54,17 @@ fn main() {
     //         time_percentage: 0.02,
     //         quiessence_depth: 5,
     //         check_extensions: 0,
-    //         evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
-    //             use_new_feature: false,
-    //             attr_weights: hans_eval::STANDARD_EVAL,
+    //         evaluation_mode: settings::EvaluationMode::WieselEvaluation(WieselSettings {
+    //             pawn_value: 1000,
+    //             version: 3,
+    //             piece_weight: [1000, 3000, 3000, 5000, 9000],
     //         }),
     //     },
-    //     String::from("Old hans"),
+    //     String::from("Wiesel"),
     // );
 
-    let bot_b = Barschbot::named(
-        Settings {
-            time_percentage: 0.02,
-            quiessence_depth: 5,
-            check_extensions: 0,
-            evaluation_mode: settings::EvaluationMode::WieselEvaluation(WieselSettings {
-                pawn_value: 1000,
-                version: 3,
-                piece_weight: [1000, 3000, 3000, 5000, 9000],
-            }),
-        },
-        String::from("Wiesel"),
-    );
-
-    play_all_fens_vis(bot_a.clone(), bot_b.clone());
-    // play_all_fens_par(bot_a, bot_b);
+    // play_all_fens_vis(bot_a.clone(), bot_b.clone());
+    play_all_fens_par(bot_a, bot_b);
 }
 
 fn play_all_fens_vis(mut bot_a: Barschbot, mut bot_b: Barschbot) {
@@ -101,7 +101,7 @@ fn probability_of_superiority(a_wins: i32, b_wins: i32, draws: i32) -> f64 {
 
 fn play_all_fens_par(mut bot_a: Barschbot, mut bot_b: Barschbot) {
     let start_time = Instant::now();
-    let stats = match_handler::play_all_fens(&mut bot_a, &mut bot_b, 1000 * 1000 * 1);
+    let stats = match_handler::play_all_fens(&mut bot_a, &mut bot_b, 1000 * 1000 * 10);
     println!("Time: {:?}", start_time.elapsed());
     stats.print_wins(&bot_a.name, &bot_b.name);
     println!(

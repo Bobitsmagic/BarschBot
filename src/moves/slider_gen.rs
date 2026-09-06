@@ -143,7 +143,7 @@ pub fn gen_bishop_moves_kogge(bb: u64, allied: u64, opponent: u64) -> u64 {
 
 #[cfg(test)]
 mod slider_gen_test {
-    use rand::{rngs::StdRng, Rng, SeedableRng};
+    use rand::{rngs::StdRng, Rng};
 
     use crate::board::{
         bit_array::BitArray,

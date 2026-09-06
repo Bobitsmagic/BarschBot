@@ -1,11 +1,7 @@
 use crate::{
     board::{
-        bit_array::BitArray,
-        bit_array_lookup::{self, ACCUM_COLLUMNS, COLLUMNS, ROWS},
-    },
-    evaluation::settings::EvaluationMode::HansEvaluation,
-    game::game_state::GameState,
-    moves::move_gen,
+        bit_array::BitArray, bit_array_lookup::{self, ACCUM_COLUMNS, COLUMNS, ROWS}, piece_type::ColoredPieceType::BlackPawn,
+    }, evaluation::settings::EvaluationMode::HansEvaluation, game::game_state::GameState, moves::move_gen,
 };
 
 use crate::board::square::Square;
@@ -39,7 +35,7 @@ const MOBILITY_VALUES: [i32; 6] = [0, 40, 30, 10, 30, 0];
 const PAWN_PUSH_VALUE: [i32; 6] = [0, 10, 50, 150, 500, 2000];
 const DOUBLE_PAWN_VALUE: i32 = -20;
 const ISOLATED_PAWN_VALUE: i32 = -10;
-const PASSED_PAWN_VALUE: i32 = 15;
+const PASSED_PAWN_VALUE: i32 = 150;
 const TURN_VALUE: i32 = 20;
 const KING_BORDER_DISTANCE: i32 = 1;
 
@@ -148,20 +144,11 @@ impl Attributes {
         }
 
         if setting.use_new_feature {
-            attributes.double_pawn =
-                count_doubled_pawns(white_pawns) - count_doubled_pawns(black_pawns);
-            attributes.isolated_pawn =
-                count_isolated_pawns(white_pawns) - count_isolated_pawns(black_pawns);
-            attributes.passed_pawn = count_passed_pawns(
-                white_pawns,
-                black_pawns,
-                &bit_array_lookup::PASSED_PAWN_MASK_WHITE,
-            );
-            attributes.passed_pawn -= count_passed_pawns(
-                black_pawns,
-                white_pawns,
-                &bit_array_lookup::PASSED_PAWN_MASK_BLACK,
-            );
+            // attributes.double_pawn =
+            //     count_doubled_pawns(white_pawns) - count_doubled_pawns(black_pawns);
+            // attributes.isolated_pawn =
+            //     count_isolated_pawns(white_pawns) - count_isolated_pawns(black_pawns);
+            attributes.passed_pawn = count_passed_pawns_kogge(white_pawns, black_pawns);
 
             // attributes.turn = match gs.active_color() {
             //     PlayerColor::White => 1,
@@ -172,6 +159,8 @@ impl Attributes {
         return attributes;
     }
 }
+
+
 
 fn count_doubled_pawns(pawns: u64) -> i32 {
     let mut doubled_pawns = 0;
@@ -187,7 +176,7 @@ fn count_doubled_pawns(pawns: u64) -> i32 {
 fn count_isolated_pawns(pawns: u64) -> i32 {
     let mut isolated_pawns = 0;
     for x in 0..8 {
-        let file = bit_array_lookup::COLLUMNS[x] & pawns;
+        let file = bit_array_lookup::COLUMNS[x] & pawns;
         let isolated = (bit_array_lookup::ADJACENT_COLUMNS[x] & pawns) == 0;
 
         isolated_pawns += (file.count_ones() as i32) * isolated as i32;
@@ -208,9 +197,9 @@ pub fn count_passed_pawns(allied_pawns: u64, enemy_pawns: u64, pawn_mask: &[u64;
 
 pub fn count_passed_pawns_kogge(white_pawn: u64, black_pawn: u64) -> i32 {
     let mut black_wall =
-        (black_pawn | (black_pawn << 1) & !COLLUMNS[0] | (black_pawn >> 1) & !COLLUMNS[7]) >> 8;
+        (black_pawn | (black_pawn << 1) & !COLUMNS[0] | (black_pawn >> 1) & !COLUMNS[7]) >> 8;
     let mut white_wall =
-        (white_pawn | (white_pawn << 1) & !COLLUMNS[0] | (white_pawn >> 1) & !COLLUMNS[7]) << 8;
+        (white_pawn | (white_pawn << 1) & !COLUMNS[0] | (white_pawn >> 1) & !COLUMNS[7]) << 8;
 
     black_wall |= black_wall >> 8;
     black_wall |= black_wall >> 16;
