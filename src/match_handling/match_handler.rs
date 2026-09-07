@@ -6,7 +6,6 @@ use crate::{
     board::player_color::PlayerColor::{self},
     evaluation::barschbot::Barschbot,
     game::{
-        self,
         game_result::{
             DrawType::{FiftyMoveRule, InsufficientMaterial, Repetition, StaleMate},
             GameResult::{self, Win},

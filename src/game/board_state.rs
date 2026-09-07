@@ -96,7 +96,7 @@ impl DynamicState for BoardState {
 
 #[cfg(test)]
 mod tests {
-    use rand::{Rng, SeedableRng};
+    use rand::Rng;
 
     use crate::{board::square::VALID_SQUARES, game::game_flags::GameFlags, moves::move_gen};
 

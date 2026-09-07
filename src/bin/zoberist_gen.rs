@@ -1,5 +1,5 @@
 use barschbot::board::square::EN_PASSANT_SQUARES;
-use rand::{rngs::StdRng, RngCore, SeedableRng};
+use rand::{rngs::StdRng, RngCore};
 
 pub fn main() {
     let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(0);

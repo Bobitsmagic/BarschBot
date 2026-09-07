@@ -1,7 +1,7 @@
 use std::{collections::HashMap, i32, i64};
 
 use arrayvec::ArrayVec;
-use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
+use rand::{rngs::StdRng, seq::SliceRandom};
 
 use crate::{
     board::player_color::PlayerColor,
@@ -124,7 +124,7 @@ pub fn killer_move_sorter(
     board: &BoardState,
     prev_best: ChessMove,
     quiet_move_table: &QuietMoveTable,
-    killer_move: ChessMove,
+    _killer_move: ChessMove,
 ) {
     const PIECE_VALUES: [i64; 7] = [10, 28, 32, 50, 90, 100, 0];
 

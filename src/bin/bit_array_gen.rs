@@ -389,7 +389,7 @@ pub fn gen_bishop_move_table() -> [Vec<u64>; 64] {
 
             assert_eq!(idx, index);
 
-            let moves = gen_bishop_moves(s, 0, (blocker));
+            let moves = gen_bishop_moves(s, 0, blocker);
 
             move_set.push(moves);
         }

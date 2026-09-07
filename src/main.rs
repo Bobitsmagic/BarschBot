@@ -6,8 +6,14 @@ use std::{
 
 use barschbot::{
     evaluation::{
-        barschbot::Barschbot, hans_eval::{self, Attributes, EvaluationSettings, STANDARD_EVAL}, settings::{self, Settings}, wiesel_eval::WieselSettings,
-    }, game::game_state::GameState, gui::{render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, match_handling::match_handler, moves::chess_move::{self, ChessMove},
+        barschbot::Barschbot,
+        hans_eval::{self, EvaluationSettings, STANDARD_EVAL},
+        settings::{self, Settings},
+    },
+    game::game_state::GameState,
+    gui::{render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer},
+    match_handling::match_handler,
+    moves::chess_move::{self, ChessMove},
 };
 use rand::seq::SliceRandom;
 //Wins Old version: 358, Wins New version: 499, Draws: 143
@@ -48,7 +54,7 @@ fn main() {
     //         time_percentage: 0.02,
     //         quiessence_depth: 5,
     //         check_extensions: 0,
-    //         evaluation_mode: settings::EvaluationMode::WieselEvaluation(WieselSettings {
+    //         evaluation_mode: settings::EvaluationMode::WieselEvaluation(barschbot::evaluation::wiesel_eval::WieselSettings {
     //             pawn_value: 1000,
     //             version: 3,
     //             piece_weight: [1000, 3000, 3000, 5000, 9000],

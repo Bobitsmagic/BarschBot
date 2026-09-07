@@ -14,7 +14,7 @@ use piston_window::{
 use crate::{
     board::{
         piece_type::{ColoredPieceType, PieceType},
-        player_color::PlayerColor::{self, White},
+        player_color::PlayerColor::{self},
         square::{self, Square},
     },
     gui::render_state::ANIMATION_TIME,
