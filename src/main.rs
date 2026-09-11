@@ -6,14 +6,8 @@ use std::{
 
 use barschbot::{
     evaluation::{
-        barschbot::Barschbot,
-        hans_eval::{self, EvaluationSettings, STANDARD_EVAL},
-        settings::{self, Settings},
-    },
-    game::game_state::GameState,
-    gui::{render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer},
-    match_handling::match_handler,
-    moves::chess_move::{self, ChessMove},
+        barschbot::Barschbot, hans_eval::{self, Attributes, EvaluationSettings, STANDARD_EVAL}, settings::{self, Settings},
+    }, game::{game_result::GameResult, game_state::GameState}, gui::{render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, match_handling::match_handler, moves::chess_move::{self, ChessMove},
 };
 use rand::seq::SliceRandom;
 //Wins Old version: 358, Wins New version: 499, Draws: 143
@@ -21,7 +15,7 @@ use rand::seq::SliceRandom;
 fn main() {
     // start_human_against_bot();
 
-    // rayon::ThreadPoolBuilder::new().num_threads(12).build_global().unwrap();
+    rayon::ThreadPoolBuilder::new().num_threads(12).build_global().unwrap();
     let bot_a = Barschbot::named(
         Settings {
             time_percentage: 0.015,
@@ -155,33 +149,54 @@ fn human_against_bot(engine_handle: VisHandle) {
 
     // let mut gs = fen_list.choose(&mut rng).unwrap().clone();
 
-    // let mut gs = GameState::start_position();
-    let mut gs = GameState::from_fen("8/8/2r1k3/8/3K4/8/8/8 w - - 0 1"); //Rook endgame
-                                                                         // let mut gs = GameState::from_fen("8/8/2bbk3/8/3K4/8/8/8 w - - 0 1"); //Bishop endgame
+    let mut gs = GameState::start_position();
+    // let mut gs = GameState::from_fen("8/8/2r1k3/8/3K4/8/8/8 w - - 0 1"); //Rook endgame
+    // let mut gs = GameState::from_fen("8/8/2bbk3/8/3K4/8/8/8 w - - 0 1"); //Bishop endgame
 
-    const START_TIME: u128 = 1000 * 60 * 1;
+    const START_TIME: u128 = 1000 * 1000 * 60 * 1;
     let mut white_time_left = START_TIME;
     let mut black_time_left = START_TIME;
 
+    // let mut bot = Barschbot::named(
+    //     Settings {
+    //         time_percentage: 0.02,
+    //         quiessence_depth: 5,
+    //         check_extensions: 0,
+    //         evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
+    //             use_new_feature: false,
+    //             attr_weights: hans_eval::STANDARD_EVAL,
+    //         }),
+    //     },
+    //     String::from("Waldwiesel destroyer"),
+    // );
+
+    
     let mut bot = Barschbot::named(
         Settings {
             time_percentage: 0.02,
             quiessence_depth: 5,
             check_extensions: 0,
-            evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
-                use_new_feature: false,
-                attr_weights: hans_eval::STANDARD_EVAL,
+            evaluation_mode: settings::EvaluationMode::WieselEvaluation(barschbot::evaluation::wiesel_eval::WieselSettings {
+                pawn_value: 1000,
+                version: 3,
+                piece_weight: [1000, 3000, 3000, 5000, 9000],
             }),
         },
-        String::from("Waldwiesel destroyer"),
+        String::from("Wiesel"),
     );
 
-    engine_handle.send_render_state(RenderState::render_move_timed(
+    let white_name = if PLAY_BLACK { bot.name.clone() } else { "Human".to_string() };
+    let black_name = if !PLAY_BLACK { bot.name.clone() } else { "Human".to_string() };
+
+    engine_handle.send_render_state(RenderState::render_move_named(
         gs.board_state.piece_board.clone(),
         chess_move::NULL_MOVE,
         PLAY_BLACK,
         white_time_left,
         black_time_left,
+        white_name.to_string(),
+        black_name.to_string(),
+        gs.to_fen(),
     ));
 
     if PLAY_BLACK {
@@ -190,12 +205,15 @@ fn human_against_bot(engine_handle: VisHandle) {
 
         white_time_left -= time_used.min(white_time_left);
 
-        engine_handle.send_render_state(RenderState::render_move_timed(
+        engine_handle.send_render_state(RenderState::render_move_named(
             gs.board_state.piece_board.clone(),
             m,
             PLAY_BLACK,
             white_time_left,
             black_time_left,
+            white_name.to_string(),
+            black_name.to_string(),
+            gs.to_fen()
         ));
     }
 
@@ -203,18 +221,27 @@ fn human_against_bot(engine_handle: VisHandle) {
         let (m, time_used) = get_human_move(&mut gs, &engine_handle);
         gs.make_move(m);
 
+        if !matches!(gs.game_result(), GameResult::Undecided) {
+            let white_name = if PLAY_BLACK { &bot.name } else { "Human" };
+            let black_name = if !PLAY_BLACK { &bot.name } else { "Human" };
+            println!("{}", gs.to_pgn(white_name, black_name))
+        }
+
         if PLAY_BLACK {
             black_time_left -= time_used.min(black_time_left);
         } else {
             white_time_left -= time_used.min(white_time_left);
         }
 
-        engine_handle.send_render_state(RenderState::render_move_timed(
+        engine_handle.send_render_state(RenderState::render_move_named(
             gs.board_state.piece_board.clone(),
             m,
             PLAY_BLACK,
             white_time_left,
             black_time_left,
+            white_name.to_string(),
+            black_name.to_string(),
+            gs.to_fen()
         ));
 
         let (m, time_used) = get_bot_move(
@@ -227,6 +254,11 @@ fn human_against_bot(engine_handle: VisHandle) {
             &mut bot,
         );
         gs.make_move(m);
+        if !matches!(gs.game_result(), GameResult::Undecided) {
+            let white_name = if PLAY_BLACK { &bot.name } else { "Human" };
+            let black_name = if !PLAY_BLACK { &bot.name } else { "Human" };
+            println!("{}", gs.to_pgn(white_name, black_name))
+        }
 
         if PLAY_BLACK {
             white_time_left -= time_used.min(white_time_left);
@@ -234,12 +266,15 @@ fn human_against_bot(engine_handle: VisHandle) {
             black_time_left -= time_used.min(black_time_left);
         }
 
-        engine_handle.send_render_state(RenderState::render_move_timed(
+        engine_handle.send_render_state(RenderState::render_move_named(
             gs.board_state.piece_board.clone(),
             m,
             PLAY_BLACK,
             white_time_left,
             black_time_left,
+            white_name.to_string(),
+            black_name.to_string(),
+            gs.to_fen()
         ));
     }
 
@@ -247,7 +282,7 @@ fn human_against_bot(engine_handle: VisHandle) {
         let start_time = std::time::Instant::now();
         // let (m, _, _) = search_functions::timed_search(gs, time_left);
         let m = bot.search(gs, time_left);
-        let time_used = start_time.elapsed().as_millis();
+        let time_used = start_time.elapsed().as_micros();
         (m, time_used)
     }
 
@@ -258,7 +293,7 @@ fn human_against_bot(engine_handle: VisHandle) {
             let uci = engine_handle.recive_move();
 
             if moves.contains(&uci) {
-                return (uci, start_time.elapsed().as_millis());
+                return (uci, start_time.elapsed().as_micros());
             }
         }
     }

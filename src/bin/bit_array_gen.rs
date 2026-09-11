@@ -29,9 +29,11 @@ pub fn print_all_tables() {
     let bishop_blocker_mask = gen_bishop_blocker_mask();
     let rook_move_table = gen_rook_move_table();
     let bishop_move_table = gen_bishop_move_table();
+    let king_proximity = gen_king_proximity();
 
     let mut s = String::new();
 
+    s += &bit_array_to_string("KING_PROXIMITY", &king_proximity);
     s += &bit_array_to_string("PAWN_MOVES_WHITE", &pawn_moves.0);
     s += &bit_array_to_string("PAWN_MOVES_BLACK", &pawn_moves.1);
     s += &bit_array_to_string("ADJACENT_COLUMNS", &adjacent_columns);
@@ -51,6 +53,23 @@ pub fn print_all_tables() {
     //Write to text file
     let mut file = File::create("generated_files/lookup.rs").unwrap();
     file.write_all(s.as_bytes()).unwrap();
+}
+
+pub fn gen_king_proximity() -> [u64; 64] {
+    let mut ret = [0; 64];
+    for s in VALID_SQUARES {
+        let mut field = s.bit_array();
+
+        field |= field.translate(1, 0) | field.translate(2, 0);
+        field |= field.translate(-1, 0) | field.translate(-2, 0);
+        
+        field |= (field >> 8) | (field >> 16);
+        field |= (field << 8) | (field << 16);
+
+        ret[s as usize] = field;
+    }
+
+    return ret;
 }
 
 pub fn gen_adjacent_columns() -> [u64; 8] {

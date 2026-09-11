@@ -292,16 +292,13 @@ pub fn play_all_fens(
             let mut bot_b = bot_b.clone();
 
             let start_color = game_state.active_color();
-            let res = play_timed_game(&mut game_state, &mut bot_a, &mut bot_b, start_time_mu_s);
-            win_counter
-                .lock()
-                .unwrap()
-                .handle_game_result(res, start_color);
+            let res1 = play_timed_game(&mut game_state, &mut bot_a, &mut bot_b, start_time_mu_s);
 
             game_state = GameState::from_fen(&fen.to_fen());
-            let res = play_timed_game(&mut game_state, &mut bot_b, &mut bot_a, start_time_mu_s);
+            let res2 = play_timed_game(&mut game_state, &mut bot_b, &mut bot_a, start_time_mu_s);
             let mut lock = win_counter.lock().unwrap();
-            lock.handle_game_result(res, !start_color);
+            lock.handle_game_result(res1, start_color);
+            lock.handle_game_result(res2, !start_color);
             lock.print_wins(&bot_a.name, &bot_b.name);
         });
 

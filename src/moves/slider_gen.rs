@@ -71,6 +71,10 @@ pub fn gen_queen_moves(square: i8, allied: u64, opponent: u64) -> u64 {
     return gen_rook_moves(square, allied, opponent) | gen_bishop_moves(square, allied, opponent);
 }
 
+pub fn gen_queen_moves_kogge_occ(bb: u64, occupied: u64) -> u64 {
+    gen_rook_moves_kogge_occ(bb, occupied) | gen_bishop_moves_kogge_occ(bb, occupied)
+}
+
 pub fn gen_rook_moves_pext(square: i8, occupied: u64) -> u64 {
     let index = order_bits(occupied, ROOK_BLOCKER_MASK[square as usize]);
 

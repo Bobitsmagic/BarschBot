@@ -1,3 +1,6 @@
+# [build]
+# rustflags = ["-Ctarget-cpu=native"]
+
 [package]
 name = "barschbot"
 version = "0.1.0"

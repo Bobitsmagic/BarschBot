@@ -1,18 +1,6 @@
-use arrayvec::ArrayVec;
-
 use crate::{
-    board::{
-        bit_array::BitArray,
-        bit_array_lookup::KING_MOVES,
-        bit_board::BitBoard,
-        piece_type::{
-            ColoredPieceType::{self, WhiteKing},
-            PieceType,
-        },
-        player_color::PlayerColor,
-        square::{self, Square},
-    },
-    game::{board_state, game_state::GameState},
+    board::bit_board::BitBoard,
+    game::game_state::GameState,
     moves::move_gen::{self, MoveVector},
 };
 
@@ -33,7 +21,7 @@ impl Default for WieselSettings {
     }
 }
 
-pub fn evaluation_function(gs: &GameState, wiesel_settings: WieselSettings) -> i32 {
+pub fn evaluation_function(gs: &GameState, wiesel_settings: &WieselSettings) -> i32 {
     let board_state = &gs.board_state;
     let bb = &board_state.bit_board;
 
@@ -54,8 +42,10 @@ pub fn evaluation_function(gs: &GameState, wiesel_settings: WieselSettings) -> i
             piece_array(bb, &mut whitepieces, &mut blackpieces);
             eval += static_piece_weight(&whitepieces, &blackpieces, wiesel_settings.piece_weight);
 
-            let [whitemoves, blackmoves] = move_gen::gen_eval_moves(board_state);
-            eval += whitemoves.len() as i32 - blackmoves.len() as i32;
+            // let [whitemoves, blackmoves] = move_gen::gen_eval_moves(board_state);
+            // eval += whitemoves.len() as i32 - blackmoves.len() as i32;
+
+            eval += move_gen::count_eval_moves(board_state).iter().sum::<i32>();
             eval
         }
         _ => 0,

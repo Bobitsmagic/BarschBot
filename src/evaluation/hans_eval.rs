@@ -3,10 +3,7 @@ use crate::{
         bit_array::BitArray,
         bit_array_lookup::{self, ACCUM_COLUMNS, COLUMNS, ROWS},
         piece_type::ColoredPieceType::BlackPawn,
-    },
-    evaluation::settings::EvaluationMode::HansEvaluation,
-    game::game_state::GameState,
-    moves::move_gen,
+    }, evaluation::settings::EvaluationMode::HansEvaluation, game::{board_state, game_state::GameState}, moves::{move_gen, slider_gen},
 };
 
 use crate::board::square::Square;
@@ -21,6 +18,8 @@ pub struct Attributes {
     pub passed_pawn: i32,
     pub turn: i32,
     pub king_border_distance: i32,
+    pub king_queen_mobility: i32,
+    pub king_pin: i32,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -30,7 +29,7 @@ pub struct EvaluationSettings {
 }
 
 pub const STANDARD_EVAL: Attributes = Attributes {
-    piece_weight: [1000, 3000, 3000, 5000, 9000],
+    piece_weight: [1000, 2800, 3200, 5000, 9000],
     mobility: [0, 50, 40, 30, 20, 0],
     pawn_push: [0, 10, 50, 150, 500, 2000],
     passed_pawn: 150,
@@ -38,6 +37,8 @@ pub const STANDARD_EVAL: Attributes = Attributes {
     isolated_pawn: -100,
     turn: 1,
     king_border_distance: 1,
+    king_queen_mobility: -15,
+    king_pin: -50,
 };
 
 pub fn evaluation_function(gs: &GameState, eval_settings: &EvaluationSettings) -> i32 {
@@ -61,6 +62,9 @@ pub fn evaluation_function(gs: &GameState, eval_settings: &EvaluationSettings) -
     let white_queens = bb.white_piece & queens;
     let black_queens = bb.black_piece & queens;
 
+    let white_king = bb.white_piece & bb.king;
+    let black_king = bb.black_piece & bb.king;
+
     let attr = &eval_settings.attr_weights;
     let mut sum = 0;
     sum +=
@@ -74,40 +78,63 @@ pub fn evaluation_function(gs: &GameState, eval_settings: &EvaluationSettings) -
     sum += (white_queens.count_ones() as i32 - black_queens.count_ones() as i32)
         * attr.piece_weight[4];
 
-    if (bb.white_piece | bb.black_piece).count_ones() == 3 && bb.orthogonal_slider.count_ones() == 1
-    {
-        let w_square = (bb.king & bb.white_piece).trailing_zeros() as i8;
-        let b_square = (bb.king & bb.black_piece).trailing_zeros() as i8;
-        let w_dist =
-            w_square.rank().min(7 - w_square.rank()) + (w_square.file().min(7 - w_square.file()));
-        let b_dist =
-            b_square.rank().min(7 - b_square.rank()) + (b_square.file().min(7 - b_square.file()));
-
-        sum += w_dist as i32 - b_dist as i32;
-    }
-
     sum += count_passed_pawns_kogge(white_pawns, black_pawns) * attr.passed_pawn;
-    sum += (count_doubled_pawns_kogge(white_pawns) - count_doubled_pawns(black_pawns))
+    sum += (count_doubled_pawns_kogge(white_pawns) - count_doubled_pawns_kogge(black_pawns))
         * attr.double_pawn;
     sum += (count_isolated_kogge(white_pawns) - count_isolated_kogge(black_pawns))
         * attr.isolated_pawn;
 
-    //Pawn eval
-    let mobi = move_gen::count_eval_moves(board_state);
-    for i in 0..mobi.len() {
-        sum += mobi[i] * attr.mobility[i];
-    }
-
-    //Count pawns on rank
+    // Pawn eval
+    
+    // Count pawns on rank
     for i in 0..6 {
         let white_count = (white_pawns & ROWS[i + 1]).count_ones() as i32;
         let black_count = (black_pawns & ROWS[6 - i]).count_ones() as i32;
-
+        
         sum += (white_count - black_count) * attr.pawn_push[i];
     }
-
+    
+    let occupied = bb.white_piece | bb.black_piece;
+    let w_square = white_king.trailing_zeros() as i8;
+    let b_square = black_king.trailing_zeros() as i8;
+    if (occupied).count_ones() == 3 && bb.orthogonal_slider.count_ones() == 1
+    {
+        let w_dist =
+        w_square.rank().min(7 - w_square.rank()) + (w_square.file().min(7 - w_square.file()));
+        let b_dist =
+        b_square.rank().min(7 - b_square.rank()) + (b_square.file().min(7 - b_square.file()));
+        
+        sum += w_dist as i32 - b_dist as i32;
+    }
+    
+    if (occupied).count_ones() > 24 {
+        let white_king_mobi = slider_gen::gen_queen_moves_kogge_occ(white_king, occupied) & !occupied;
+        let black_king_mobi = slider_gen::gen_queen_moves_kogge_occ(black_king, occupied) & !occupied;
+        sum += (white_king_mobi.count_ones() as i32 - black_king_mobi.count_ones() as i32) * attr.king_queen_mobility;
+    }
+    
     if eval_settings.use_new_feature {
-    } else {
+        // let white_pins = (bit_array_lookup::ORTHOGONAL_MOVES[w_square as usize] & bb.orthogonal_slider | bit_array_lookup::DIAGONAL_MOVES[w_square as usize] & bb.diagonal_slider) & bb.black_piece;
+        // let black_pins = (bit_array_lookup::ORTHOGONAL_MOVES[b_square as usize] & bb.orthogonal_slider | bit_array_lookup::DIAGONAL_MOVES[b_square as usize] & bb.diagonal_slider) & bb.white_piece;
+        
+        // sum += (white_pins.count_ones() as i32 - black_pins.count_ones() as i32) * attr.king_pin;
+        
+        let (mobi, [wka, bka]) = move_gen::count_eval_moves_king_prox(board_state);
+        for i in 0..mobi.len() {
+            sum += mobi[i] * attr.mobility[i];
+        }
+
+        fn eval_attacks(val: i32) -> i32 {
+            (val * val / 6).min(500)
+        }
+        
+        sum += eval_attacks(bka) - eval_attacks(wka)
+    } else {        
+        
+        let mobi = move_gen::count_eval_moves(board_state);
+        for i in 0..mobi.len() {
+            sum += mobi[i] * attr.mobility[i];
+        }
     }
 
     return sum;
@@ -128,7 +155,7 @@ pub fn count_doubled_pawns_kogge(pawns: u64) -> i32 {
     let mut mask = pawns << 8;
     mask |= mask << 8;
     mask |= mask << 16;
-    mask |= mask << 32; //Maybe not necessary
+    mask |= mask << 32;
 
     return (pawns & mask).count_ones() as i32;
 }
@@ -205,7 +232,31 @@ fn check_board_symmetry() {
             },
         );
 
-        assert!(v1 == -v2)
+        if v1 != -v2 {
+            println!("{} {}", v1, v2);
+
+            gs.board_state.piece_board.print();
+
+            let bb = &gs.board_state.bit_board;
+            let white_pawns = bb.pawn & bb.white_piece;
+            let black_pawns = bb.pawn & bb.black_piece;
+            
+            println!("White doubled pawns: {}", count_doubled_pawns_kogge(white_pawns));
+            println!("Black doubled pawns: {}", count_doubled_pawns_kogge(black_pawns));
+
+            
+            gs.fliped_state().board_state.piece_board.print();
+            
+            let bb = gs.fliped_state().board_state.bit_board;
+            let white_pawns = bb.pawn & bb.white_piece;
+            let black_pawns = bb.pawn & bb.black_piece;
+            
+            println!("White doubled pawns: {}", count_doubled_pawns_kogge(white_pawns));
+            println!("Black doubled pawns: {}", count_doubled_pawns_kogge(black_pawns));
+
+            panic!();
+        }
+        
     }
 }
 
