@@ -4,17 +4,14 @@ use arrayvec::ArrayVec;
 use rand::{rngs::StdRng, seq::SliceRandom};
 
 use crate::{
-    board::player_color::PlayerColor,
-    game::{board_state::BoardState, game_result::GameResult, game_state::GameState},
-    moves::{
-        chess_move::{self, ChessMove},
-        move_gen::{self, MoveVector},
+    board::{piece_type::ColoredPieceType, player_color::PlayerColor::{self, Black, White}}, evaluation::{hans_eval, settings::EvaluationMode::HansEvaluation}, game::{self, board_state::BoardState, game_result::GameResult, game_state::GameState}, moves::{
+        chess_move::{self, ChessMove, NULL_MOVE}, move_gen::{self, MoveVector},
     },
 };
 
 use super::{search_stats::SearchStats, settings::Settings};
-const MAX_VALUE: i32 = 2_000_000_000;
-const CHECKMATE_VALUE: i32 = 1_000_000_000;
+pub const MAX_VALUE: i32 = 2_000_000_000;
+pub const CHECKMATE_VALUE: i32 = 1_000_000_000;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 enum NodeType {
@@ -207,7 +204,7 @@ fn quiessence_search(
             PlayerColor::White => 1,
             PlayerColor::Black => -1,
         };
-        let local_score = settings.evaluate(game_state) * factor;
+        let local_score = settings.evaluate(game_state, alpha, beta) * factor;
 
         if local_score >= beta {
             return local_score;
@@ -274,6 +271,7 @@ fn quiessence_search(
 pub fn bb_timed_search(
     game_state: &mut GameState,
     time_left: u128,
+    max_depth: i32,
     settings: &Settings,
 ) -> (ChessMove, i32, SearchStats) {
     let start_time = std::time::Instant::now();
@@ -282,12 +280,12 @@ pub fn bb_timed_search(
     let mut qmt = [[0; 64]; 64];
 
     let min_time = (time_left as f32 * settings.time_percentage) as u128;
-    let mut depth = 1;
+    let mut current_max_depth = 1;
 
     let (eval, last_best_move) = loop {
-        let eval = bb_search_settings(
+        let eval = bb_search_with_settings(
             game_state,
-            depth,
+            current_max_depth,
             0,
             settings.check_extensions,
             -MAX_VALUE,
@@ -302,39 +300,17 @@ pub fn bb_timed_search(
         let best_move = entry.best_move;
         // println!("Depth: {} Best move: {} Score: {}", depth, best_move.to_string(), eval);
 
-        depth += 1;
+        current_max_depth += 1;
 
-        if eval.abs() >= CHECKMATE_VALUE || start_time.elapsed().as_micros() > min_time {
+        if eval.abs() >= CHECKMATE_VALUE || start_time.elapsed().as_micros() > min_time || current_max_depth > max_depth {
             break (eval, best_move);
         }
     };
 
-    // let mut line = Vec::new();
-
-    // // println!("PV line:");
-    // for d in 0..1 {
-    //     let entry = tt.get(&game_state.zobrist_hash.hash).unwrap();
-    //     debug_assert!(entry.node_type == NodeType::Exact);
-
-    //     let best_move = entry.best_move;
-
-    //     // print!("{} ", best_move.to_string());
-
-    //     // println!("Making move: {}", best_move.to_string());
-    //     line.push(best_move);
-    //     game_state.make_move(best_move);
-    // }
-
-    // // println!();
-
-    // for _ in 0..line.len() {
-    //     game_state.undo_move();
-    // }
-
     return (last_best_move, eval, stats);
 }
 
-fn bb_search_settings(
+fn bb_search_with_settings(
     game_state: &mut GameState,
     depth_left: i32,
     depth: i32,
@@ -348,6 +324,11 @@ fn bb_search_settings(
 ) -> i32 {
     stats.nodes += 1;
 
+    // for _ in 0..depth {
+    //     print!("\t");
+    // }
+    // game_state.last_move().unwrap().print();
+
     let res = game_state.game_result();
     match res {
         GameResult::Win(_, _) => return -CHECKMATE_VALUE + depth,
@@ -355,14 +336,22 @@ fn bb_search_settings(
         GameResult::Undecided => (),
     }
 
-    if depth_left == 0 {
-        let factor = match game_state.active_color() {
-            PlayerColor::White => 1,
-            PlayerColor::Black => -1,
-        };
-
+    if depth_left <= 0 {
         if settings.quiessence_depth == 0 {
-            return settings.evaluate(game_state) * factor;
+            let factor = match game_state.active_color() {
+                PlayerColor::White => 1,
+                PlayerColor::Black => -1,
+            };
+            let eval = settings.evaluate(game_state, alpha, beta) * factor;
+            
+            // println!("M: {} -> {}", game_state.last_move().unwrap().to_string(), eval * factor);
+            // if game_state.last_move().unwrap().captured_piece == ColoredPieceType::WhiteQueen {
+            //     println!("Eval: {}", eval);
+            //     game_state.board_state.piece_board.print();
+            // }
+
+            return eval;
+
         } else {
             return quiessence_search(
                 game_state,
@@ -407,6 +396,43 @@ fn bb_search_settings(
     let mut best_score = -MAX_VALUE;
 
     let (mut lm, in_check) = game_state.gen_legal_moves_check();
+
+    //Null move pruning: Not in check and not only king and pawns
+    let bb = &game_state.board_state.bit_board;
+    let active_color_bb = match game_state.active_color() { 
+        White => bb.white_piece,
+        Black => bb.black_piece,
+    };
+
+    // if game_state.to_fen() == "rnq1kb1r/p1pppppp/1p5n/8/6P1/P2BPb1N/1PPP1P1P/RNBQ1K1R b kq -" {
+    //     dbg!(alpha);
+    //     dbg!(beta);
+    // }
+
+    let mut null_eval = -MAX_VALUE;
+    if !game_state.has_null_move && settings.null_move_pruning > 0 && !in_check && (bb.pawn & active_color_bb).count_ones() + 1 != active_color_bb.count_ones() {
+        game_state.make_move(NULL_MOVE);
+        let t = -bb_search_with_settings(
+            game_state,
+            (depth_left - settings.null_move_pruning).max(0) as i32,
+            depth + 1,
+            extensions_left,
+            -beta,
+            -(beta + 1),
+            settings,
+            stats,
+            tt,
+            quiet_move_table,
+        );
+
+        game_state.undo_move();
+
+        null_eval = t;
+        if t >= beta {
+            return t
+        }
+    }
+
     let use_extend = in_check && extensions_left > 0 && lm.len() <= 2;
 
     quiet_move_sorter(
@@ -434,7 +460,7 @@ fn bb_search_settings(
 
         game_state.make_move(m);
 
-        let mut t = -bb_search_settings(
+        let mut t = -bb_search_with_settings(
             game_state,
             depth_left - (!use_extend) as i32,
             depth + 1,
@@ -447,8 +473,8 @@ fn bb_search_settings(
             quiet_move_table,
         );
 
-        if t > alpha && t < beta && i > 0 && depth_left > 1 {
-            t = -bb_search_settings(
+        if t > alpha && t < beta && i > 0 {
+            t = -bb_search_with_settings(
                 game_state,
                 depth_left - (!use_extend) as i32,
                 depth + 1,
@@ -496,6 +522,39 @@ fn bb_search_settings(
         }
 
         b = alpha + 1;
+    }
+
+    // if depth == 1 {
+    //     print!("New: ");
+    //     game_state.last_move().unwrap().print();
+
+    //     print!("\tScore {} ", best_score);
+    //     best_move.print();
+    // }
+
+
+    if  null_eval >= beta && best_score < beta && depth_left == 1 {
+        println!("Null hypothese wurde wiederlegt");
+
+        for m in lm {
+            m.print();
+        }
+
+        dbg!(alpha);
+        dbg!(beta);
+        dbg!(best_score);
+        dbg!(null_eval);
+        dbg!(depth_left);
+        best_move.print();
+        game_state.board_state.piece_board.print();
+        println!("{}", game_state.to_pgn("W", "B"));
+
+        // println!("[{}]", game_state.to_fen());
+        // if game_state.to_fen() == "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" {
+        //     dbg!(alpha);
+        //     dbg!(beta);
+        // }
+        panic!()
     }
 
     // println!("Depth: {} Best move: {} Score: {}", depth, best_move.to_string(), alpha);
@@ -546,36 +605,3 @@ pub fn get_random_pos(depth: i32, rng: &mut StdRng) -> GameState {
         }
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use rand::{seq::SliceRandom, Rng, SeedableRng};
-//     use rand_chacha::ChaCha8Rng;
-
-//     use super::get_random_pos;
-
-//     #[test]
-//     fn test_stable_search() {
-//         let mut rng = ChaCha8Rng::seed_from_u64(0);
-
-//         for _ in 0..100 {
-//             let depth = rng.gen_range(10..50);
-//             let gs = get_random_pos(depth, &mut rng);
-
-//             let (m1, eval1, _) = super::nega_max(&mut gs.clone(), 4);
-//             let (m2, eval2, _) = super::nega_alpha_beta(&mut gs.clone(), 4);
-
-//             if eval1 != eval2 {
-//                 gs.board_state.piece_board.print();
-
-//                 println!("Depth: {}", depth);
-//                 println!("Eval1: {}", eval1);
-//                 println!("Eval2: {}", eval2);
-//                 m1.print();
-//                 m2.print();
-
-//                 panic!();
-//             }
-//         }
-//     }
-// }

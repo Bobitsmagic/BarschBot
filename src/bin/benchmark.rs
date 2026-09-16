@@ -1,25 +1,14 @@
-use std::time::Instant;
+use std::{arch::x86_64::_mm_cmp_epu64_mask, time::Instant};
 
 use barschbot::{
     board::{
-        bit_array::BitArray,
-        bit_array_lookup::{KING_MOVES, PASSED_PAWN_MASK_BLACK, PASSED_PAWN_MASK_WHITE},
-        dynamic_state::DynamicState,
-        piece_board::PieceBoard,
-        piece_type::{
+        bit_array::BitArray, bit_array_lookup::{KING_MOVES, PASSED_PAWN_MASK_BLACK, PASSED_PAWN_MASK_WHITE}, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::{
             ColoredPieceType::{BlackPawn, WhitePawn},
             PieceType,
-        },
-        rank,
-        square::{self, Square, PAWN_SQUARES, VALID_SQUARES},
-    },
-    evaluation::{
-        hans_eval::{self, EvaluationSettings, STANDARD_EVAL},
-        wiesel_eval::{self, WieselSettings},
-    },
-    game::game_state::GameState,
-    match_handling,
-    moves::{
+        }, rank, square::{self, PAWN_SQUARES, Square, VALID_SQUARES},
+    }, evaluation::{
+        alpha_beta_search, barschbot::Barschbot, hans_eval::{self, EvaluationSettings, STANDARD_EVAL}, search_functions::{MAX_VALUE, get_random_pos}, settings::Settings, wiesel_eval::{self, WieselSettings},
+    }, game::{game_result::GameResult, game_state::GameState}, match_handling, moves::{
         move_gen::{self, gen_king_moves},
         perft_tests::PERFT_FENS,
         slider_gen::{
@@ -38,7 +27,8 @@ fn main() {
     // passed_pawn_benchmark();
     // gen_king_moves_vs_lookup();
     // compare_eval_functions();
-    slider_gen();
+    // slider_gen();
+    bench_search_functions();
 }
 
 pub fn benchmark_fens() {
@@ -359,7 +349,7 @@ fn compare_eval_functions() {
     let start_time = Instant::now();
     for _ in 0..TRY_COUNT {
         for gs in &fens {
-            sum += hans_eval::evaluation_function(gs, &settings)
+            sum += hans_eval::evaluation_function(gs, &settings, -MAX_VALUE, MAX_VALUE)
         }
     }
     println!("Hans false {:?}", start_time.elapsed());
@@ -373,7 +363,7 @@ fn compare_eval_functions() {
     let start_time = Instant::now();
     for _ in 0..TRY_COUNT {
         for gs in &fens {
-            sum += hans_eval::evaluation_function(gs, &settings)
+            sum += hans_eval::evaluation_function(gs, &settings, -MAX_VALUE, MAX_VALUE)
         }
     }
     println!("Hans true {:?}", start_time.elapsed());
@@ -503,49 +493,86 @@ pub fn slider_gen() {
     println!("{}", sum);
 }
 
-// pub fn bench_search_functions() {
-//     const MAX_DEPTH: i32 = 7;
+pub fn bench_search_functions() {
+    const MAX_DEPTH: i32 = 2;
+    const POS_COUNT: usize = 1;
+    let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(37);
 
-//     let mut rng = ChaCha8Rng::seed_from_u64(2);
+    
+    let mut bot1 = Barschbot::new(
+        Settings {
+            time_percentage: 0.02,
+            quiessence_depth: 0,
+            check_extensions: 0,
+            null_move_pruning: 0,
+            evaluation_mode: barschbot::evaluation::settings::EvaluationMode::HansEvaluation(
+                EvaluationSettings { use_new_feature: false, attr_weights: STANDARD_EVAL }
+            )
+        }
+    );
+    
+    let mut bot2 = Barschbot::new(
+        Settings {
+            time_percentage: 0.02,
+            quiessence_depth: 0,
+            check_extensions: 0,
+            null_move_pruning: 1,
+            evaluation_mode: barschbot::evaluation::settings::EvaluationMode::HansEvaluation(
+                EvaluationSettings { use_new_feature: false, attr_weights: STANDARD_EVAL }
+            )
+        }
+    );
+    
+    
+    let mut positions = Vec::new();
+    for i in 0..POS_COUNT {
+        let depth = rng.gen_range(50..100);
+        
+        let gs = loop {
+            let gs = get_random_pos(depth, &mut rng);
+            
+            if matches!(gs.game_result(), GameResult::Undecided) {
+               break gs; 
+            }
+        };
+         
+        
+        positions.push(gs);
+    }
 
-//     const FUNCTIONS: [fn(&mut GameState, i32) -> (ChessMove, i32, SearchStats); 3] = [nega_alpha_beta_tt, nega_alpha_beta_tt_qmt, aspiration_window];
+    let mut move_list = Vec::new();
 
-//     let mut sum_stats = Vec::new();
-//     let mut times = vec![0; FUNCTIONS.len()];
+    let start_time = Instant::now();
+    for i in 0..POS_COUNT {
+        let gs = &mut positions[i];
+        let cm1 = bot1.search_depth(gs, MAX_DEPTH);
+        move_list.push(cm1);
+    }
+    println!("Bot1: {:?}", start_time.elapsed());
 
-//     for _ in 0..FUNCTIONS.len() {
-//         sum_stats.push(SearchStats::new());
-//     }
+    let mut error_count = 0;
+    let start_time = Instant::now();
+    for i in 0..POS_COUNT {
+        let gs = &mut positions[i];
 
-//     for i in 0..100 {
-//         println!("Iteration: {}", i);
+        // let (cm2, eval2) = alpha_beta_search::go_depth(gs, MAX_DEPTH, &bot2.settings);
+        let (cm2, eval2) = bot2.search_depth(gs, MAX_DEPTH);
 
-//         let depth = rng.gen_range(10..50);
-//         let gs = get_random_pos(depth, &mut rng);
+        let (cm1, eval1) = move_list[i];
+        if cm1 != cm2 && eval1 != eval2 {
+            println!("{}", i);
+            error_count += 1;
 
-//         let mut evals = Vec::new();
-//         for j in 0..FUNCTIONS.len() {
-//             let start = std::time::Instant::now();
-//             let (_, eval, stats) = FUNCTIONS[j](&mut gs.clone(), MAX_DEPTH);
-//             times[j] += start.elapsed().as_millis();
-//             sum_stats[j] += stats;
-//             evals.push(eval);
-//         }
+            gs.board_state.piece_board.print();
+            cm1.print();
+            println!("Eval1: {}", eval1);
+            cm2.print();
+            println!("Eval2: {}", eval2);
+            
+            println!("{}", gs.to_pgn("White", "Black"));
+        }
+    }
+    println!("Bot2: {:?}", start_time.elapsed());
+    println!("ErrorCount: {}", error_count);
 
-//         for j in 1..FUNCTIONS.len() {
-//             if evals[j] != evals[0] {
-//                 println!("Different move found!");
-//                 gs.board_state.piece_board.print();
-//                 println!("index: {}", j);
-//                 println!("Evals: {} {}", evals[0], evals[j]);
-//                 panic!();
-//             }
-//         }
-//     }
-
-//     for i in 0..FUNCTIONS.len() {
-//         println!("Function: {}", i);
-//         println!("Time: {} ms", times[i]);
-//         sum_stats[i].print();
-//     }
-// }
+}

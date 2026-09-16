@@ -23,6 +23,7 @@ pub struct GameState {
     pub visited_pos: HashSet<u64>,
     pub move_stack: Vec<ChessMove>,
     pub flag_stack: Vec<GameFlags>,
+    pub has_null_move: bool,
     pub legal_moves: Option<MoveVector>,
 }
 
@@ -45,6 +46,7 @@ impl GameState {
                 &PieceBoard::start_position(),
                 GameFlags::start_flags(),
             ),
+            has_null_move: false,
             legal_moves: None,
             visited_pos: HashSet::new(),
         }
@@ -83,6 +85,7 @@ impl GameState {
             zobrist_hash: ZobristHash::from_position(&pb, flags),
             legal_moves: None,
             visited_pos: HashSet::new(),
+            has_null_move: false
         }
     }
 
@@ -137,31 +140,47 @@ impl GameState {
             panic!("Repetition detected");
         }
 
-        self.board_state.make_move(m);
         self.move_stack.push(m);
-        let mut new_flags = (*self.flag_stack.last().unwrap()).clone();
 
-        self.zobrist_hash.make_move(m);
+        //Piece moving
+        if !m.is_null_move() {
+            
+            self.board_state.make_move(m);
+            self.zobrist_hash.make_move(m);
+        }
+        else {
+            if self.has_null_move {
+                println!("Doing second null move");
+            }
+            
+            self.has_null_move = true;
+        }
+        
+        //Flag updates
+        let mut new_flags = (*self.flag_stack.last().unwrap()).clone();
         self.zobrist_hash.toggle_flags(new_flags); //Remove old flags
         new_flags.make_move(m, &self.board_state.bit_board);
         self.zobrist_hash.toggle_flags(new_flags); //Add new flags
-
         self.flag_stack.push(new_flags);
     }
 
     pub fn undo_move(&mut self) {
         self.legal_moves = None;
-
+        
         let m = self.move_stack.pop().unwrap();
 
-        self.board_state.undo_move(m);
-        self.zobrist_hash.undo_move(m);
-
+        //Piece moving
+        if !m.is_null_move() {
+            self.board_state.undo_move(m);
+            self.zobrist_hash.undo_move(m);
+        }
+        else {
+            self.has_null_move = false;
+        }
+        
         let top_flag = self.flag_stack.pop().unwrap();
-
         self.zobrist_hash.toggle_flags(top_flag); //Remove latest
-        self.zobrist_hash
-            .toggle_flags(*self.flag_stack.last().unwrap()); //Add old flags
+        self.zobrist_hash.toggle_flags(*self.flag_stack.last().unwrap()); //Add old flags
 
         if !self.visited_pos.remove(&self.zobrist_hash.hash) {
             self.board_state.piece_board.print();

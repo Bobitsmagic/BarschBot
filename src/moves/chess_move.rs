@@ -9,8 +9,8 @@ use crate::{
 use super::uci_move::UciMove;
 
 pub const NULL_MOVE: ChessMove = ChessMove {
-    start: 0,
-    end: 0,
+    start: 65,
+    end: 65,
     move_piece: ColoredPieceType::None,
     captured_piece: ColoredPieceType::None,
     promotion_piece: ColoredPieceType::None,

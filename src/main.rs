@@ -21,8 +21,9 @@ fn main() {
             time_percentage: 0.015,
             quiessence_depth: 5,
             check_extensions: 0,
+            null_move_pruning: 0,
             evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
-                use_new_feature: true,
+                use_new_feature: false,
                 attr_weights: STANDARD_EVAL,
                 // attr_weights: Attributes {passed_pawn: 100, ..hans_eval::STANDARD_EVAL},
             }),
@@ -30,32 +31,34 @@ fn main() {
         String::from("New Hans"),
     );
 
-    let bot_b = Barschbot::named(
-        Settings {
-            time_percentage: 0.015,
-            quiessence_depth: 5,
-            check_extensions: 0,
-            evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
-                use_new_feature: false,
-                attr_weights: hans_eval::STANDARD_EVAL,
-            }),
-        },
-        String::from("Old hans"),
-    );
-
     // let bot_b = Barschbot::named(
     //     Settings {
-    //         time_percentage: 0.02,
+    //         time_percentage: 0.015,
     //         quiessence_depth: 5,
     //         check_extensions: 0,
-    //         evaluation_mode: settings::EvaluationMode::WieselEvaluation(barschbot::evaluation::wiesel_eval::WieselSettings {
-    //             pawn_value: 1000,
-    //             version: 3,
-    //             piece_weight: [1000, 3000, 3000, 5000, 9000],
+    //         null_move_pruning: 0,
+    //         evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
+    //             use_new_feature: false,
+    //             attr_weights: hans_eval::STANDARD_EVAL,
     //         }),
     //     },
-    //     String::from("Wiesel"),
+    //     String::from("Old hans"),
     // );
+
+    let bot_b = Barschbot::named(
+        Settings {
+            time_percentage: 0.02,
+            quiessence_depth: 5,
+            check_extensions: 0,
+            null_move_pruning: 0,
+            evaluation_mode: settings::EvaluationMode::WieselEvaluation(barschbot::evaluation::wiesel_eval::WieselSettings {
+                pawn_value: 1000,
+                version: 3,
+                piece_weight: [1000, 3000, 3000, 5000, 9000],
+            }),
+        },
+        String::from("Wiesel"),
+    );
 
     // play_all_fens_vis(bot_a.clone(), bot_b.clone());
     play_all_fens_par(bot_a, bot_b);
@@ -176,6 +179,7 @@ fn human_against_bot(engine_handle: VisHandle) {
             time_percentage: 0.02,
             quiessence_depth: 5,
             check_extensions: 0,
+            null_move_pruning: 0,
             evaluation_mode: settings::EvaluationMode::WieselEvaluation(barschbot::evaluation::wiesel_eval::WieselSettings {
                 pawn_value: 1000,
                 version: 3,
@@ -281,7 +285,7 @@ fn human_against_bot(engine_handle: VisHandle) {
     fn get_bot_move(gs: &mut GameState, time_left: u128, bot: &mut Barschbot) -> (ChessMove, u128) {
         let start_time = std::time::Instant::now();
         // let (m, _, _) = search_functions::timed_search(gs, time_left);
-        let m = bot.search(gs, time_left);
+        let m = bot.search_time(gs, time_left);
         let time_used = start_time.elapsed().as_micros();
         (m, time_used)
     }

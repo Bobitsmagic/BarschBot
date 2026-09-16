@@ -5,3 +5,4 @@ pub mod search_functions;
 pub mod search_stats;
 pub mod settings;
 pub mod wiesel_eval;
+pub mod alpha_beta_search;

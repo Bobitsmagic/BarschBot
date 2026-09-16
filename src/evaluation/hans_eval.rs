@@ -3,7 +3,7 @@ use crate::{
         bit_array::BitArray,
         bit_array_lookup::{self, ACCUM_COLUMNS, COLUMNS, ROWS},
         piece_type::ColoredPieceType::BlackPawn,
-    }, evaluation::settings::EvaluationMode::HansEvaluation, game::{board_state, game_state::GameState}, moves::{move_gen, slider_gen},
+    }, evaluation::{search_functions::MAX_VALUE, settings::EvaluationMode::HansEvaluation}, game::{board_state, game_state::GameState}, moves::{move_gen, slider_gen},
 };
 
 use crate::board::square::Square;
@@ -41,7 +41,7 @@ pub const STANDARD_EVAL: Attributes = Attributes {
     king_pin: -50,
 };
 
-pub fn evaluation_function(gs: &GameState, eval_settings: &EvaluationSettings) -> i32 {
+pub fn evaluation_function(gs: &GameState, eval_settings: &EvaluationSettings, min_value: i32, max_value: i32) -> i32 {
     let board_state = &gs.board_state;
     let bb = &board_state.bit_board;
     let white_pawns = bb.white_piece & bb.pawn;
@@ -78,20 +78,27 @@ pub fn evaluation_function(gs: &GameState, eval_settings: &EvaluationSettings) -
     sum += (white_queens.count_ones() as i32 - black_queens.count_ones() as i32)
         * attr.piece_weight[4];
 
-    sum += count_passed_pawns_kogge(white_pawns, black_pawns) * attr.passed_pawn;
-    sum += (count_doubled_pawns_kogge(white_pawns) - count_doubled_pawns_kogge(black_pawns))
-        * attr.double_pawn;
-    sum += (count_isolated_kogge(white_pawns) - count_isolated_kogge(black_pawns))
-        * attr.isolated_pawn;
-
-    // Pawn eval
-    
     // Count pawns on rank
     for i in 0..6 {
         let white_count = (white_pawns & ROWS[i + 1]).count_ones() as i32;
         let black_count = (black_pawns & ROWS[6 - i]).count_ones() as i32;
         
         sum += (white_count - black_count) * attr.pawn_push[i];
+    }
+        
+    // Pawn eval
+    sum += count_passed_pawns_kogge(white_pawns, black_pawns) * attr.passed_pawn;
+    sum += (count_doubled_pawns_kogge(white_pawns) - count_doubled_pawns_kogge(black_pawns))
+    * attr.double_pawn;
+    sum += (count_isolated_kogge(white_pawns) - count_isolated_kogge(black_pawns))
+    * attr.isolated_pawn;
+    
+    let prev_value = sum;
+    const MARGIN: i32 = 3000;
+    if  sum + MARGIN < min_value || sum - MARGIN > max_value {
+        // println!("{} < {} \t {} > {}", sum + MARGIN, min_value, sum - MARGIN, max_value);
+        // println!("{} < {}  < {}", min_value, sum, max_value);
+        return sum;
     }
     
     let occupied = bb.white_piece | bb.black_piece;
@@ -113,28 +120,19 @@ pub fn evaluation_function(gs: &GameState, eval_settings: &EvaluationSettings) -
         sum += (white_king_mobi.count_ones() as i32 - black_king_mobi.count_ones() as i32) * attr.king_queen_mobility;
     }
     
-    if eval_settings.use_new_feature {
-        // let white_pins = (bit_array_lookup::ORTHOGONAL_MOVES[w_square as usize] & bb.orthogonal_slider | bit_array_lookup::DIAGONAL_MOVES[w_square as usize] & bb.diagonal_slider) & bb.black_piece;
-        // let black_pins = (bit_array_lookup::ORTHOGONAL_MOVES[b_square as usize] & bb.orthogonal_slider | bit_array_lookup::DIAGONAL_MOVES[b_square as usize] & bb.diagonal_slider) & bb.white_piece;
-        
-        // sum += (white_pins.count_ones() as i32 - black_pins.count_ones() as i32) * attr.king_pin;
-        
-        let (mobi, [wka, bka]) = move_gen::count_eval_moves_king_prox(board_state);
-        for i in 0..mobi.len() {
-            sum += mobi[i] * attr.mobility[i];
-        }
+    let (mobi, [wka, bka]) = move_gen::count_eval_moves_king_prox(board_state);
+    for i in 0..mobi.len() {
+        sum += mobi[i] * attr.mobility[i];
+    }
 
-        fn eval_attacks(val: i32) -> i32 {
-            (val * val / 6).min(500)
-        }
-        
-        sum += eval_attacks(bka) - eval_attacks(wka)
-    } else {        
-        
-        let mobi = move_gen::count_eval_moves(board_state);
-        for i in 0..mobi.len() {
-            sum += mobi[i] * attr.mobility[i];
-        }
+    fn eval_attacks(val: i32) -> i32 {
+        (val * val / 6).min(500)
+    }
+    
+    sum += eval_attacks(bka) - eval_attacks(wka);
+
+    if (sum - prev_value).abs() > 3000 {
+        println!("{}", sum - prev_value);
     }
 
     return sum;
@@ -222,6 +220,8 @@ fn check_board_symmetry() {
                 use_new_feature: true,
                 attr_weights: STANDARD_EVAL,
             },
+            -MAX_VALUE,
+            MAX_VALUE
         );
 
         let v2 = evaluation_function(
@@ -230,6 +230,8 @@ fn check_board_symmetry() {
                 use_new_feature: true,
                 attr_weights: STANDARD_EVAL,
             },
+            -MAX_VALUE,
+            MAX_VALUE
         );
 
         if v1 != -v2 {

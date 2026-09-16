@@ -124,7 +124,7 @@ pub fn play_timed_game(
         }
 
         let mut start_time = std::time::Instant::now();
-        let m = bot_a.search(game_state, time_left_a);
+        let m = bot_a.search_time(game_state, time_left_a);
         let time_used = start_time.elapsed().as_micros();
 
         if time_used > time_left_a {
@@ -140,7 +140,7 @@ pub fn play_timed_game(
         }
 
         start_time = std::time::Instant::now();
-        let m = bot_b.search(game_state, time_left_b);
+        let m = bot_b.search_time(game_state, time_left_b);
         let time_used = start_time.elapsed().as_micros();
 
         if time_used > time_left_b {
@@ -195,7 +195,7 @@ pub fn show_timed_game(
         }
 
         let mut start_time = std::time::Instant::now();
-        let m = bot_a.search(gs, time_left_a);
+        let m = bot_a.search_time(gs, time_left_a);
         let time_used = start_time.elapsed().as_micros();
 
         if time_used > time_left_a {
@@ -235,7 +235,7 @@ pub fn show_timed_game(
         }
 
         start_time = std::time::Instant::now();
-        let m = bot_b.search(gs, time_left_b);
+        let m = bot_b.search_time(gs, time_left_b);
         let time_used = start_time.elapsed().as_micros();
 
         if time_used > time_left_b {
