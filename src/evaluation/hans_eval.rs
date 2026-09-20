@@ -92,6 +92,10 @@ pub fn evaluation_function(
 
         sum += (white_count - black_count) * attr.pawn_push[i];
     }
+    //Count center pawns
+    if eval_settings.use_new_feature {
+        sum += count_center_pawns(white_pawns, black_pawns) * 10;
+    }
 
     // Pawn eval
     sum += count_passed_pawns_kogge(white_pawns, black_pawns) * attr.passed_pawn;
@@ -217,6 +221,12 @@ pub fn count_passed_pawns_kogge(white_pawn: u64, black_pawn: u64) -> i32 {
     return (white_pawn & !black_wall).count_ones() as i32
         - (black_pawn & !white_wall).count_ones() as i32;
 }
+
+pub fn count_center_pawns(white_pawn: u64, black_pawn: u64) -> i32 {
+    let center_columns = COLUMNS[3] | COLUMNS[4];
+
+    return (white_pawn & center_columns).count_ones() as i32 - (black_pawn & center_columns).count_ones() as i32
+} 
 
 #[test]
 fn check_board_symmetry() {

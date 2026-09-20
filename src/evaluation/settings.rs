@@ -1,10 +1,7 @@
 use crate::{
-    board::player_color::PlayerColor::{Black, White},
-    evaluation::{
-        hans_eval::{self},
-        wiesel_eval::{self, WieselSettings},
-    },
-    game::game_state::GameState,
+    board::player_color::PlayerColor::{Black, White}, evaluation::{
+        hans_eval::{self, EvaluationSettings}, wiesel_eval::{self, WieselSettings},
+    }, game::game_state::GameState,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -20,6 +17,21 @@ pub struct Settings {
     pub null_move_pruning: i32,
     pub check_extensions: i32,
     pub evaluation_mode: EvaluationMode,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Settings {
+            time_percentage: 0.015,
+            quiessence_depth: 5,
+            check_extensions: 0,
+            null_move_pruning: 0,
+            evaluation_mode: EvaluationMode::HansEvaluation(EvaluationSettings {
+                use_new_feature: false,
+                attr_weights: hans_eval::STANDARD_EVAL,
+            }),
+        }
+    }
 }
 
 impl Settings {

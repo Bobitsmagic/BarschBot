@@ -286,16 +286,11 @@ pub fn bb_timed_search(
     let min_time = (time_left as f32 * settings.time_percentage) as u128;
     let mut current_max_depth = 1;
 
-    match settings.evaluation_mode {
-        EvaluationMode::HansEvaluation(set) => {
-            if set.use_new_feature {
-                let legal_moves = game_state.gen_legal_moves();
-                if legal_moves.len() == 1 {
-                    return (legal_moves[0], 0, stats);
-                }
-            }
-        }
-        _ => (),
+
+
+    let legal_moves = game_state.gen_legal_moves();
+    if legal_moves.len() == 1 {
+        return (legal_moves[0], 0, stats);
     }
 
     let (eval, last_best_move) = loop {
@@ -318,17 +313,7 @@ pub fn bb_timed_search(
 
         current_max_depth += 1;
 
-        match settings.evaluation_mode {
-            EvaluationMode::HansEvaluation(set) => {
-                if set.use_new_feature {
-                    if eval.abs() >= CHECKMATE_VALUE - 200 {
-                        break (eval, best_move);
-                    }
-                }
-            }
-            _ => (),
-        }
-        if eval.abs() >= CHECKMATE_VALUE
+        if eval.abs() >= CHECKMATE_VALUE - 200
             || start_time.elapsed().as_micros() > min_time
             || current_max_depth > max_depth
         {
