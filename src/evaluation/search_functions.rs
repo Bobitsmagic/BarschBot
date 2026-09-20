@@ -4,8 +4,12 @@ use arrayvec::ArrayVec;
 use rand::{rngs::StdRng, seq::SliceRandom};
 
 use crate::{
-    board::{piece_type::ColoredPieceType, player_color::PlayerColor::{self, Black, White}}, evaluation::{hans_eval, settings::EvaluationMode::HansEvaluation}, game::{self, board_state::BoardState, game_result::GameResult, game_state::GameState}, moves::{
-        chess_move::{self, ChessMove, NULL_MOVE}, move_gen::{self, MoveVector},
+    board::player_color::PlayerColor::{self, Black, White},
+    evaluation::settings::EvaluationMode,
+    game::{board_state::BoardState, game_result::GameResult, game_state::GameState},
+    moves::{
+        chess_move::{self, ChessMove, NULL_MOVE},
+        move_gen::{self, MoveVector},
     },
 };
 
@@ -282,6 +286,18 @@ pub fn bb_timed_search(
     let min_time = (time_left as f32 * settings.time_percentage) as u128;
     let mut current_max_depth = 1;
 
+    match settings.evaluation_mode {
+        EvaluationMode::HansEvaluation(set) => {
+            if set.use_new_feature {
+                let legal_moves = game_state.gen_legal_moves();
+                if legal_moves.len() == 1 {
+                    return (legal_moves[0], 0, stats);
+                }
+            }
+        }
+        _ => (),
+    }
+
     let (eval, last_best_move) = loop {
         let eval = bb_search_with_settings(
             game_state,
@@ -302,7 +318,20 @@ pub fn bb_timed_search(
 
         current_max_depth += 1;
 
-        if eval.abs() >= CHECKMATE_VALUE || start_time.elapsed().as_micros() > min_time || current_max_depth > max_depth {
+        match settings.evaluation_mode {
+            EvaluationMode::HansEvaluation(set) => {
+                if set.use_new_feature {
+                    if eval.abs() >= CHECKMATE_VALUE - 200 {
+                        break (eval, best_move);
+                    }
+                }
+            }
+            _ => (),
+        }
+        if eval.abs() >= CHECKMATE_VALUE
+            || start_time.elapsed().as_micros() > min_time
+            || current_max_depth > max_depth
+        {
             break (eval, best_move);
         }
     };
@@ -324,11 +353,6 @@ fn bb_search_with_settings(
 ) -> i32 {
     stats.nodes += 1;
 
-    // for _ in 0..depth {
-    //     print!("\t");
-    // }
-    // game_state.last_move().unwrap().print();
-
     let res = game_state.game_result();
     match res {
         GameResult::Win(_, _) => return -CHECKMATE_VALUE + depth,
@@ -343,7 +367,7 @@ fn bb_search_with_settings(
                 PlayerColor::Black => -1,
             };
             let eval = settings.evaluate(game_state, alpha, beta) * factor;
-            
+
             // println!("M: {} -> {}", game_state.last_move().unwrap().to_string(), eval * factor);
             // if game_state.last_move().unwrap().captured_piece == ColoredPieceType::WhiteQueen {
             //     println!("Eval: {}", eval);
@@ -351,7 +375,6 @@ fn bb_search_with_settings(
             // }
 
             return eval;
-
         } else {
             return quiessence_search(
                 game_state,
@@ -399,18 +422,17 @@ fn bb_search_with_settings(
 
     //Null move pruning: Not in check and not only king and pawns
     let bb = &game_state.board_state.bit_board;
-    let active_color_bb = match game_state.active_color() { 
+    let active_color_bb = match game_state.active_color() {
         White => bb.white_piece,
         Black => bb.black_piece,
     };
 
-    // if game_state.to_fen() == "rnq1kb1r/p1pppppp/1p5n/8/6P1/P2BPb1N/1PPP1P1P/RNBQ1K1R b kq -" {
-    //     dbg!(alpha);
-    //     dbg!(beta);
-    // }
-
     let mut null_eval = -MAX_VALUE;
-    if !game_state.has_null_move && settings.null_move_pruning > 0 && !in_check && (bb.pawn & active_color_bb).count_ones() + 1 != active_color_bb.count_ones() {
+    if !game_state.has_null_move
+        && settings.null_move_pruning > 0
+        && !in_check
+        && (bb.pawn & active_color_bb).count_ones() + 1 != active_color_bb.count_ones()
+    {
         game_state.make_move(NULL_MOVE);
         let t = -bb_search_with_settings(
             game_state,
@@ -429,7 +451,7 @@ fn bb_search_with_settings(
 
         null_eval = t;
         if t >= beta {
-            return t
+            return t;
         }
     }
 
@@ -532,8 +554,7 @@ fn bb_search_with_settings(
     //     best_move.print();
     // }
 
-
-    if  null_eval >= beta && best_score < beta && depth_left == 1 {
+    if null_eval >= beta && best_score < beta && depth_left == 1 {
         println!("Null hypothese wurde wiederlegt");
 
         for m in lm {

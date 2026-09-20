@@ -1,9 +1,11 @@
 use crate::{
     board::{
         bit_array::BitArray,
-        bit_array_lookup::{self, ACCUM_COLUMNS, COLUMNS, ROWS},
-        piece_type::ColoredPieceType::BlackPawn,
-    }, evaluation::{search_functions::MAX_VALUE, settings::EvaluationMode::HansEvaluation}, game::{board_state, game_state::GameState}, moves::{move_gen, slider_gen},
+        bit_array_lookup::{self, COLUMNS, ROWS},
+    },
+    evaluation::search_functions::MAX_VALUE,
+    game::game_state::GameState,
+    moves::{move_gen, slider_gen},
 };
 
 use crate::board::square::Square;
@@ -41,7 +43,12 @@ pub const STANDARD_EVAL: Attributes = Attributes {
     king_pin: -50,
 };
 
-pub fn evaluation_function(gs: &GameState, eval_settings: &EvaluationSettings, min_value: i32, max_value: i32) -> i32 {
+pub fn evaluation_function(
+    gs: &GameState,
+    eval_settings: &EvaluationSettings,
+    min_value: i32,
+    max_value: i32,
+) -> i32 {
     let board_state = &gs.board_state;
     let bb = &board_state.bit_board;
     let white_pawns = bb.white_piece & bb.pawn;
@@ -82,44 +89,46 @@ pub fn evaluation_function(gs: &GameState, eval_settings: &EvaluationSettings, m
     for i in 0..6 {
         let white_count = (white_pawns & ROWS[i + 1]).count_ones() as i32;
         let black_count = (black_pawns & ROWS[6 - i]).count_ones() as i32;
-        
+
         sum += (white_count - black_count) * attr.pawn_push[i];
     }
-        
+
     // Pawn eval
     sum += count_passed_pawns_kogge(white_pawns, black_pawns) * attr.passed_pawn;
     sum += (count_doubled_pawns_kogge(white_pawns) - count_doubled_pawns_kogge(black_pawns))
-    * attr.double_pawn;
+        * attr.double_pawn;
     sum += (count_isolated_kogge(white_pawns) - count_isolated_kogge(black_pawns))
-    * attr.isolated_pawn;
-    
+        * attr.isolated_pawn;
+
     let prev_value = sum;
     const MARGIN: i32 = 3000;
-    if  sum + MARGIN < min_value || sum - MARGIN > max_value {
+    if sum + MARGIN < min_value || sum - MARGIN > max_value {
         // println!("{} < {} \t {} > {}", sum + MARGIN, min_value, sum - MARGIN, max_value);
         // println!("{} < {}  < {}", min_value, sum, max_value);
         return sum;
     }
-    
+
     let occupied = bb.white_piece | bb.black_piece;
     let w_square = white_king.trailing_zeros() as i8;
     let b_square = black_king.trailing_zeros() as i8;
-    if (occupied).count_ones() == 3 && bb.orthogonal_slider.count_ones() == 1
-    {
+    if (occupied).count_ones() == 3 && bb.orthogonal_slider.count_ones() == 1 {
         let w_dist =
-        w_square.rank().min(7 - w_square.rank()) + (w_square.file().min(7 - w_square.file()));
+            w_square.rank().min(7 - w_square.rank()) + (w_square.file().min(7 - w_square.file()));
         let b_dist =
-        b_square.rank().min(7 - b_square.rank()) + (b_square.file().min(7 - b_square.file()));
-        
+            b_square.rank().min(7 - b_square.rank()) + (b_square.file().min(7 - b_square.file()));
+
         sum += w_dist as i32 - b_dist as i32;
     }
-    
+
     if (occupied).count_ones() > 24 {
-        let white_king_mobi = slider_gen::gen_queen_moves_kogge_occ(white_king, occupied) & !occupied;
-        let black_king_mobi = slider_gen::gen_queen_moves_kogge_occ(black_king, occupied) & !occupied;
-        sum += (white_king_mobi.count_ones() as i32 - black_king_mobi.count_ones() as i32) * attr.king_queen_mobility;
+        let white_king_mobi =
+            slider_gen::gen_queen_moves_kogge_occ(white_king, occupied) & !occupied;
+        let black_king_mobi =
+            slider_gen::gen_queen_moves_kogge_occ(black_king, occupied) & !occupied;
+        sum += (white_king_mobi.count_ones() as i32 - black_king_mobi.count_ones() as i32)
+            * attr.king_queen_mobility;
     }
-    
+
     let (mobi, [wka, bka]) = move_gen::count_eval_moves_king_prox(board_state);
     for i in 0..mobi.len() {
         sum += mobi[i] * attr.mobility[i];
@@ -128,7 +137,7 @@ pub fn evaluation_function(gs: &GameState, eval_settings: &EvaluationSettings, m
     fn eval_attacks(val: i32) -> i32 {
         (val * val / 6).min(500)
     }
-    
+
     sum += eval_attacks(bka) - eval_attacks(wka);
 
     if (sum - prev_value).abs() > 3000 {
@@ -221,7 +230,7 @@ fn check_board_symmetry() {
                 attr_weights: STANDARD_EVAL,
             },
             -MAX_VALUE,
-            MAX_VALUE
+            MAX_VALUE,
         );
 
         let v2 = evaluation_function(
@@ -231,7 +240,7 @@ fn check_board_symmetry() {
                 attr_weights: STANDARD_EVAL,
             },
             -MAX_VALUE,
-            MAX_VALUE
+            MAX_VALUE,
         );
 
         if v1 != -v2 {
@@ -242,23 +251,33 @@ fn check_board_symmetry() {
             let bb = &gs.board_state.bit_board;
             let white_pawns = bb.pawn & bb.white_piece;
             let black_pawns = bb.pawn & bb.black_piece;
-            
-            println!("White doubled pawns: {}", count_doubled_pawns_kogge(white_pawns));
-            println!("Black doubled pawns: {}", count_doubled_pawns_kogge(black_pawns));
 
-            
+            println!(
+                "White doubled pawns: {}",
+                count_doubled_pawns_kogge(white_pawns)
+            );
+            println!(
+                "Black doubled pawns: {}",
+                count_doubled_pawns_kogge(black_pawns)
+            );
+
             gs.fliped_state().board_state.piece_board.print();
-            
+
             let bb = gs.fliped_state().board_state.bit_board;
             let white_pawns = bb.pawn & bb.white_piece;
             let black_pawns = bb.pawn & bb.black_piece;
-            
-            println!("White doubled pawns: {}", count_doubled_pawns_kogge(white_pawns));
-            println!("Black doubled pawns: {}", count_doubled_pawns_kogge(black_pawns));
+
+            println!(
+                "White doubled pawns: {}",
+                count_doubled_pawns_kogge(white_pawns)
+            );
+            println!(
+                "Black doubled pawns: {}",
+                count_doubled_pawns_kogge(black_pawns)
+            );
 
             panic!();
         }
-        
     }
 }
 

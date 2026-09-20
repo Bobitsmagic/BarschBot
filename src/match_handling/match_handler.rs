@@ -1,4 +1,8 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
 
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
@@ -337,6 +341,8 @@ pub fn show_all_fens(
             GameResult::Undecided => panic!("Finished on undecided game"),
         }
 
+        thread::sleep(Duration::from_millis(500));
+
         println!("{}", game_state.to_pgn(&bot_a.name, &bot_b.name));
 
         game_state = GameState::from_fen(&fen.to_fen());
@@ -354,6 +360,8 @@ pub fn show_all_fens(
             GameResult::Draw(_) => draws += 1,
             GameResult::Undecided => panic!("Finished on undecided game"),
         }
+
+        thread::sleep(Duration::from_millis(500));
 
         println!("{}", game_state.to_pgn(&bot_b.name, &bot_a.name));
 

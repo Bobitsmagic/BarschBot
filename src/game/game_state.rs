@@ -85,7 +85,7 @@ impl GameState {
             zobrist_hash: ZobristHash::from_position(&pb, flags),
             legal_moves: None,
             visited_pos: HashSet::new(),
-            has_null_move: false
+            has_null_move: false,
         }
     }
 
@@ -144,18 +144,16 @@ impl GameState {
 
         //Piece moving
         if !m.is_null_move() {
-            
             self.board_state.make_move(m);
             self.zobrist_hash.make_move(m);
-        }
-        else {
+        } else {
             if self.has_null_move {
                 println!("Doing second null move");
             }
-            
+
             self.has_null_move = true;
         }
-        
+
         //Flag updates
         let mut new_flags = (*self.flag_stack.last().unwrap()).clone();
         self.zobrist_hash.toggle_flags(new_flags); //Remove old flags
@@ -166,21 +164,21 @@ impl GameState {
 
     pub fn undo_move(&mut self) {
         self.legal_moves = None;
-        
+
         let m = self.move_stack.pop().unwrap();
 
         //Piece moving
         if !m.is_null_move() {
             self.board_state.undo_move(m);
             self.zobrist_hash.undo_move(m);
-        }
-        else {
+        } else {
             self.has_null_move = false;
         }
-        
+
         let top_flag = self.flag_stack.pop().unwrap();
         self.zobrist_hash.toggle_flags(top_flag); //Remove latest
-        self.zobrist_hash.toggle_flags(*self.flag_stack.last().unwrap()); //Add old flags
+        self.zobrist_hash
+            .toggle_flags(*self.flag_stack.last().unwrap()); //Add old flags
 
         if !self.visited_pos.remove(&self.zobrist_hash.hash) {
             self.board_state.piece_board.print();
@@ -196,7 +194,7 @@ impl GameState {
             self.legal_moves = Some(moves);
             check = c;
         } else {
-            println!("Panic");
+            // println!("Reusing old legal moves?");
         }
 
         return (self.legal_moves.as_ref().unwrap().clone(), check);

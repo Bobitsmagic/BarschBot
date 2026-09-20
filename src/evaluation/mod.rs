@@ -1,3 +1,4 @@
+pub mod alpha_beta_search;
 pub mod barschbot;
 pub mod evaluation_function;
 pub mod hans_eval;
@@ -5,4 +6,3 @@ pub mod search_functions;
 pub mod search_stats;
 pub mod settings;
 pub mod wiesel_eval;
-pub mod alpha_beta_search;

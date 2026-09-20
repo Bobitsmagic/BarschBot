@@ -476,11 +476,12 @@ pub fn count_eval_moves_king_prox(board_state: &BoardState) -> ([i32; 6], [i32; 
 
         mobility[pt.piece_type() as usize] += moveset.count_ones() as i32;
 
-        black_attack_counter += (moveset & black_king_prox).count_ones() as i32 * match pt.piece_type() { 
-            PieceType::Queen => 5,
-            PieceType::Bishop => 2,
-            _ => unreachable!()
-        };
+        black_attack_counter += (moveset & black_king_prox).count_ones() as i32
+            * match pt.piece_type() {
+                PieceType::Queen => 5,
+                PieceType::Bishop => 2,
+                _ => unreachable!(),
+            };
     }
 
     let black_diagonal_slider = board.diagonal_slider & board.black_piece;
@@ -489,11 +490,12 @@ pub fn count_eval_moves_king_prox(board_state: &BoardState) -> ([i32; 6], [i32; 
         let moveset = gen_bishop_moves_pext(square, occupied);
         mobility[pt.piece_type() as usize] -= moveset.count_ones() as i32;
 
-        white_attack_counter += (moveset & white_king_prox).count_ones() as i32 * match pt.piece_type() { 
-            PieceType::Queen => 5,
-            PieceType::Bishop => 2,
-            _ => unreachable!()
-        };
+        white_attack_counter += (moveset & white_king_prox).count_ones() as i32
+            * match pt.piece_type() {
+                PieceType::Queen => 5,
+                PieceType::Bishop => 2,
+                _ => unreachable!(),
+            };
     }
 
     //Orthogonal sliders
@@ -503,11 +505,12 @@ pub fn count_eval_moves_king_prox(board_state: &BoardState) -> ([i32; 6], [i32; 
         let moveset = gen_rook_moves_pext(square, occupied);
         mobility[pt.piece_type() as usize] += moveset.count_ones() as i32;
 
-        black_attack_counter += (moveset & black_king_prox).count_ones() as i32 * match pt.piece_type() { 
-            PieceType::Queen => 5,
-            PieceType::Rook => 3,
-            _ => unreachable!()
-        };
+        black_attack_counter += (moveset & black_king_prox).count_ones() as i32
+            * match pt.piece_type() {
+                PieceType::Queen => 5,
+                PieceType::Rook => 3,
+                _ => unreachable!(),
+            };
     }
     let black_orthogonal_slider = board.orthogonal_slider & board.black_piece;
     for square in black_orthogonal_slider.iterate_squares() {
@@ -515,11 +518,12 @@ pub fn count_eval_moves_king_prox(board_state: &BoardState) -> ([i32; 6], [i32; 
         let moveset = gen_rook_moves_pext(square, occupied);
         mobility[pt.piece_type() as usize] -= moveset.count_ones() as i32;
 
-        white_attack_counter += (moveset & white_king_prox).count_ones() as i32 * match pt.piece_type() { 
-            PieceType::Queen => 5,
-            PieceType::Rook => 3,
-            _ => unreachable!()
-        };
+        white_attack_counter += (moveset & white_king_prox).count_ones() as i32
+            * match pt.piece_type() {
+                PieceType::Queen => 5,
+                PieceType::Rook => 3,
+                _ => unreachable!(),
+            };
     }
 
     //King

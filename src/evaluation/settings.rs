@@ -1,8 +1,10 @@
 use crate::{
-    board::player_color::PlayerColor::{Black, White}, evaluation::{
+    board::player_color::PlayerColor::{Black, White},
+    evaluation::{
         hans_eval::{self},
         wiesel_eval::{self, WieselSettings},
-    }, game::game_state::GameState,
+    },
+    game::game_state::GameState,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -26,7 +28,7 @@ impl Settings {
             EvaluationMode::HansEvaluation(attr) => {
                 let (min_value, max_value) = match game_state.active_color() {
                     White => (alpha, beta),
-                    Black => (-beta, -alpha)
+                    Black => (-beta, -alpha),
                 };
 
                 hans_eval::evaluation_function(game_state, &attr, min_value, max_value)

@@ -6,16 +6,27 @@ use std::{
 
 use barschbot::{
     evaluation::{
-        barschbot::Barschbot, hans_eval::{self, Attributes, EvaluationSettings, STANDARD_EVAL}, settings::{self, Settings},
-    }, game::{game_result::GameResult, game_state::GameState}, gui::{render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, match_handling::match_handler, moves::chess_move::{self, ChessMove},
+        barschbot::Barschbot,
+        hans_eval::{self, Attributes, EvaluationSettings, STANDARD_EVAL},
+        settings::{self, Settings},
+    },
+    game::{game_result::GameResult, game_state::GameState},
+    gui::{render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer},
+    match_handling::match_handler,
+    moves::chess_move::{self, ChessMove},
 };
 use rand::seq::SliceRandom;
 //Wins Old version: 358, Wins New version: 499, Draws: 143
 
+const START_TIME: u128 = 1000 * 1000 * 10;
+
 fn main() {
     // start_human_against_bot();
 
-    rayon::ThreadPoolBuilder::new().num_threads(12).build_global().unwrap();
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(12)
+        .build_global()
+        .unwrap();
     let bot_a = Barschbot::named(
         Settings {
             time_percentage: 0.015,
@@ -23,42 +34,42 @@ fn main() {
             check_extensions: 0,
             null_move_pruning: 0,
             evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
-                use_new_feature: false,
-                attr_weights: STANDARD_EVAL,
+                use_new_feature: true,
+                attr_weights: Attributes { ..STANDARD_EVAL },
                 // attr_weights: Attributes {passed_pawn: 100, ..hans_eval::STANDARD_EVAL},
             }),
         },
         String::from("New Hans"),
     );
 
-    // let bot_b = Barschbot::named(
-    //     Settings {
-    //         time_percentage: 0.015,
-    //         quiessence_depth: 5,
-    //         check_extensions: 0,
-    //         null_move_pruning: 0,
-    //         evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
-    //             use_new_feature: false,
-    //             attr_weights: hans_eval::STANDARD_EVAL,
-    //         }),
-    //     },
-    //     String::from("Old hans"),
-    // );
-
     let bot_b = Barschbot::named(
         Settings {
-            time_percentage: 0.02,
+            time_percentage: 0.015,
             quiessence_depth: 5,
             check_extensions: 0,
             null_move_pruning: 0,
-            evaluation_mode: settings::EvaluationMode::WieselEvaluation(barschbot::evaluation::wiesel_eval::WieselSettings {
-                pawn_value: 1000,
-                version: 3,
-                piece_weight: [1000, 3000, 3000, 5000, 9000],
+            evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
+                use_new_feature: false,
+                attr_weights: hans_eval::STANDARD_EVAL,
             }),
         },
-        String::from("Wiesel"),
+        String::from("Old hans"),
     );
+
+    // let bot_b = Barschbot::named(
+    //     Settings {
+    //         time_percentage: 0.02,
+    //         quiessence_depth: 5,
+    //         check_extensions: 0,
+    //         null_move_pruning: 0,
+    //         evaluation_mode: settings::EvaluationMode::WieselEvaluation(barschbot::evaluation::wiesel_eval::WieselSettings {
+    //             pawn_value: 1000,
+    //             version: 3,
+    //             piece_weight: [1000, 3000, 3000, 5000, 9000],
+    //         }),
+    //     },
+    //     String::from("Wiesel"),
+    // );
 
     // play_all_fens_vis(bot_a.clone(), bot_b.clone());
     play_all_fens_par(bot_a, bot_b);
@@ -73,7 +84,7 @@ fn play_all_fens_vis(mut bot_a: Barschbot, mut bot_b: Barschbot) {
     std::thread::spawn(move || {
         // random_moves(vis_handle);
         let (a_wins, b_wins, draws) =
-            match_handler::show_all_fens(&mut bot_a, &mut bot_b, 1000 * 1000 * 60, vis_handle);
+            match_handler::show_all_fens(&mut bot_a, &mut bot_b, START_TIME, vis_handle);
         println!(
             "Finished: {} wins: {}, {} wins: {}, Draws: {}",
             bot_a.name, a_wins, bot_b.name, b_wins, draws
@@ -98,7 +109,7 @@ fn probability_of_superiority(a_wins: i32, b_wins: i32, draws: i32) -> f64 {
 
 fn play_all_fens_par(mut bot_a: Barschbot, mut bot_b: Barschbot) {
     let start_time = Instant::now();
-    let stats = match_handler::play_all_fens(&mut bot_a, &mut bot_b, 1000 * 1000 * 10);
+    let stats = match_handler::play_all_fens(&mut bot_a, &mut bot_b, START_TIME);
     println!("Time: {:?}", start_time.elapsed());
     stats.print_wins(&bot_a.name, &bot_b.name);
     println!(
@@ -156,41 +167,49 @@ fn human_against_bot(engine_handle: VisHandle) {
     // let mut gs = GameState::from_fen("8/8/2r1k3/8/3K4/8/8/8 w - - 0 1"); //Rook endgame
     // let mut gs = GameState::from_fen("8/8/2bbk3/8/3K4/8/8/8 w - - 0 1"); //Bishop endgame
 
-    const START_TIME: u128 = 1000 * 1000 * 60 * 1;
     let mut white_time_left = START_TIME;
     let mut black_time_left = START_TIME;
+
+    let mut bot = Barschbot::named(
+        Settings {
+            time_percentage: 0.015,
+            quiessence_depth: 5,
+            check_extensions: 0,
+            null_move_pruning: 0,
+            evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
+                use_new_feature: false,
+                attr_weights: STANDARD_EVAL,
+                // attr_weights: Attributes {passed_pawn: 100, ..hans_eval::STANDARD_EVAL},
+            }),
+        },
+        String::from("New Hans"),
+    );
 
     // let mut bot = Barschbot::named(
     //     Settings {
     //         time_percentage: 0.02,
     //         quiessence_depth: 5,
     //         check_extensions: 0,
-    //         evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
-    //             use_new_feature: false,
-    //             attr_weights: hans_eval::STANDARD_EVAL,
+    //         null_move_pruning: 0,
+    //         evaluation_mode: settings::EvaluationMode::WieselEvaluation(barschbot::evaluation::wiesel_eval::WieselSettings {
+    //             pawn_value: 1000,
+    //             version: 3,
+    //             piece_weight: [1000, 3000, 3000, 5000, 9000],
     //         }),
     //     },
-    //     String::from("Waldwiesel destroyer"),
+    //     String::from("Wiesel"),
     // );
 
-    
-    let mut bot = Barschbot::named(
-        Settings {
-            time_percentage: 0.02,
-            quiessence_depth: 5,
-            check_extensions: 0,
-            null_move_pruning: 0,
-            evaluation_mode: settings::EvaluationMode::WieselEvaluation(barschbot::evaluation::wiesel_eval::WieselSettings {
-                pawn_value: 1000,
-                version: 3,
-                piece_weight: [1000, 3000, 3000, 5000, 9000],
-            }),
-        },
-        String::from("Wiesel"),
-    );
-
-    let white_name = if PLAY_BLACK { bot.name.clone() } else { "Human".to_string() };
-    let black_name = if !PLAY_BLACK { bot.name.clone() } else { "Human".to_string() };
+    let white_name = if PLAY_BLACK {
+        bot.name.clone()
+    } else {
+        "Human".to_string()
+    };
+    let black_name = if !PLAY_BLACK {
+        bot.name.clone()
+    } else {
+        "Human".to_string()
+    };
 
     engine_handle.send_render_state(RenderState::render_move_named(
         gs.board_state.piece_board.clone(),
@@ -217,7 +236,7 @@ fn human_against_bot(engine_handle: VisHandle) {
             black_time_left,
             white_name.to_string(),
             black_name.to_string(),
-            gs.to_fen()
+            gs.to_fen(),
         ));
     }
 
@@ -245,7 +264,7 @@ fn human_against_bot(engine_handle: VisHandle) {
             black_time_left,
             white_name.to_string(),
             black_name.to_string(),
-            gs.to_fen()
+            gs.to_fen(),
         ));
 
         let (m, time_used) = get_bot_move(
@@ -278,7 +297,7 @@ fn human_against_bot(engine_handle: VisHandle) {
             black_time_left,
             white_name.to_string(),
             black_name.to_string(),
-            gs.to_fen()
+            gs.to_fen(),
         ));
     }
 

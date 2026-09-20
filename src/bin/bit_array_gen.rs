@@ -62,7 +62,7 @@ pub fn gen_king_proximity() -> [u64; 64] {
 
         field |= field.translate(1, 0) | field.translate(2, 0);
         field |= field.translate(-1, 0) | field.translate(-2, 0);
-        
+
         field |= (field >> 8) | (field >> 16);
         field |= (field << 8) | (field << 16);
 

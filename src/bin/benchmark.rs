@@ -1,14 +1,28 @@
-use std::{arch::x86_64::_mm_cmp_epu64_mask, time::Instant};
+use std::time::Instant;
 
 use barschbot::{
     board::{
-        bit_array::BitArray, bit_array_lookup::{KING_MOVES, PASSED_PAWN_MASK_BLACK, PASSED_PAWN_MASK_WHITE}, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::{
+        bit_array::BitArray,
+        bit_array_lookup::{KING_MOVES, PASSED_PAWN_MASK_BLACK, PASSED_PAWN_MASK_WHITE},
+        dynamic_state::DynamicState,
+        piece_board::PieceBoard,
+        piece_type::{
             ColoredPieceType::{BlackPawn, WhitePawn},
             PieceType,
-        }, rank, square::{self, PAWN_SQUARES, Square, VALID_SQUARES},
-    }, evaluation::{
-        alpha_beta_search, barschbot::Barschbot, hans_eval::{self, EvaluationSettings, STANDARD_EVAL}, search_functions::{MAX_VALUE, get_random_pos}, settings::Settings, wiesel_eval::{self, WieselSettings},
-    }, game::{game_result::GameResult, game_state::GameState}, match_handling, moves::{
+        },
+        rank,
+        square::{self, Square, PAWN_SQUARES, VALID_SQUARES},
+    },
+    evaluation::{
+        barschbot::Barschbot,
+        hans_eval::{self, EvaluationSettings, STANDARD_EVAL},
+        search_functions::{get_random_pos, MAX_VALUE},
+        settings::Settings,
+        wiesel_eval::{self, WieselSettings},
+    },
+    game::{game_result::GameResult, game_state::GameState},
+    match_handling,
+    moves::{
         move_gen::{self, gen_king_moves},
         perft_tests::PERFT_FENS,
         slider_gen::{
@@ -498,45 +512,44 @@ pub fn bench_search_functions() {
     const POS_COUNT: usize = 1;
     let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(37);
 
-    
-    let mut bot1 = Barschbot::new(
-        Settings {
-            time_percentage: 0.02,
-            quiessence_depth: 0,
-            check_extensions: 0,
-            null_move_pruning: 0,
-            evaluation_mode: barschbot::evaluation::settings::EvaluationMode::HansEvaluation(
-                EvaluationSettings { use_new_feature: false, attr_weights: STANDARD_EVAL }
-            )
-        }
-    );
-    
-    let mut bot2 = Barschbot::new(
-        Settings {
-            time_percentage: 0.02,
-            quiessence_depth: 0,
-            check_extensions: 0,
-            null_move_pruning: 1,
-            evaluation_mode: barschbot::evaluation::settings::EvaluationMode::HansEvaluation(
-                EvaluationSettings { use_new_feature: false, attr_weights: STANDARD_EVAL }
-            )
-        }
-    );
-    
-    
+    let mut bot1 = Barschbot::new(Settings {
+        time_percentage: 0.02,
+        quiessence_depth: 0,
+        check_extensions: 0,
+        null_move_pruning: 0,
+        evaluation_mode: barschbot::evaluation::settings::EvaluationMode::HansEvaluation(
+            EvaluationSettings {
+                use_new_feature: false,
+                attr_weights: STANDARD_EVAL,
+            },
+        ),
+    });
+
+    let mut bot2 = Barschbot::new(Settings {
+        time_percentage: 0.02,
+        quiessence_depth: 0,
+        check_extensions: 0,
+        null_move_pruning: 1,
+        evaluation_mode: barschbot::evaluation::settings::EvaluationMode::HansEvaluation(
+            EvaluationSettings {
+                use_new_feature: false,
+                attr_weights: STANDARD_EVAL,
+            },
+        ),
+    });
+
     let mut positions = Vec::new();
     for i in 0..POS_COUNT {
         let depth = rng.gen_range(50..100);
-        
+
         let gs = loop {
             let gs = get_random_pos(depth, &mut rng);
-            
+
             if matches!(gs.game_result(), GameResult::Undecided) {
-               break gs; 
+                break gs;
             }
         };
-         
-        
+
         positions.push(gs);
     }
 
@@ -568,11 +581,10 @@ pub fn bench_search_functions() {
             println!("Eval1: {}", eval1);
             cm2.print();
             println!("Eval2: {}", eval2);
-            
+
             println!("{}", gs.to_pgn("White", "Black"));
         }
     }
     println!("Bot2: {:?}", start_time.elapsed());
     println!("ErrorCount: {}", error_count);
-
 }
