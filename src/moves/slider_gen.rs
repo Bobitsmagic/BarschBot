@@ -1,7 +1,12 @@
+use std::arch::x86_64;
+
+use piston::Key::R;
+
 use crate::board::{
     bit_array::BitArray,
     bit_array_lookup::{
-        BISHOP_BLOCKER_MASK, BISHOP_MOVE_TABLE, ROOK_BLOCKER_MASK, ROOK_MOVE_TABLE,
+        BISHOP_BLOCKER_MASK, BISHOP_MOVE_TABLE, COLUMNS, FIRST_RANK_ATTACK, ROOK_BLOCKER_MASK,
+        ROOK_MOVE_TABLE, ROWS,
     },
     square::{self, Square},
 };
@@ -87,6 +92,44 @@ pub fn gen_bishop_moves_pext(square: i8, occupied: u64) -> u64 {
     return BISHOP_MOVE_TABLE[square as usize][index as usize];
 }
 
+pub fn gen_rook_moves_kindergarten(sq: i8, mut occ: u64) -> u64 {
+    //https://chessprogramming.org/Kindergarten_Bitboards
+    const A_FILE: u64 = COLUMNS[0];
+    const H_FILE: u64 = COLUMNS[7];
+    const DIA_A1H8: u64 = 0x8040201008040201;
+    const DIA_C2H7: u64 = 0x0080402010080400;
+
+    let row = (sq >> 3) as usize;
+    let file = (sq & 7) as usize;
+    let first_rank = (occ & ROWS[row]) >> (row << 3);
+    let h_moves = (FIRST_RANK_ATTACK[((first_rank >> 1) & 63) as usize][file] as u64) << (row << 3);
+
+    occ = A_FILE & (occ >> file);
+    occ = ((DIA_C2H7 * occ) >> 58) & 63;
+    occ = DIA_A1H8 * FIRST_RANK_ATTACK[occ as usize][((sq ^ 56) >> 3) as usize] as u64;
+    let vert_moves = (H_FILE & occ) >> (file ^ 7);
+
+    return vert_moves | h_moves;
+}
+//
+pub fn gen_rook_moves_kindergarten_full(sq: i8, mut occ: u64) -> u64 {
+    //https://chessprogramming.org/Kindergarten_Bitboards
+    const A_FILE: u64 = COLUMNS[0];
+    const DIA_C2H7: u64 = 0x0080402010080400;
+
+    let row = (sq >> 3) as usize;
+    let file = (sq & 7) as usize;
+    let first_rank = (occ & ROWS[row]) >> (row << 3);
+    let mut full_occ = (first_rank >> 1) & 63;
+
+    occ = A_FILE & (occ >> file);
+    occ = (DIA_C2H7 * occ) >> 58;
+
+    full_occ |= occ << 6;
+
+    return ROOK_MOVE_TABLE[sq as usize][full_occ as usize & 2047];
+}
+
 pub fn order_bits(value: u64, mask: u64) -> u64 {
     return bitintr::Pext::pext(value, mask); //650 ms
 
@@ -149,9 +192,12 @@ pub fn gen_bishop_moves_kogge(bb: u64, allied: u64, opponent: u64) -> u64 {
 mod slider_gen_test {
     use rand::{rngs::StdRng, Rng};
 
-    use crate::board::{
-        bit_array::BitArray,
-        square::{self, Square, VALID_SQUARES},
+    use crate::{
+        board::{
+            bit_array::BitArray,
+            square::{self, Square, VALID_SQUARES},
+        },
+        moves::slider_gen::gen_rook_moves_kindergarten,
     };
 
     use super::{
@@ -209,8 +255,9 @@ mod slider_gen_test {
                 let m1 = gen_rook_moves(s, allied, opponent);
                 let m2 = gen_rook_moves_pext(s, allied | opponent) & !allied;
                 let m3 = gen_rook_moves_kogge(s.bit_array(), allied, opponent);
+                let m4 = gen_rook_moves_kindergarten(s, allied | opponent) & !allied;
 
-                if m1 != m2 || m1 != m3 {
+                if m1 != m2 || m1 != m3 || m1 != m4 {
                     println!("Allied:");
                     allied.print();
                     println!("Opponent:");
@@ -218,10 +265,12 @@ mod slider_gen_test {
                     println!("i8: {}", s.to_string());
                     println!("gen_moves:");
                     m1.print();
-                    println!("gen_moves_pext:");
-                    m2.print();
-                    println!("gen_moves_kogge:");
-                    m3.print();
+                    // println!("gen_moves_pext:");
+                    // m2.print();
+                    // println!("gen_moves_kogge:");
+                    // m3.print();
+                    println!("gen_moves_kindergarten:");
+                    m4.print();
                     panic!();
                 }
             }

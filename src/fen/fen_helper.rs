@@ -18,6 +18,7 @@ pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
 
     for c in parts[0].chars() {
         if ALL_CHARS.find(c) == None {
+            println!("Invalid char {c:?} in fen [{}]", fen);
             continue;
         }
         if c == '/' {
@@ -32,7 +33,11 @@ pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
 
             square += 1;
         } else {
-            square += c.to_string().parse::<i8>().unwrap();
+            if let Ok(res) = c.to_string().parse::<i8>() {
+                square += res;
+            } else {
+                panic!("Invalid piece in fen [{}]", fen);
+            }
         }
     }
 
@@ -40,7 +45,7 @@ pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
     game_flags.active_color = match parts[1] {
         "w" => PlayerColor::White,
         "b" => PlayerColor::Black,
-        _ => panic!("Invalid active color"),
+        _ => panic!("Invalid active color in fen {}", fen),
     };
 
     for c in parts[2].chars() {
@@ -49,7 +54,8 @@ pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
             'Q' => game_flags.white_queen_side_castle = true,
             'k' => game_flags.black_king_side_castle = true,
             'q' => game_flags.black_queen_side_castle = true,
-            _ => (),
+            '-' => (),
+            _ => panic!("Invalid castle rights in fen {}", fen),
         }
     }
 

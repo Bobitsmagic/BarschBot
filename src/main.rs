@@ -27,7 +27,7 @@ fn main() {
         .num_threads(12)
         .build_global()
         .unwrap();
-    
+
     let bot_a = Barschbot::named(
         Settings {
             evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {

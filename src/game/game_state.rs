@@ -135,10 +135,10 @@ impl GameState {
     pub fn make_move(&mut self, m: ChessMove) {
         self.legal_moves = None;
 
-        if !self.visited_pos.insert(self.zobrist_hash.hash) {
-            self.board_state.piece_board.print();
-            panic!("Repetition detected");
-        }
+        // if !self.visited_pos.insert(self.zobrist_hash.hash) {
+        //     self.board_state.piece_board.print();
+        //     panic!("Repetition detected");
+        // }
 
         self.move_stack.push(m);
 
@@ -180,10 +180,10 @@ impl GameState {
         self.zobrist_hash
             .toggle_flags(*self.flag_stack.last().unwrap()); //Add old flags
 
-        if !self.visited_pos.remove(&self.zobrist_hash.hash) {
-            self.board_state.piece_board.print();
-            panic!("Previous position not found");
-        }
+        // if !self.visited_pos.remove(&self.zobrist_hash.hash) {
+        //     self.board_state.piece_board.print();
+        //     panic!("Previous position not found");
+        // }
     }
 
     pub fn gen_legal_moves_check(&mut self) -> (MoveVector, bool) {

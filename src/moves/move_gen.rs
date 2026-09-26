@@ -18,8 +18,8 @@ use crate::{
     moves::{
         check_pin_mask::CheckPinMask,
         slider_gen::{
-            gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_rook_moves_kogge,
-            gen_rook_moves_pext,
+            gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_rook_moves_kindergarten,
+            gen_rook_moves_kogge, gen_rook_moves_pext,
         },
     },
 };
@@ -1208,10 +1208,12 @@ pub fn gen_legal_moves_check(board_state: &BoardState, flags: &GameFlags) -> (Mo
     let pinned_orthogonal_sliders = orthogonal_sliders & pin_mask.ortho;
     for square in pinned_orthogonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        let moveset = gen_rook_moves_kogge(square.bit_array(), allied, opponent)
+        // let moveset = gen_rook_moves_kogge(square.bit_array(), allied, opponent)
+        let moveset = gen_rook_moves_kindergarten(square, allied | opponent)
+            & !allied
             & pin_mask.ortho
             & pin_mask.check; //Stay on pin
-                              // let moveset = gen_rook_moves_pext(square, occupied) & !allied & pin_mask.ortho & pin_mask.check; //Stay on pin
+
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(
                 square,
@@ -1225,8 +1227,9 @@ pub fn gen_legal_moves_check(board_state: &BoardState, flags: &GameFlags) -> (Mo
     let not_pinned_orthogonal_sliders = orthogonal_sliders & !pin_mask.ortho;
     for square in not_pinned_orthogonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        // let moveset = gen_rook_moves_pext(square, occupied) & !allied & pin_mask.check;
-        let moveset = gen_rook_moves_kogge(square.bit_array(), allied, opponent) & pin_mask.check;
+        // let moveset = gen_rook_moves_kogge(square.bit_array(), allied, opponent)
+        let moveset =
+            gen_rook_moves_kindergarten(square, allied | opponent) & !allied & pin_mask.check;
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(
                 square,

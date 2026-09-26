@@ -1,7 +1,10 @@
 use crate::{
-    board::player_color::PlayerColor::{Black, White}, evaluation::{
-        hans_eval::{self, EvaluationSettings}, wiesel_eval::{self, WieselSettings},
-    }, game::game_state::GameState,
+    board::player_color::PlayerColor::{Black, White},
+    evaluation::{
+        hans_eval::{self, EvaluationSettings},
+        wiesel_eval::{self, WieselSettings},
+    },
+    game::game_state::GameState,
 };
 
 #[derive(Debug, Clone, Copy)]

@@ -3,10 +3,13 @@ use std::{fs::File, io::Write};
 use barschbot::{
     board::{
         bit_array::BitArray,
-        bit_array_lookup::{self, COLUMNS},
+        bit_array_lookup::{self, COLUMNS, ROWS},
         square::{self, Square, PAWN_SQUARES, VALID_SQUARES},
     },
-    moves::slider_gen::{gen_bishop_moves, gen_rook_moves, order_bits},
+    moves::slider_gen::{
+        gen_bishop_moves, gen_rook_moves, gen_rook_moves_kogge, gen_rook_moves_kogge_occ,
+        order_bits,
+    },
 };
 
 pub fn main() {
@@ -33,6 +36,11 @@ pub fn print_all_tables() {
 
     let mut s = String::new();
 
+    s += &byte_array_to_string("FIRST_RANK_ATTACK", &gen_first_rank_attacks());
+
+    print!("{}", s);
+    return;
+
     s += &bit_array_to_string("KING_PROXIMITY", &king_proximity);
     s += &bit_array_to_string("PAWN_MOVES_WHITE", &pawn_moves.0);
     s += &bit_array_to_string("PAWN_MOVES_BLACK", &pawn_moves.1);
@@ -53,6 +61,23 @@ pub fn print_all_tables() {
     //Write to text file
     let mut file = File::create("generated_files/lookup.rs").unwrap();
     file.write_all(s.as_bytes()).unwrap();
+}
+
+pub fn gen_first_rank_attacks() -> [[u8; 8]; 64] {
+    let mut array = [[0; 8]; 64];
+
+    for occ in 0_u64..255 {
+        for sq in 0_usize..8 {
+            let bb = 1_u64 << sq;
+            let moves = gen_rook_moves_kogge_occ(bb, occ & !bb) & ROWS[0] & !bb;
+
+            assert!(moves < 256);
+
+            array[(occ as usize >> 1) & 63][sq] = moves as u8;
+        }
+    }
+
+    return array;
 }
 
 pub fn gen_king_proximity() -> [u64; 64] {
@@ -112,6 +137,35 @@ pub fn gen_passed_pawn_mask() -> ([u64; 64], [u64; 64]) {
     }
 
     return (white_res, black_res);
+}
+
+pub fn byte_array_to_string(name: &str, bit_array_array: &[[u8; 8]]) -> String {
+    let length = bit_array_array.len();
+
+    let mut s = format!("pub const {}: [u8; {}] = [\n", name, length);
+
+    for (i, list) in bit_array_array.iter().enumerate() {
+        s += "\t[";
+        for (j, bit_array) in list.iter().enumerate() {
+            s += &format!("0b{:08b}", bit_array);
+
+            if j < 7 {
+                s += &format!(", ");
+            } else {
+                s += &format!("]");
+            }
+        }
+
+        if i < length - 1 {
+            s += &format!(",\n");
+        } else {
+            s += &format!("\n");
+        }
+    }
+
+    s += &format!("];\n");
+
+    return s;
 }
 
 pub fn bit_array_to_string(name: &str, bit_array_array: &[u64]) -> String {

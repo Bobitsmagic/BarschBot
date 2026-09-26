@@ -112,7 +112,7 @@ pub fn quiet_move_sorter(
         sum *= 1_000_000_000;
 
         if quiet_move_table[cm.start as usize][cm.end as usize] > 1_000_000_000 {
-            println!("Overflow in quiet move table");
+            // println!("Overflow in quiet move table");
         }
         sum += quiet_move_table[cm.start as usize][cm.end as usize];
 
@@ -161,7 +161,7 @@ pub fn killer_move_sorter(
         // }
 
         if quiet_move_table[cm.start as usize][cm.end as usize] > 1_000_000_000 {
-            println!("Overflow in quiet move table");
+            // println!("Overflow in quiet move table");
         }
         sum += quiet_move_table[cm.start as usize][cm.end as usize];
 
@@ -285,8 +285,6 @@ pub fn bb_timed_search(
 
     let min_time = (time_left as f32 * settings.time_percentage) as u128;
     let mut current_max_depth = 1;
-
-
 
     let legal_moves = game_state.gen_legal_moves();
     if legal_moves.len() == 1 {

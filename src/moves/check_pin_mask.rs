@@ -1,13 +1,18 @@
-use crate::board::{
-    bit_array::BitArray,
-    bit_array_lookup::{
-        DIAGONAL_MOVES, IN_BETWEEN_TABLE, KNIGHT_MOVES, ORTHOGONAL_MOVES, PAWN_MOVES_BLACK,
-        PAWN_MOVES_WHITE,
+use crate::{
+    board::{
+        bit_array::BitArray,
+        bit_array_lookup::{
+            DIAGONAL_MOVES, IN_BETWEEN_TABLE, KNIGHT_MOVES, ORTHOGONAL_MOVES, PAWN_MOVES_BLACK,
+            PAWN_MOVES_WHITE,
+        },
+        bit_board::BitBoard,
+        piece_board::PieceBoard,
+        player_color::PlayerColor,
     },
-    bit_board::BitBoard,
-    player_color::PlayerColor,
+    moves::{kogge_gen, slider_gen},
 };
 
+#[derive(PartialEq, Eq)]
 pub struct CheckPinMask {
     pub check: u64,
     pub ortho: u64,
@@ -88,11 +93,13 @@ impl CheckPinMask {
             check_mask &= pawn_moves;
         }
 
-        return CheckPinMask {
+        let ret = CheckPinMask {
             ortho: orthogonal_mask,
             diag: diagonal_mask,
             check: check_mask,
         };
+
+        return ret;
     }
 
     pub fn print(&self) {

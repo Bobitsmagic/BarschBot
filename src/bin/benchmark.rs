@@ -3,7 +3,7 @@ use std::time::Instant;
 use barschbot::{
     board::{
         bit_array::BitArray,
-        bit_array_lookup::{KING_MOVES, PASSED_PAWN_MASK_BLACK, PASSED_PAWN_MASK_WHITE},
+        bit_array_lookup::{COLUMNS, KING_MOVES, PASSED_PAWN_MASK_BLACK, PASSED_PAWN_MASK_WHITE},
         dynamic_state::DynamicState,
         piece_board::PieceBoard,
         piece_type::{
@@ -26,23 +26,112 @@ use barschbot::{
         move_gen::{self, gen_king_moves},
         perft_tests::PERFT_FENS,
         slider_gen::{
-            gen_bishop_moves, gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_rook_moves,
-            gen_rook_moves_kogge, gen_rook_moves_pext,
+            self, gen_bishop_moves, gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_rook_moves,
+            gen_rook_moves_kindergarten, gen_rook_moves_kindergarten_full, gen_rook_moves_kogge,
+            gen_rook_moves_pext,
         },
     },
 };
 
+use fearless_simd::{mask8x16, SimdMask};
 use rand::{rngs::StdRng, Rng};
 
 fn main() {
     // env::set_var("RUST_BACKTRACE", "1");
     // bench_search_functions();
-    // benchmark_fens();
+    benchmark_fens();
     // passed_pawn_benchmark();
     // gen_king_moves_vs_lookup();
     // compare_eval_functions();
     // slider_gen();
-    bench_search_functions();
+    // bench_search_functions();
+    // rook_bit_sorting();
+}
+
+pub fn rook_bit_sorting() {
+    use fearless_simd::{u64x2, u8x16, Level, Simd, SimdBase, SimdInto};
+    use fearless_simd_macros::simd;
+    let level = Level::new();
+    let sim = level.as_avx2().unwrap();
+
+    fn sort_bits(mut board: u64, sq: i8, sim: fearless_simd::Avx2) -> u64 {
+        let file = (sq & 7) as usize;
+        board >>= file;
+        let bytes: [i8; 16] = unsafe { std::mem::transmute([board, board]) };
+        let reg = mask8x16::from_slice(sim, bytes.as_slice());
+
+        return reg.to_bitmask();
+    }
+
+    fn sort_vert_bits(sq: i8, mut occ: u64) -> u64 {
+        const A_FILE: u64 = COLUMNS[0];
+        const DIA_C2H7: u64 = 0x0080402010080400;
+        let file = (sq & 7) as usize;
+        occ = A_FILE & (occ >> file);
+        occ = (DIA_C2H7 * occ) >> 56;
+
+        return occ;
+    }
+
+    fn fill_board(rng: &mut StdRng) -> u64 {
+        let mut allied = 0;
+
+        for x in 0..8 {
+            for y in 0..8 {
+                let square = square::from_file_rank(x, y);
+                if rng.gen_bool(0.1) {
+                    allied.set_bit(square);
+                }
+            }
+        }
+
+        return allied;
+    }
+
+    const BOARD_COUNT: usize = 1 << 12;
+    let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(0);
+    let mut boards = Vec::with_capacity(BOARD_COUNT);
+    for _ in 0..BOARD_COUNT {
+        boards.push(fill_board(&mut rng));
+    }
+
+    const TRY_COUNT: usize = 1 << 10;
+
+    let mut sum = 0;
+    let mut start_time = Instant::now();
+    for _ in 0..TRY_COUNT {
+        for &b in &boards {
+            for sq in VALID_SQUARES {
+                sum += slider_gen::order_bits(b, COLUMNS[(sq >> 3) as usize]);
+            }
+        }
+    }
+    println!("Pext: {:?}", start_time.elapsed());
+    println!("Sum: {}", sum);
+
+    let mut sum = 0;
+    start_time = Instant::now();
+    for _ in 0..TRY_COUNT {
+        for &b in &boards {
+            for sq in VALID_SQUARES {
+                sum += sort_vert_bits(sq, b);
+            }
+        }
+    }
+    println!("Kindergarten {:?}", start_time.elapsed());
+    println!("Sum: {}", sum);
+
+    let mut sum = 0;
+    start_time = Instant::now();
+    for _ in 0..TRY_COUNT {
+        for &b in &boards {
+            for sq in VALID_SQUARES {
+                sum += sort_bits(b, sq, sim);
+            }
+        }
+    }
+    println!("SIMD {:?}", start_time.elapsed());
+    println!("Sum: {}", sum);
 }
 
 pub fn benchmark_fens() {
@@ -504,6 +593,32 @@ pub fn slider_gen() {
         }
     }
     println!("Gen rook kogge {:?}", start_time.elapsed());
+    println!("{}", sum);
+
+    let mut sum = 0;
+    let start_time = Instant::now();
+    for _ in 0..TRY_COUNT {
+        for &(allied, opponent) in &boards {
+            for s in VALID_SQUARES {
+                let allied = allied | s.bit_array();
+                sum += gen_rook_moves_kindergarten(s, allied | opponent) & !allied;
+            }
+        }
+    }
+    println!("Gen rook kindergarten {:?}", start_time.elapsed());
+    println!("{}", sum);
+
+    let mut sum = 0;
+    let start_time = Instant::now();
+    for _ in 0..TRY_COUNT {
+        for &(allied, opponent) in &boards {
+            for s in VALID_SQUARES {
+                let allied = allied | s.bit_array();
+                sum += gen_rook_moves_kindergarten_full(s, allied | opponent) & !allied;
+            }
+        }
+    }
+    println!("Gen rook kindergarten {:?}", start_time.elapsed());
     println!("{}", sum);
 }
 
