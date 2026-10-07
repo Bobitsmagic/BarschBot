@@ -20,7 +20,7 @@ pub struct PieceBoard {
 impl PieceBoard {
     pub fn empty() -> PieceBoard {
         PieceBoard {
-            squares: [ColoredPieceType::None; 64],
+            squares: [ColoredPieceType::NonePiece; 64],
         }
     }
 
@@ -124,7 +124,7 @@ impl DynamicState for PieceBoard {
     }
 
     fn remove_piece(&mut self, _: ColoredPieceType, s: i8) {
-        self[s] = ColoredPieceType::None;
+        self[s] = ColoredPieceType::NonePiece;
     }
 }
 

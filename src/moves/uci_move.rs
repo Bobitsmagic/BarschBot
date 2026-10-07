@@ -14,7 +14,7 @@ pub struct UciMove {
 pub const NULL_MOVE: UciMove = UciMove {
     start: 0,
     end: 0,
-    promotion_piece: PieceType::None,
+    promotion_piece: PieceType::NonePiece,
 };
 
 impl UciMove {
@@ -31,7 +31,7 @@ impl UciMove {
         let end = square::from_str(&s[2..4]);
         let promotion_piece = match s.len() {
             5 => ColoredPieceType::from_char(s.chars().nth(4).unwrap()),
-            _ => ColoredPieceType::None,
+            _ => ColoredPieceType::NonePiece,
         }
         .piece_type();
 
@@ -51,7 +51,7 @@ impl ToString for UciMove {
     fn to_string(&self) -> String {
         let s = format!("{}{}", self.start.square_string(), self.end.square_string());
 
-        if self.promotion_piece != PieceType::None {
+        if self.promotion_piece != PieceType::NonePiece {
             s + &self
                 .promotion_piece
                 .colored(PlayerColor::Black)

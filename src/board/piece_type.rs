@@ -8,7 +8,7 @@ pub enum PieceType {
     Rook,
     Queen,
     King,
-    None,
+    NonePiece,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -27,7 +27,7 @@ pub enum ColoredPieceType {
     BlackQueen,
     BlackKing,
 
-    None,
+    NonePiece,
 }
 
 pub const ALL_PIECE_TYPES: [PieceType; 7] = [
@@ -37,7 +37,7 @@ pub const ALL_PIECE_TYPES: [PieceType; 7] = [
     PieceType::Rook,
     PieceType::Queen,
     PieceType::King,
-    PieceType::None,
+    PieceType::NonePiece,
 ];
 
 pub const ALL_COLORED_PIECE_TYPES: [ColoredPieceType; 13] = [
@@ -53,7 +53,7 @@ pub const ALL_COLORED_PIECE_TYPES: [ColoredPieceType; 13] = [
     ColoredPieceType::BlackRook,
     ColoredPieceType::BlackQueen,
     ColoredPieceType::BlackKing,
-    ColoredPieceType::None,
+    ColoredPieceType::NonePiece,
 ];
 
 impl PieceType {
@@ -66,7 +66,7 @@ impl PieceType {
                 PieceType::Rook => ColoredPieceType::WhiteRook,
                 PieceType::Queen => ColoredPieceType::WhiteQueen,
                 PieceType::King => ColoredPieceType::WhiteKing,
-                PieceType::None => ColoredPieceType::None,
+                PieceType::NonePiece => ColoredPieceType::NonePiece,
             },
             PlayerColor::Black => match self {
                 PieceType::Pawn => ColoredPieceType::BlackPawn,
@@ -75,7 +75,7 @@ impl PieceType {
                 PieceType::Rook => ColoredPieceType::BlackRook,
                 PieceType::Queen => ColoredPieceType::BlackQueen,
                 PieceType::King => ColoredPieceType::BlackKing,
-                PieceType::None => ColoredPieceType::None,
+                PieceType::NonePiece => ColoredPieceType::NonePiece,
             },
         }
     }
@@ -116,7 +116,7 @@ impl ColoredPieceType {
             'q' => ColoredPieceType::BlackQueen,
             'k' => ColoredPieceType::BlackKing,
 
-            _ => ColoredPieceType::None,
+            _ => ColoredPieceType::NonePiece,
         }
     }
 
@@ -136,7 +136,7 @@ impl ColoredPieceType {
             ColoredPieceType::BlackQueen => 'q',
             ColoredPieceType::BlackKing => 'k',
 
-            ColoredPieceType::None => '.',
+            ColoredPieceType::NonePiece => '.',
         }
     }
 
@@ -155,7 +155,7 @@ impl ColoredPieceType {
             ColoredPieceType::BlackRook => "♖",
             ColoredPieceType::BlackQueen => "♕",
             ColoredPieceType::BlackKing => "♔",
-            ColoredPieceType::None => " ",
+            ColoredPieceType::NonePiece => " ",
         }
     }
 
@@ -175,7 +175,7 @@ impl ColoredPieceType {
             ColoredPieceType::BlackQueen => PieceType::Queen,
             ColoredPieceType::BlackKing => PieceType::King,
 
-            ColoredPieceType::None => PieceType::None,
+            ColoredPieceType::NonePiece => PieceType::NonePiece,
         }
     }
 
@@ -184,16 +184,16 @@ impl ColoredPieceType {
     }
 
     pub fn black(&self) -> ColoredPieceType {
-        if *self == ColoredPieceType::None {
-            return ColoredPieceType::None;
+        if *self == ColoredPieceType::NonePiece {
+            return ColoredPieceType::NonePiece;
         }
 
         self.piece_type().colored(PlayerColor::Black)
     }
 
     pub fn white(&self) -> ColoredPieceType {
-        if *self == ColoredPieceType::None {
-            return ColoredPieceType::None;
+        if *self == ColoredPieceType::NonePiece {
+            return ColoredPieceType::NonePiece;
         }
 
         self.piece_type().colored(PlayerColor::White)
@@ -215,12 +215,12 @@ impl ColoredPieceType {
             ColoredPieceType::BlackQueen => PlayerColor::Black,
             ColoredPieceType::BlackKing => PlayerColor::Black,
 
-            ColoredPieceType::None => panic!("Invalid piece type: None"),
+            ColoredPieceType::NonePiece => panic!("Invalid piece type: None"),
         }
     }
 
     pub fn is_none(&self) -> bool {
-        *self == ColoredPieceType::None
+        *self == ColoredPieceType::NonePiece
     }
 
     pub fn is_pawn(&self) -> bool {

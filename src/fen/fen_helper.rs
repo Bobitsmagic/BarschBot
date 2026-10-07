@@ -28,7 +28,7 @@ pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
 
         let piece = ColoredPieceType::from_char(c);
 
-        if piece != ColoredPieceType::None {
+        if piece != ColoredPieceType::NonePiece {
             board.add_piece(piece, square);
 
             square += 1;
@@ -75,7 +75,7 @@ pub fn to_fen(board: &PieceBoard, game_flags: &GameFlags) -> String {
             let square = square::from_file_rank(file, rank);
             let piece = board[square];
 
-            if piece == ColoredPieceType::None {
+            if piece == ColoredPieceType::NonePiece {
                 empty_count += 1;
             } else {
                 if empty_count > 0 {

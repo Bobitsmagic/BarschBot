@@ -11,9 +11,9 @@ use super::uci_move::UciMove;
 pub const NULL_MOVE: ChessMove = ChessMove {
     start: 65,
     end: 65,
-    move_piece: ColoredPieceType::None,
-    captured_piece: ColoredPieceType::None,
-    promotion_piece: ColoredPieceType::None,
+    move_piece: ColoredPieceType::NonePiece,
+    captured_piece: ColoredPieceType::NonePiece,
+    promotion_piece: ColoredPieceType::NonePiece,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,7 +38,7 @@ impl ChessMove {
         move_piece: ColoredPieceType,
         captured_piece: ColoredPieceType,
     ) -> ChessMove {
-        debug_assert!(move_piece != ColoredPieceType::None);
+        debug_assert!(move_piece != ColoredPieceType::NonePiece);
         // debug_assert!(captured_piece.piece_type() != PieceType::King);
 
         ChessMove {
@@ -46,7 +46,7 @@ impl ChessMove {
             end,
             move_piece,
             captured_piece,
-            promotion_piece: ColoredPieceType::None,
+            promotion_piece: ColoredPieceType::NonePiece,
         }
     }
 
@@ -69,7 +69,7 @@ impl ChessMove {
     }
 
     pub fn is_direct_capture(&self) -> bool {
-        self.captured_piece != ColoredPieceType::None
+        self.captured_piece != ColoredPieceType::NonePiece
     }
 
     pub fn is_en_passant(&self) -> bool {
@@ -83,7 +83,7 @@ impl ChessMove {
     }
 
     pub fn is_promotion(&self) -> bool {
-        self.promotion_piece != ColoredPieceType::None
+        self.promotion_piece != ColoredPieceType::NonePiece
     }
 
     pub fn is_long_castle(&self) -> bool {

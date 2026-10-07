@@ -2,8 +2,8 @@ use std::ops;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PlayerColor {
-    White,
-    Black,
+    White = 1,
+    Black = -1,
 }
 
 pub const ALL_COLORS: [PlayerColor; 2] = [PlayerColor::White, PlayerColor::Black];

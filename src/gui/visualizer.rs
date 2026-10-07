@@ -175,7 +175,7 @@ impl Visualizer {
                         let mpt = self.latest_render_state.piece_board[start];
                         let cpt = self.latest_render_state.piece_board[end];
 
-                        if mpt == ColoredPieceType::None {
+                        if mpt == ColoredPieceType::NonePiece {
                             continue;
                         }
 
@@ -320,7 +320,7 @@ impl Visualizer {
                         }
 
                         let tp = type_field[x + y * 8];
-                        if tp != ColoredPieceType::None && sq != lm.end {
+                        if tp != ColoredPieceType::NonePiece && sq != lm.end {
                             let texture = &self.textures[tp as usize];
                             image(
                                 texture,
@@ -333,7 +333,7 @@ impl Visualizer {
                         }
                     } else {
                         let tp = type_field[x + y * 8];
-                        if tp != ColoredPieceType::None {
+                        if tp != ColoredPieceType::NonePiece {
                             let texture = &self.textures[tp as usize];
                             image(
                                 texture,

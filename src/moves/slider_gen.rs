@@ -105,8 +105,8 @@ pub fn gen_rook_moves_kindergarten(sq: i8, mut occ: u64) -> u64 {
     let h_moves = (FIRST_RANK_ATTACK[((first_rank >> 1) & 63) as usize][file] as u64) << (row << 3);
 
     occ = A_FILE & (occ >> file);
-    occ = ((DIA_C2H7 * occ) >> 58) & 63;
-    occ = DIA_A1H8 * FIRST_RANK_ATTACK[occ as usize][((sq ^ 56) >> 3) as usize] as u64;
+    occ = ((DIA_C2H7.wrapping_mul(occ)) >> 58) & 63;
+    occ = DIA_A1H8.wrapping_mul(FIRST_RANK_ATTACK[occ as usize][((sq ^ 56) >> 3) as usize] as u64);
     let vert_moves = (H_FILE & occ) >> (file ^ 7);
 
     return vert_moves | h_moves;

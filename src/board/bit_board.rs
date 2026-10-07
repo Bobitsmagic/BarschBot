@@ -47,7 +47,7 @@ impl BitBoard {
 
         for square in VALID_SQUARES {
             let pt = piece_board[square];
-            if pt != ColoredPieceType::None {
+            if pt != ColoredPieceType::NonePiece {
                 bit_board.add_piece(pt, square);
             }
         }
@@ -90,7 +90,7 @@ impl BitBoard {
                 self.orthogonal_slider.set_bit(square);
             }
             PieceType::King => self.king.set_bit(square),
-            PieceType::None => unreachable!(),
+            PieceType::NonePiece => unreachable!(),
         }
     }
 
@@ -112,7 +112,7 @@ impl BitBoard {
                 self.orthogonal_slider.clear_bit(square);
             }
             PieceType::King => self.king.clear_bit(square),
-            PieceType::None => unreachable!(),
+            PieceType::NonePiece => unreachable!(),
         }
     }
 
@@ -135,7 +135,7 @@ impl BitBoard {
                 self.orthogonal_slider.flip_bit(square);
             }
             PieceType::King => self.king.flip_bit(square),
-            PieceType::None => unreachable!(),
+            PieceType::NonePiece => unreachable!(),
         }
     }
 
@@ -144,7 +144,7 @@ impl BitBoard {
             !(self.white_piece | self.black_piece).get_bit(end),
             "Target square is not empty"
         );
-        debug_assert!(pt != ColoredPieceType::None);
+        debug_assert!(pt != ColoredPieceType::NonePiece);
 
         let mask = start.bit_array() | end.bit_array();
 
@@ -165,7 +165,7 @@ impl BitBoard {
                 self.diagonal_slider ^= mask;
             }
             PieceType::King => self.king ^= mask,
-            PieceType::None => unreachable!(),
+            PieceType::NonePiece => unreachable!(),
         }
     }
 
@@ -392,13 +392,13 @@ impl BitBoard {
             PieceType::King => {
                 return false;
             }
-            PieceType::None => panic!("Invalid piece type"),
+            PieceType::NonePiece => panic!("Invalid piece type"),
         }
     }
 
     pub fn get_piecetype(&self, square: i8) -> PieceType {
         if !(self.white_piece | self.black_piece).get_bit(square) {
-            return PieceType::None;
+            return PieceType::NonePiece;
         }
 
         if self.pawn.get_bit(square) {
@@ -444,7 +444,7 @@ impl BitBoard {
             return self.get_piecetype(square).colored(color);
         }
 
-        return ColoredPieceType::None;
+        return ColoredPieceType::NonePiece;
     }
 }
 

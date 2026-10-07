@@ -15,7 +15,7 @@ impl ZobristHash {
         let mut hash = ZobristHash::empty();
 
         for s in VALID_SQUARES {
-            if piece_board[s] != ColoredPieceType::None {
+            if piece_board[s] != ColoredPieceType::NonePiece {
                 hash.add_piece(piece_board[s], s);
             }
         }

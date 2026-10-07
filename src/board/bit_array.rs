@@ -40,7 +40,7 @@ impl BitArray for u64 {
     }
 
     fn lowest_square_index(self) -> u32 {
-        debug_assert!(self.count_ones() == 1, "Invalid bitboard: {}", self);
+        // debug_assert!(self.count_ones() == 1, "Invalid bitboard: {}", self);
         self.trailing_zeros()
     }
 

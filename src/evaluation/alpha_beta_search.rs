@@ -1,11 +1,7 @@
 use crate::{
-    board::player_color::PlayerColor,
-    evaluation::{
-        search_functions::{better_move_sorter, CHECKMATE_VALUE, MAX_VALUE},
-        settings::Settings,
-    },
-    game::{game_result::GameResult, game_state::GameState},
-    moves::chess_move::{self, ChessMove},
+    board::player_color::PlayerColor, evaluation::{
+        move_sorting::better_move_sorter, search_functions::{CHECKMATE_VALUE, MAX_VALUE}, settings::Settings,
+    }, game::{game_result::GameResult, game_state::GameState}, moves::chess_move::{self, ChessMove},
 };
 
 pub fn go_depth(game_state: &mut GameState, depth: i32, settings: &Settings) -> (ChessMove, i32) {

@@ -1,10 +1,7 @@
 use crate::{
-    board::player_color::PlayerColor::{Black, White},
-    evaluation::{
-        hans_eval::{self, EvaluationSettings},
-        wiesel_eval::{self, WieselSettings},
-    },
-    game::game_state::GameState,
+    board::player_color::PlayerColor::{Black, White}, evaluation::{
+        hans_eval::{self, EvaluationSettings}, settings::MoveOrderingMode::BetterMoveSorter, wiesel_eval::{self, WieselSettings},
+    }, game::game_state::GameState,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -14,11 +11,22 @@ pub enum EvaluationMode {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub enum MoveOrderingMode {
+    QuietMoveSorter,
+    KillerMoveSorter,
+    SEEMoveSorter,
+    BetterMoveSorter
+}
+
+
+#[derive(Debug, Clone, Copy)]
 pub struct Settings {
     pub time_percentage: f32,
     pub quiessence_depth: i32,
     pub null_move_pruning: i32,
     pub check_extensions: i32,
+    pub move_ordering_mode: MoveOrderingMode,
+    pub quiessence_ordering_move: MoveOrderingMode,
     pub evaluation_mode: EvaluationMode,
 }
 
@@ -29,6 +37,8 @@ impl Default for Settings {
             quiessence_depth: 5,
             check_extensions: 0,
             null_move_pruning: 0,
+            move_ordering_mode: BetterMoveSorter,
+            quiessence_ordering_move: BetterMoveSorter,
             evaluation_mode: EvaluationMode::HansEvaluation(EvaluationSettings {
                 use_new_feature: false,
                 attr_weights: hans_eval::STANDARD_EVAL,

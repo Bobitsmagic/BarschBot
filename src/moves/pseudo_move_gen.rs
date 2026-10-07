@@ -190,7 +190,7 @@ pub fn gen_pseudo_legal_moves_bitboard(board_state: &BoardState, flags: &GameFla
                     king_square,
                     king_square.translate(-2, 0),
                     PieceType::King.colored(moving_color),
-                    ColoredPieceType::None,
+                    ColoredPieceType::NonePiece,
                 ));
             }
         }
@@ -201,7 +201,7 @@ pub fn gen_pseudo_legal_moves_bitboard(board_state: &BoardState, flags: &GameFla
                     king_square,
                     king_square.translate(2, 0),
                     PieceType::King.colored(moving_color),
-                    ColoredPieceType::None,
+                    ColoredPieceType::NonePiece,
                 ));
             }
         }

@@ -4,10 +4,7 @@ use arrayvec::ArrayVec;
 use rand::{rngs::StdRng, seq::SliceRandom};
 
 use crate::{
-    board::player_color::PlayerColor::{self, Black, White},
-    evaluation::settings::EvaluationMode,
-    game::{board_state::BoardState, game_result::GameResult, game_state::GameState},
-    moves::{
+    board::player_color::PlayerColor::{self, Black, White}, evaluation::{move_sorting::{QuietMoveTable, better_move_sorter, killer_move_sorter, quiet_move_sorter}, settings::{EvaluationMode, MoveOrderingMode}}, game::{board_state::BoardState, game_result::GameResult, game_state::GameState}, moves::{
         chess_move::{self, ChessMove, NULL_MOVE},
         move_gen::{self, MoveVector},
     },
@@ -35,139 +32,7 @@ struct TTEntry {
 
 type TranspositionTable = HashMap<u64, TTEntry>;
 
-type QuietMoveTable = [[i64; 64]; 64];
 
-pub fn better_move_sorter(list: &mut MoveVector, board: &BoardState, prev_best: ChessMove) {
-    const PIECE_VALUES: [i32; 7] = [10, 28, 32, 50, 90, 100, 0];
-
-    list.sort_by_cached_key(|cm| {
-        if *cm == prev_best {
-            return i32::MIN;
-        }
-
-        let mut sum = if board.bit_board.attacks_king(cm.move_piece, cm.end) {
-            500
-        } else {
-            0
-        };
-        // let mut sum = 0;
-
-        if cm.is_direct_capture() {
-            sum += PIECE_VALUES[cm.captured_piece.piece_type() as usize]
-                - PIECE_VALUES[cm.move_piece.piece_type() as usize]
-                + 200;
-        }
-
-        if cm.is_en_passant() {
-            sum += 200;
-        }
-
-        sum *= 1000;
-
-        sum += PIECE_VALUES[cm.promotion_piece.piece_type() as usize];
-
-        // sum *= 1000;
-
-        //println!("Move: {} sum: {}", cm.get_board_name(&board), sum);
-
-        return -sum;
-    });
-
-    //board.print_local_moves(&list);
-}
-
-pub fn quiet_move_sorter(
-    list: &mut MoveVector,
-    board: &BoardState,
-    prev_best: ChessMove,
-    quiet_move_table: &QuietMoveTable,
-) {
-    const PIECE_VALUES: [i64; 7] = [10, 28, 32, 50, 90, 100, 0];
-
-    list.sort_by_cached_key(|cm| {
-        if *cm == prev_best {
-            return i64::MIN;
-        }
-
-        let mut sum = if board.bit_board.attacks_king(cm.move_piece, cm.end) {
-            500
-        } else {
-            0
-        };
-
-        if cm.is_direct_capture() {
-            sum += PIECE_VALUES[cm.captured_piece.piece_type() as usize]
-                - PIECE_VALUES[cm.move_piece.piece_type() as usize]
-                + 200;
-        }
-
-        if cm.is_en_passant() {
-            sum += 200;
-        }
-
-        sum *= 1000;
-
-        sum += PIECE_VALUES[cm.promotion_piece.piece_type() as usize];
-
-        sum *= 1_000_000_000;
-
-        if quiet_move_table[cm.start as usize][cm.end as usize] > 1_000_000_000 {
-            // println!("Overflow in quiet move table");
-        }
-        sum += quiet_move_table[cm.start as usize][cm.end as usize];
-
-        return -sum;
-    });
-}
-
-pub fn killer_move_sorter(
-    list: &mut MoveVector,
-    board: &BoardState,
-    prev_best: ChessMove,
-    quiet_move_table: &QuietMoveTable,
-    _killer_move: ChessMove,
-) {
-    const PIECE_VALUES: [i64; 7] = [10, 28, 32, 50, 90, 100, 0];
-
-    list.sort_by_cached_key(|cm| {
-        if *cm == prev_best {
-            return i64::MIN;
-        }
-
-        let mut sum = if board.bit_board.attacks_king(cm.move_piece, cm.end) {
-            500
-        } else {
-            0
-        };
-
-        if cm.is_direct_capture() {
-            sum += PIECE_VALUES[cm.captured_piece.piece_type() as usize]
-                - PIECE_VALUES[cm.move_piece.piece_type() as usize]
-                + 200;
-        }
-
-        if cm.is_en_passant() {
-            sum += 200;
-        }
-
-        sum *= 1000;
-
-        sum += PIECE_VALUES[cm.promotion_piece.piece_type() as usize];
-
-        sum *= 1_000_000_000;
-
-        // if *cm == killer_move {
-        //     sum += 100_000;
-        // }
-
-        if quiet_move_table[cm.start as usize][cm.end as usize] > 1_000_000_000 {
-            // println!("Overflow in quiet move table");
-        }
-        sum += quiet_move_table[cm.start as usize][cm.end as usize];
-
-        return -sum;
-    });
-}
 
 fn quiessence_search(
     game_state: &mut GameState,
@@ -201,7 +66,7 @@ fn quiessence_search(
     }
 
     let (mut lm, in_check) =
-        move_gen::gen_legal_moves_check(&game_state.board_state, &game_state.get_flags());
+        move_gen::gen_legal_moves_check_pins(&game_state.board_state, &game_state.get_flags());
 
     if !in_check {
         let factor = match game_state.active_color() {
@@ -221,7 +86,24 @@ fn quiessence_search(
         alpha = local_score.max(alpha);
     }
 
-    better_move_sorter(&mut lm, &game_state.board_state, chess_move::NULL_MOVE);
+    match settings.move_ordering_mode {
+        MoveOrderingMode::QuietMoveSorter => quiet_move_sorter(
+            &mut lm,
+            &game_state.board_state,
+            NULL_MOVE,
+            quiet_move_table,
+        ),
+        MoveOrderingMode::BetterMoveSorter => better_move_sorter(&mut lm, &game_state.board_state, NULL_MOVE),
+
+        MoveOrderingMode::SEEMoveSorter => quiet_move_sorter(
+            &mut lm,
+            &game_state.board_state,
+            NULL_MOVE,
+            quiet_move_table,
+        ),
+
+        MoveOrderingMode::KillerMoveSorter => killer_move_sorter(&mut lm, &game_state.board_state, NULL_MOVE, quiet_move_table, NULL_MOVE),
+    }
 
     for i in 0..lm.len() {
         let m = lm[i];
@@ -440,13 +322,24 @@ fn bb_search_with_settings(
 
     let use_extend = in_check && extensions_left > 0 && lm.len() <= 2;
 
-    quiet_move_sorter(
-        &mut lm,
-        &game_state.board_state,
-        tt_entry.best_move,
-        quiet_move_table,
-    );
-    // better_move_sorter(&mut lm, &game_state.board_state, tt_entry.best_move);
+    match settings.move_ordering_mode {
+        MoveOrderingMode::QuietMoveSorter => quiet_move_sorter(
+            &mut lm,
+            &game_state.board_state,
+            tt_entry.best_move,
+            quiet_move_table,
+        ),
+        MoveOrderingMode::BetterMoveSorter => better_move_sorter(&mut lm, &game_state.board_state, tt_entry.best_move),
+
+        MoveOrderingMode::SEEMoveSorter => quiet_move_sorter(
+            &mut lm,
+            &game_state.board_state,
+            tt_entry.best_move,
+            quiet_move_table,
+        ),
+
+        MoveOrderingMode::KillerMoveSorter => killer_move_sorter(&mut lm, &game_state.board_state, tt_entry.best_move, quiet_move_table, NULL_MOVE),
+    }
 
     let mut quiets_evaluated: MoveVector = ArrayVec::new();
 
