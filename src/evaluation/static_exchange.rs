@@ -3,10 +3,24 @@ use rand::Rng;
 
 use crate::{
     board::{
-        bit_array::BitArray, bit_array_lookup::{KING_MOVES, KNIGHT_MOVES, PAWN_MOVES_BLACK, PAWN_MOVES_WHITE}, bit_board::BitBoard, dynamic_state::DynamicState, piece_type::{
-            ColoredPieceType::{self, *}, PieceType,
-        }, player_color::PlayerColor::{self, Black, White}, square::*,
-    }, evaluation::search_functions::get_random_pos, game::{board_state::BoardState, game_result::GameResult, game_state::GameState}, moves::{chess_move::ChessMove, kogge_gen::{self, DIAGONAL_FILL_FUNCTIONS, ORTHOGONAL_FILL_FUNCTIONS}, move_gen, slider_gen},
+        bit_array::BitArray,
+        bit_array_lookup::{KING_MOVES, KNIGHT_MOVES, PAWN_MOVES_BLACK, PAWN_MOVES_WHITE},
+        bit_board::BitBoard,
+        dynamic_state::DynamicState,
+        piece_type::{
+            ColoredPieceType::{self, *},
+            PieceType,
+        },
+        player_color::PlayerColor::{self, Black, White},
+        square::*,
+    },
+    evaluation::search_functions::get_random_pos,
+    game::{board_state::BoardState, game_result::GameResult, game_state::GameState},
+    moves::{
+        chess_move::ChessMove,
+        kogge_gen::{self, DIAGONAL_FILL_FUNCTIONS, ORTHOGONAL_FILL_FUNCTIONS},
+        move_gen, slider_gen,
+    },
 };
 
 fn get_smallest_attacker(square: i8, side: PlayerColor, bb: &BitBoard) -> Option<(PieceType, i8)> {
@@ -35,9 +49,8 @@ fn get_smallest_attacker(square: i8, side: PlayerColor, bb: &BitBoard) -> Option
         ));
     }
 
-    let diagonal_attacker = pc
-        & bb.diagonal_slider
-        & slider_gen::gen_bishop_moves_kogge_occ(square.bit_array(), occupied);
+    let diagonal_attacker =
+        pc & bb.diagonal_slider & slider_gen::gen_bishop_moves_pext(square, occupied);
 
     let bishop_attacker = diagonal_attacker & !bb.orthogonal_slider;
     if bishop_attacker != 0 {
@@ -110,46 +123,53 @@ pub fn see_capture_iterative(cm: ChessMove, bb: &mut BoardState) -> i32 {
     return value;
 }
 
-
 fn iterative_see(square: i8, mut side: PlayerColor, bs: &BoardState) -> i32 {
     let bb = &bs.bit_board;
-    
-    let mut slider_lists = ArrayVec::<ArrayVec::<ColoredPieceType,10>, 10>::new();
-    
+
+    let mut slider_lists = ArrayVec::<ArrayVec<ColoredPieceType, 10>, 10>::new();
+
     let sq_field = square.bit_array();
     let orth_free = !((bb.black_piece | bb.white_piece) & !bb.orthogonal_slider) | sq_field;
-    for (f, rev) in ORTHOGONAL_FILL_FUNCTIONS.iter().zip([true, false, false, true]) {
+    for (f, rev) in ORTHOGONAL_FILL_FUNCTIONS
+        .iter()
+        .zip([true, false, false, true])
+    {
         let slider = f(sq_field, orth_free) & bb.orthogonal_slider & !sq_field;
-        
+
         if slider != 0 {
             let mut list = ArrayVec::<ColoredPieceType, 10>::new();
-            
+
             for a_sq in slider.iterate_squares() {
                 list.push(bs.piece_board[a_sq]);
             }
-            
+
             if rev {
                 list.reverse();
             }
             slider_lists.push(list);
         }
     }
-    
-    let pawn_attacks = bb.pawn & ((PAWN_MOVES_BLACK[square as usize] & bb.white_piece) | (PAWN_MOVES_WHITE[square as usize] & bb.black_piece));
+
+    let pawn_attacks = bb.pawn
+        & ((PAWN_MOVES_BLACK[square as usize] & bb.white_piece)
+            | (PAWN_MOVES_WHITE[square as usize] & bb.black_piece));
 
     let slider_and_close_pawns = bb.diagonal_slider | pawn_attacks;
 
-    let diag_free = !((bb.black_piece | bb.white_piece) & !bb.diagonal_slider &!pawn_attacks);
-    for (f, rev) in DIAGONAL_FILL_FUNCTIONS.iter().zip([true, true, false, false]) {
+    let diag_free = !((bb.black_piece | bb.white_piece) & !bb.diagonal_slider & !pawn_attacks);
+    for (f, rev) in DIAGONAL_FILL_FUNCTIONS
+        .iter()
+        .zip([true, true, false, false])
+    {
         let slider = f(sq_field, diag_free) & slider_and_close_pawns & !sq_field;
-    
+
         if slider != 0 {
             let mut list = ArrayVec::<ColoredPieceType, 10>::new();
-    
+
             for a_sq in slider.iterate_squares() {
                 list.push(bs.piece_board[a_sq]);
             }
-            
+
             if rev {
                 list.reverse();
             }
@@ -165,7 +185,7 @@ fn iterative_see(square: i8, mut side: PlayerColor, bs: &BoardState) -> i32 {
         }
         slider_lists.push(king_list);
     }
-    
+
     let knight_attacks = bb.knight & KNIGHT_MOVES[square as usize];
     if knight_attacks & bb.white_piece != 0 {
         let mut knight_list = ArrayVec::<ColoredPieceType, 10>::new();
@@ -191,7 +211,7 @@ fn iterative_see(square: i8, mut side: PlayerColor, bs: &BoardState) -> i32 {
     while slider_lists.len() > 0 {
         let mut index = usize::MAX;
         let mut smallest_value = i32::MAX;
-        
+
         // println!("Kek");
         for i in 0..slider_lists.len() {
             let cpt = slider_lists[i].last().unwrap();
@@ -217,7 +237,7 @@ fn iterative_see(square: i8, mut side: PlayerColor, bs: &BoardState) -> i32 {
         }
 
         gain.push(smallest_value - gain[gain.len() - 1]);
-        
+
         side = !side;
     }
 
@@ -226,7 +246,7 @@ fn iterative_see(square: i8, mut side: PlayerColor, bs: &BoardState) -> i32 {
     for i in (1..gain.len()).rev() {
         gain[i - 1] = -((-gain[i - 1]).max(gain[i]))
     }
-    
+
     return gain[0];
 }
 
@@ -288,7 +308,6 @@ fn test_recursive_see() {
         )
     );
 
-
     // let mut gs =
     //     GameState::from_fen("3r2b1/2Nrnb2/1Nkqbn2/3p2rr/1NKRBN2/2NQNB2/3R2B1/3R3B w - - 0 1");
     // println!("Kek");
@@ -299,7 +318,7 @@ fn test_recursive_see() {
 fn test_fens() {
     const POS_COUNT: usize = 10000;
     let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(0);
-    
+
     for _ in 0..POS_COUNT {
         let depth = rng.gen_range(50..100);
 
@@ -323,6 +342,6 @@ fn test_fens() {
             let v1 = see_capture(m, &mut gs.board_state);
             let v2 = see_capture_iterative(m, &mut gs.board_state);
             assert_eq!(v1, v2);
-        }    
+        }
     }
 }

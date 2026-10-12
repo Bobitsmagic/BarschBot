@@ -373,14 +373,16 @@ pub fn count_moves(board_state: &BoardState, flags: &GameFlags) -> u32 {
 
     let pinned_orthogonal_sliders = orthogonal_sliders & pin_mask.ortho;
     for square in pinned_orthogonal_sliders.iterate_squares() {
-        let moveset =
-            gen_rook_moves_pext(square, occupied) & !allied & pin_mask.ortho & pin_mask.check; //Stay on pin
+        let moveset = gen_rook_moves_kindergarten(square, occupied)
+            & !allied
+            & pin_mask.ortho
+            & pin_mask.check; //Stay on pin
         count += moveset.count_ones();
     }
 
     let not_pinned_orthogonal_sliders = orthogonal_sliders & !pin_mask.ortho;
     for square in not_pinned_orthogonal_sliders.iterate_squares() {
-        let moveset = gen_rook_moves_pext(square, occupied) & !allied & pin_mask.check;
+        let moveset = gen_rook_moves_kindergarten(square, occupied) & !allied & pin_mask.check;
         count += moveset.count_ones();
     }
 
@@ -754,7 +756,6 @@ pub fn gen_eval_moves(board_state: &BoardState) -> [MoveVector; 2] {
     return [white_moves, black_moves];
 }
 
-
 pub fn gen_legal_moves_iterator(board_state: &BoardState, flags: &GameFlags) -> MoveIterator {
     let mut moves = MoveIterator::new();
 
@@ -963,7 +964,10 @@ pub fn gen_legal_moves(board_state: &BoardState, flags: &GameFlags) -> MoveVecto
     gen_legal_moves_check_pins(board_state, flags).0
 }
 
-pub fn gen_legal_captures_quiessence(board_state: &BoardState, flags: &GameFlags) -> (MoveVector, bool) {
+pub fn gen_legal_captures_quiessence(
+    board_state: &BoardState,
+    flags: &GameFlags,
+) -> (MoveVector, bool) {
     let moving_color = flags.active_color;
     let board = &board_state.bit_board;
     let pin_mask = CheckPinMask::pins_on(moving_color, board);
@@ -979,7 +983,7 @@ pub fn gen_legal_captures_quiessence(board_state: &BoardState, flags: &GameFlags
 
     let occupied = board.white_piece | board.black_piece;
     let moving_color = flags.active_color;
-        
+
     let allied = match moving_color {
         PlayerColor::White => board.white_piece,
         PlayerColor::Black => board.black_piece,
@@ -1108,10 +1112,9 @@ pub fn gen_legal_captures_quiessence(board_state: &BoardState, flags: &GameFlags
     let pinned_diagonal_sliders = diagonal_sliders & pin_mask.diag;
     for square in pinned_diagonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        let moveset = gen_bishop_moves_kogge(square.bit_array(), allied, opponent)
-            & pin_mask.diag
-            & opponent; //Stay on pin
-    
+        let moveset =
+            gen_bishop_moves_kogge(square.bit_array(), allied, opponent) & pin_mask.diag & opponent; //Stay on pin
+
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(
                 square,
@@ -1144,9 +1147,7 @@ pub fn gen_legal_captures_quiessence(board_state: &BoardState, flags: &GameFlags
     for square in pinned_orthogonal_sliders.iterate_squares() {
         let pt = piece_board[square];
         // let moveset = gen_rook_moves_kogge(square.bit_array(), allied, opponent)
-        let moveset = gen_rook_moves_kindergarten(square, occupied)
-            & pin_mask.ortho
-            & opponent;
+        let moveset = gen_rook_moves_kindergarten(square, occupied) & pin_mask.ortho & opponent;
 
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(
@@ -1161,8 +1162,7 @@ pub fn gen_legal_captures_quiessence(board_state: &BoardState, flags: &GameFlags
     let not_pinned_orthogonal_sliders = orthogonal_sliders & !pin_mask.ortho;
     for square in not_pinned_orthogonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        let moveset =
-            gen_rook_moves_kindergarten(square, occupied) & opponent;
+        let moveset = gen_rook_moves_kindergarten(square, occupied) & opponent;
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(
                 square,
@@ -1184,18 +1184,25 @@ pub fn gen_legal_captures_quiessence(board_state: &BoardState, flags: &GameFlags
     for s in (king_moves & !attacked_squares & opponent).iterate_squares() {
         moves.push(ChessMove::new(king_square, s, king_pt, piece_board[s]));
     }
-    
+
     return (moves, false);
 }
 
-pub fn gen_legal_moves_check_pins(board_state: &BoardState, flags: &GameFlags) -> (MoveVector, bool) {
+pub fn gen_legal_moves_check_pins(
+    board_state: &BoardState,
+    flags: &GameFlags,
+) -> (MoveVector, bool) {
     let moving_color = flags.active_color;
     let board = &board_state.bit_board;
     let pin_mask = CheckPinMask::pins_on(moving_color, board);
 
     return gen_legal_moves_check(board_state, flags, &pin_mask);
 }
-pub fn gen_legal_moves_check(board_state: &BoardState, flags: &GameFlags, pin_mask: &CheckPinMask) -> (MoveVector, bool) {
+pub fn gen_legal_moves_check(
+    board_state: &BoardState,
+    flags: &GameFlags,
+    pin_mask: &CheckPinMask,
+) -> (MoveVector, bool) {
     let mut moves = ArrayVec::new();
 
     let board = &board_state.bit_board;
@@ -1203,7 +1210,7 @@ pub fn gen_legal_moves_check(board_state: &BoardState, flags: &GameFlags, pin_ma
 
     let occupied = board.white_piece | board.black_piece;
     let moving_color = flags.active_color;
-        
+
     let empty = !occupied;
     let allied = match moving_color {
         PlayerColor::White => board.white_piece,
@@ -1211,7 +1218,8 @@ pub fn gen_legal_moves_check(board_state: &BoardState, flags: &GameFlags, pin_ma
     };
     let king_square = (allied & board.king).lowest_square_index();
 
-    if pin_mask.check == 0 { //Possibly double checked
+    if pin_mask.check == 0 {
+        //Possibly double checked
         let king_square = (board.king & allied).lowest_square_index() as i8;
         let king_moves = bit_array_lookup::KING_MOVES[king_square as usize] & !allied;
         let attacked_squares = board_state
@@ -1254,7 +1262,6 @@ pub fn gen_legal_moves_check(board_state: &BoardState, flags: &GameFlags, pin_ma
         PlayerColor::White => 4,
         PlayerColor::Black => 3,
     };
-
 
     //Horizontal ep pin
     let hz_attacker = ROWS[row_index]
@@ -1417,10 +1424,10 @@ pub fn gen_legal_moves_check(board_state: &BoardState, flags: &GameFlags, pin_ma
     let pinned_diagonal_sliders = diagonal_sliders & pin_mask.diag;
     for square in pinned_diagonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        let moveset = gen_bishop_moves_kogge(square.bit_array(), allied, opponent)
-            & pin_mask.diag
-            & pin_mask.check; //Stay on pin
-                              // let moveset = gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.diag  & pin_mask.check; //Stay on pin
+        // let moveset = gen_bishop_moves_kogge(square.bit_array(), allied, opponent)
+        let moveset =
+            gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.diag & pin_mask.check; //Stay on pin
+                                                                                                // let moveset = gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.diag  & pin_mask.check; //Stay on pin
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(
                 square,
@@ -1434,8 +1441,8 @@ pub fn gen_legal_moves_check(board_state: &BoardState, flags: &GameFlags, pin_ma
     let not_pinned_diagonal_sliders = diagonal_sliders & !pin_mask.diag;
     for square in not_pinned_diagonal_sliders.iterate_squares() {
         let pt = piece_board[square];
-        //_kogge(square.bit_array(), allied, opponent)
-        let moveset = gen_bishop_moves_kogge(square.bit_array(), allied, opponent) & pin_mask.check;
+        // let moveset = gen_bishop_moves_kogge(square.bit_array(), allied, opponent)
+        let moveset = gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.check;
         // let moveset = gen_bishop_moves_pext(square, occupied) & !allied & pin_mask.check;
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(
@@ -1473,8 +1480,7 @@ pub fn gen_legal_moves_check(board_state: &BoardState, flags: &GameFlags, pin_ma
     for square in not_pinned_orthogonal_sliders.iterate_squares() {
         let pt = piece_board[square];
         // let moveset = gen_rook_moves_kogge(square.bit_array(), allied, opponent)
-        let moveset =
-            gen_rook_moves_kindergarten(square, occupied) & !allied & pin_mask.check;
+        let moveset = gen_rook_moves_kindergarten(square, occupied) & !allied & pin_mask.check;
         for target_square in moveset.iterate_squares() {
             moves.push(ChessMove::new(
                 square,
@@ -1486,28 +1492,28 @@ pub fn gen_legal_moves_check(board_state: &BoardState, flags: &GameFlags, pin_ma
     }
 
     //King moves
-    
+
     //Castling
     const QUEEN_SIDE_BLOCKER: u64 = 14; //B1, C1, D1
     const KING_SIDE_BLOCKER: u64 = 96; //F1, G1
-    
+
     let translation = match moving_color {
         PlayerColor::White => 0,
         PlayerColor::Black => 7,
     };
-    
+
     let queen_side_blocker = QUEEN_SIDE_BLOCKER.translate_vertical(translation);
     let king_side_blocker = KING_SIDE_BLOCKER.translate_vertical(translation);
-    
+
     const QUEEN_SIDE_SQUARES: u64 = 12; //C1, D1
-    
+
     let queen_side_squares = QUEEN_SIDE_SQUARES.translate_vertical(translation);
-    
+
     let (king_side, queen_side) = match moving_color {
         PlayerColor::White => (flags.white_king_side_castle, flags.white_queen_side_castle),
         PlayerColor::Black => (flags.black_king_side_castle, flags.black_queen_side_castle),
     };
-    
+
     let king_square = (board.king & allied).lowest_square_index() as i8;
     let king_moves = bit_array_lookup::KING_MOVES[king_square as usize] & !allied;
     let attacked_squares = board_state
@@ -1547,7 +1553,13 @@ pub fn gen_legal_moves_check(board_state: &BoardState, flags: &GameFlags, pin_ma
     return (moves, pin_mask.check != u64::MAX);
 }
 
-pub fn gen_king_escape_moves(king_square: i8, board_state: &BoardState, moving_color: PlayerColor, allied: u64, moves: &mut MoveIterator) {
+pub fn gen_king_escape_moves(
+    king_square: i8,
+    board_state: &BoardState,
+    moving_color: PlayerColor,
+    allied: u64,
+    moves: &mut MoveIterator,
+) {
     let attacked_squares = board_state
         .bit_board
         .attacked_bits_through_king(!moving_color);

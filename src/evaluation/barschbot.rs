@@ -6,7 +6,7 @@ use super::{search_functions::bb_timed_search, search_stats::SearchStats, settin
 pub struct Barschbot {
     pub name: String,
     pub settings: Settings,
-    search_stats: SearchStats,
+    pub search_stats: SearchStats,
 }
 
 impl Barschbot {

@@ -1,7 +1,13 @@
 use crate::{
-    board::player_color::PlayerColor::{Black, White}, evaluation::{
-        hans_eval::{self, EvaluationSettings}, settings::MoveOrderingMode::BetterMoveSorter, wiesel_eval::{self, WieselSettings},
-    }, game::game_state::GameState,
+    board::player_color::PlayerColor::{Black, White},
+    evaluation::{
+        hans_eval::{self, EvaluationSettings},
+        move_sorting::{generic_move_sorter, QuietMoveTable},
+        settings::MoveOrderingMode::BetterMoveSorter,
+        wiesel_eval::{self, WieselSettings},
+    },
+    game::{board_state::BoardState, game_state::GameState},
+    moves::{chess_move::ChessMove, move_gen::MoveVector},
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -12,12 +18,11 @@ pub enum EvaluationMode {
 
 #[derive(Debug, Clone, Copy)]
 pub enum MoveOrderingMode {
-    QuietMoveSorter,
-    KillerMoveSorter,
-    SEEMoveSorter,
-    BetterMoveSorter
+    QuietMove,
+    StaticExchange,
+    BetterMoveSorter,
+    GenericMoveSorter(fn(&mut MoveVector, &mut BoardState, ChessMove, &QuietMoveTable) -> ()),
 }
-
 
 #[derive(Debug, Clone, Copy)]
 pub struct Settings {
@@ -26,7 +31,7 @@ pub struct Settings {
     pub null_move_pruning: i32,
     pub check_extensions: i32,
     pub move_ordering_mode: MoveOrderingMode,
-    pub quiessence_ordering_move: MoveOrderingMode,
+    pub quiessence_ordering_mode: MoveOrderingMode,
     pub evaluation_mode: EvaluationMode,
 }
 
@@ -37,8 +42,12 @@ impl Default for Settings {
             quiessence_depth: 5,
             check_extensions: 0,
             null_move_pruning: 0,
-            move_ordering_mode: BetterMoveSorter,
-            quiessence_ordering_move: BetterMoveSorter,
+            move_ordering_mode: MoveOrderingMode::GenericMoveSorter(
+                generic_move_sorter::<true, true, 2, true, true>,
+            ),
+            quiessence_ordering_mode: MoveOrderingMode::GenericMoveSorter(
+                generic_move_sorter::<true, false, 1, true, false>,
+            ),
             evaluation_mode: EvaluationMode::HansEvaluation(EvaluationSettings {
                 use_new_feature: false,
                 attr_weights: hans_eval::STANDARD_EVAL,

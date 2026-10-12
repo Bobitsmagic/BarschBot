@@ -1,8 +1,17 @@
-use crate::{evaluation::static_exchange, game::board_state::BoardState, moves::{chess_move::ChessMove, move_gen::MoveVector}};
+use crate::{
+    evaluation::static_exchange,
+    game::board_state::BoardState,
+    moves::{chess_move::ChessMove, move_gen::MoveVector},
+};
 
 pub type QuietMoveTable = [[i64; 64]; 64];
 
-pub fn see_move_sorter(list: &mut MoveVector, board: &mut BoardState, prev_best: ChessMove, quiet_move_table: &QuietMoveTable) {
+pub fn see_move_sorter(
+    list: &mut MoveVector,
+    board: &mut BoardState,
+    prev_best: ChessMove,
+    quiet_move_table: &QuietMoveTable,
+) {
     const PIECE_VALUES: [i64; 7] = [10, 28, 32, 50, 90, 0, 0];
     list.sort_by_cached_key(|cm| {
         if *cm == prev_best {
@@ -15,20 +24,16 @@ pub fn see_move_sorter(list: &mut MoveVector, board: &mut BoardState, prev_best:
             0
         };
 
-        if cm.is_direct_capture() {
+        if cm.is_capture() {
             sum += static_exchange::see_capture(*cm, board) as i64;
         }
 
-        if cm.is_en_passant() {
-            sum += 200;
-        }
-
-        sum *= 1000;
+        sum *= 100;
 
         sum += PIECE_VALUES[cm.promotion_piece.piece_type() as usize];
 
         sum *= 1_000_000_000;
-        
+
         sum += quiet_move_table[cm.start as usize][cm.end as usize];
 
         return -sum;
@@ -118,50 +123,80 @@ pub fn quiet_move_sorter(
     });
 }
 
-pub fn killer_move_sorter(
+pub fn generic_move_sorter<
+    const PREV_BEST: bool,
+    const CHECK: bool,
+    const CAPTURE_MODE: u8,
+    const PROMOTION: bool,
+    const QUIET_MOVE_TABLE: bool,
+>(
     list: &mut MoveVector,
-    board: &BoardState,
+    board: &mut BoardState,
     prev_best: ChessMove,
     quiet_move_table: &QuietMoveTable,
-    _killer_move: ChessMove,
 ) {
     const PIECE_VALUES: [i64; 7] = [10, 28, 32, 50, 90, 100, 0];
 
+    if !PREV_BEST && !CHECK && CAPTURE_MODE != 3 && !PROMOTION && !QUIET_MOVE_TABLE {
+        return;
+    }
+
     list.sort_by_cached_key(|cm| {
-        if *cm == prev_best {
-            return i64::MIN;
+        let mut sum = 0;
+
+        if PREV_BEST {
+            if *cm == prev_best {
+                return i64::MIN;
+            }
         }
 
-        let mut sum = if board.bit_board.attacks_king(cm.move_piece, cm.end) {
-            500
-        } else {
-            0
-        };
-
-        if cm.is_direct_capture() {
-            sum += PIECE_VALUES[cm.captured_piece.piece_type() as usize]
-                - PIECE_VALUES[cm.move_piece.piece_type() as usize]
-                + 200;
+        if CHECK {
+            sum = if board.bit_board.attacks_king(cm.move_piece, cm.end) {
+                1
+            } else {
+                0
+            };
         }
 
-        if cm.is_en_passant() {
-            sum += 200;
+        match CAPTURE_MODE {
+            0 => {
+                sum *= 100;
+
+                if cm.is_direct_capture() {
+                    sum += PIECE_VALUES[cm.captured_piece.piece_type() as usize]
+                        - PIECE_VALUES[cm.move_piece.piece_type() as usize];
+                }
+            }
+            1 => {
+                sum *= 1000;
+
+                if cm.is_direct_capture() {
+                    sum += PIECE_VALUES[cm.captured_piece.piece_type() as usize]
+                        - PIECE_VALUES[cm.move_piece.piece_type() as usize];
+                }
+
+                if cm.is_capture() {
+                    sum += 200;
+                }
+            }
+            2 => {
+                sum *= 2000;
+                if cm.is_capture() {
+                    sum += static_exchange::see_capture(*cm, board) as i64;
+                }
+            }
+            _ => {}
         }
 
-        sum *= 1000;
-
-        sum += PIECE_VALUES[cm.promotion_piece.piece_type() as usize];
-
-        sum *= 1_000_000_000;
-
-        // if *cm == killer_move {
-        //     sum += 100_000;
-        // }
-
-        if quiet_move_table[cm.start as usize][cm.end as usize] > 1_000_000_000 {
-            // println!("Overflow in quiet move table");
+        if PROMOTION {
+            sum *= 100;
+            sum += PIECE_VALUES[cm.promotion_piece.piece_type() as usize];
         }
-        sum += quiet_move_table[cm.start as usize][cm.end as usize];
+
+        if QUIET_MOVE_TABLE {
+            sum *= 1_000_000_000;
+            sum += quiet_move_table[cm.start as usize][cm.end as usize];
+        }
 
         return -sum;
     });

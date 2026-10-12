@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use barschbot::{game::game_state::GameState, moves::check_pin_mask};
 use fearless_simd::{u64x2, u8x16, Level, Simd, SimdBase, SimdInto};
 use fearless_simd_macros::simd;
@@ -12,4 +14,9 @@ fn main() {
     let mut gs = GameState::from_fen("rnbqkbnr/ppp1pppp/3p4/8/Q7/2P5/PP1PPPPP/RNB1KBNR b KQkq -");
 
     // check_pin_mask::CheckPinMask::pins_on(gs, board)
+    let mut set = HashMap::new();
+
+    set.insert(0_i32, 1_i32);
+
+    let k = set[&0];
 }

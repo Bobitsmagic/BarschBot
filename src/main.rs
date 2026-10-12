@@ -166,15 +166,7 @@ fn human_against_bot(engine_handle: VisHandle) {
 
     let mut bot = Barschbot::named(
         Settings {
-            time_percentage: 0.015,
-            quiessence_depth: 5,
-            check_extensions: 0,
-            null_move_pruning: 0,
-            evaluation_mode: settings::EvaluationMode::HansEvaluation(EvaluationSettings {
-                use_new_feature: false,
-                attr_weights: STANDARD_EVAL,
-                // attr_weights: Attributes {passed_pawn: 100, ..hans_eval::STANDARD_EVAL},
-            }),
+            ..Default::default()
         },
         String::from("New Hans"),
     );

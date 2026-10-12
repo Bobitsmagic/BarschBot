@@ -190,7 +190,8 @@ impl GameState {
         let mut check = false;
 
         if self.legal_moves.is_none() {
-            let (moves, c) = move_gen::gen_legal_moves_check(&self.board_state, &self.get_flags());
+            let (moves, c) =
+                move_gen::gen_legal_moves_check_pins(&self.board_state, &self.get_flags());
             self.legal_moves = Some(moves);
             check = c;
         } else {

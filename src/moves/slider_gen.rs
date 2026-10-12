@@ -5,8 +5,8 @@ use piston::Key::R;
 use crate::board::{
     bit_array::BitArray,
     bit_array_lookup::{
-        BISHOP_BLOCKER_MASK, BISHOP_MOVE_TABLE, COLUMNS, FIRST_RANK_ATTACK, ROOK_BLOCKER_MASK,
-        ROOK_MOVE_TABLE, ROWS,
+        BISHOP_BLOCKER_MASK, BISHOP_MOVE_TABLE, COLUMNS, FIRST_RANK_ATTACK, ORTHOGONAL_MOVES,
+        ROOK_BLOCKER_MASK, ROOK_MOVE_TABLE, ROWS,
     },
     square::{self, Square},
 };
@@ -86,6 +86,57 @@ pub fn gen_rook_moves_pext(square: i8, occupied: u64) -> u64 {
     return ROOK_MOVE_TABLE[square as usize][index as usize];
 }
 
+pub fn gen_rook_moves_pdep(sq: i8, occupied: u64) -> u64 {
+    const NO_OUTSIDE_COLUMN: u64 = !COLUMNS[0] & !COLUMNS[7];
+    const INNER_ROWS: [u64; 8] = [
+        ROWS[0] & NO_OUTSIDE_COLUMN,
+        ROWS[1] & NO_OUTSIDE_COLUMN,
+        ROWS[2] & NO_OUTSIDE_COLUMN,
+        ROWS[3] & NO_OUTSIDE_COLUMN,
+        ROWS[4] & NO_OUTSIDE_COLUMN,
+        ROWS[5] & NO_OUTSIDE_COLUMN,
+        ROWS[6] & NO_OUTSIDE_COLUMN,
+        ROWS[7] & NO_OUTSIDE_COLUMN,
+    ];
+
+    let row = (sq >> 3) as usize;
+    let file = (sq & 7) as usize;
+    let h_index = unsafe { core::arch::x86_64::_pext_u64(occupied, INNER_ROWS[row]) };
+    let h_moves = (FIRST_RANK_ATTACK[h_index as usize][file] as u64) << (row << 3);
+
+    const NO_OUTSIDE_ROWS: u64 = !ROWS[0] & !ROWS[7];
+    const INNER_COLUMNS: [u64; 8] = [
+        COLUMNS[0] & NO_OUTSIDE_ROWS,
+        COLUMNS[1] & NO_OUTSIDE_ROWS,
+        COLUMNS[2] & NO_OUTSIDE_ROWS,
+        COLUMNS[3] & NO_OUTSIDE_ROWS,
+        COLUMNS[4] & NO_OUTSIDE_ROWS,
+        COLUMNS[5] & NO_OUTSIDE_ROWS,
+        COLUMNS[6] & NO_OUTSIDE_ROWS,
+        COLUMNS[7] & NO_OUTSIDE_ROWS,
+    ];
+
+    let v_index = unsafe { core::arch::x86_64::_pext_u64(occupied, INNER_COLUMNS[row]) };
+    let v_moves = unsafe {
+        core::arch::x86_64::_pdep_u64(
+            FIRST_RANK_ATTACK[v_index as usize][row] as u64,
+            COLUMNS[row],
+        )
+    };
+
+    return h_moves | v_moves;
+}
+
+pub fn gen_rook_moves_pdep_full(sq: i8, occupied: u64) -> u64 {
+    const DATA: [u16; 1_usize << 12] = [63; 1_usize << 12];
+
+    let index = unsafe { core::arch::x86_64::_pext_u64(occupied, ROOK_BLOCKER_MASK[sq as usize]) };
+
+    return unsafe {
+        core::arch::x86_64::_pdep_u64(DATA[index as usize] as u64, ORTHOGONAL_MOVES[sq as usize])
+    };
+}
+
 pub fn gen_bishop_moves_pext(square: i8, occupied: u64) -> u64 {
     let index = order_bits(occupied, BISHOP_BLOCKER_MASK[square as usize]);
 
@@ -131,7 +182,7 @@ pub fn gen_rook_moves_kindergarten_full(sq: i8, mut occ: u64) -> u64 {
 }
 
 pub fn order_bits(value: u64, mask: u64) -> u64 {
-    return bitintr::Pext::pext(value, mask); //650 ms
+    // return bitintr::Pext::pext(value, mask); //650 ms
 
     //return bitintr::Pdep::pdep(value, mask);
     // let mut ret = 0;
@@ -141,9 +192,9 @@ pub fn order_bits(value: u64, mask: u64) -> u64 {
 
     // return ret; //650 ms
 
-    // unsafe {
-    //     return core::arch::x86_64::_pext_u64(value, mask); //990 ms
-    // }
+    unsafe {
+        return core::arch::x86_64::_pext_u64(value, mask); //990 ms
+    }
 }
 
 pub fn gen_rook_moves_kogge_occ(bb: u64, occupied: u64) -> u64 {

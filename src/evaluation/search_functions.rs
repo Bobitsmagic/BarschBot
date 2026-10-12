@@ -4,7 +4,16 @@ use arrayvec::ArrayVec;
 use rand::{rngs::StdRng, seq::SliceRandom};
 
 use crate::{
-    board::player_color::PlayerColor::{self, Black, White}, evaluation::{move_sorting::{QuietMoveTable, better_move_sorter, killer_move_sorter, quiet_move_sorter}, settings::{EvaluationMode, MoveOrderingMode}}, game::{board_state::BoardState, game_result::GameResult, game_state::GameState}, moves::{
+    board::player_color::PlayerColor::{self, Black, White},
+    evaluation::{
+        move_sorting::{
+            better_move_sorter, generic_move_sorter, quiet_move_sorter, see_move_sorter,
+            QuietMoveTable,
+        },
+        settings::{EvaluationMode, MoveOrderingMode},
+    },
+    game::{board_state::BoardState, game_result::GameResult, game_state::GameState},
+    moves::{
         chess_move::{self, ChessMove, NULL_MOVE},
         move_gen::{self, MoveVector},
     },
@@ -31,8 +40,6 @@ struct TTEntry {
 }
 
 type TranspositionTable = HashMap<u64, TTEntry>;
-
-
 
 fn quiessence_search(
     game_state: &mut GameState,
@@ -74,6 +81,7 @@ fn quiessence_search(
             PlayerColor::Black => -1,
         };
         let local_score = settings.evaluate(game_state, alpha, beta) * factor;
+        stats.evals += 1;
 
         if local_score >= beta {
             return local_score;
@@ -86,23 +94,30 @@ fn quiessence_search(
         alpha = local_score.max(alpha);
     }
 
-    match settings.move_ordering_mode {
-        MoveOrderingMode::QuietMoveSorter => quiet_move_sorter(
+    match settings.quiessence_ordering_mode {
+        MoveOrderingMode::QuietMove => quiet_move_sorter(
             &mut lm,
             &game_state.board_state,
             NULL_MOVE,
             quiet_move_table,
         ),
-        MoveOrderingMode::BetterMoveSorter => better_move_sorter(&mut lm, &game_state.board_state, NULL_MOVE),
+        MoveOrderingMode::BetterMoveSorter => {
+            better_move_sorter(&mut lm, &game_state.board_state, NULL_MOVE)
+        }
 
-        MoveOrderingMode::SEEMoveSorter => quiet_move_sorter(
+        MoveOrderingMode::StaticExchange => see_move_sorter(
             &mut lm,
-            &game_state.board_state,
+            &mut game_state.board_state,
             NULL_MOVE,
             quiet_move_table,
         ),
 
-        MoveOrderingMode::KillerMoveSorter => killer_move_sorter(&mut lm, &game_state.board_state, NULL_MOVE, quiet_move_table, NULL_MOVE),
+        MoveOrderingMode::GenericMoveSorter(f) => f(
+            &mut lm,
+            &mut game_state.board_state,
+            NULL_MOVE,
+            quiet_move_table,
+        ),
     }
 
     for i in 0..lm.len() {
@@ -141,7 +156,6 @@ fn quiessence_search(
 
             if alpha >= beta {
                 alpha = beta;
-
                 break;
             }
         }
@@ -232,6 +246,7 @@ fn bb_search_with_settings(
                 PlayerColor::Black => -1,
             };
             let eval = settings.evaluate(game_state, alpha, beta) * factor;
+            stats.evals += 1;
 
             // println!("M: {} -> {}", game_state.last_move().unwrap().to_string(), eval * factor);
             // if game_state.last_move().unwrap().captured_piece == ColoredPieceType::WhiteQueen {
@@ -323,22 +338,29 @@ fn bb_search_with_settings(
     let use_extend = in_check && extensions_left > 0 && lm.len() <= 2;
 
     match settings.move_ordering_mode {
-        MoveOrderingMode::QuietMoveSorter => quiet_move_sorter(
+        MoveOrderingMode::QuietMove => quiet_move_sorter(
             &mut lm,
             &game_state.board_state,
             tt_entry.best_move,
             quiet_move_table,
         ),
-        MoveOrderingMode::BetterMoveSorter => better_move_sorter(&mut lm, &game_state.board_state, tt_entry.best_move),
+        MoveOrderingMode::BetterMoveSorter => {
+            better_move_sorter(&mut lm, &game_state.board_state, tt_entry.best_move)
+        }
 
-        MoveOrderingMode::SEEMoveSorter => quiet_move_sorter(
+        MoveOrderingMode::StaticExchange => see_move_sorter(
             &mut lm,
-            &game_state.board_state,
+            &mut game_state.board_state,
             tt_entry.best_move,
             quiet_move_table,
         ),
 
-        MoveOrderingMode::KillerMoveSorter => killer_move_sorter(&mut lm, &game_state.board_state, tt_entry.best_move, quiet_move_table, NULL_MOVE),
+        MoveOrderingMode::GenericMoveSorter(f) => f(
+            &mut lm,
+            &mut game_state.board_state,
+            tt_entry.best_move,
+            quiet_move_table,
+        ),
     }
 
     let mut quiets_evaluated: MoveVector = ArrayVec::new();

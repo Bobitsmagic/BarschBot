@@ -2,37 +2,54 @@ use std::{default, time::Instant};
 
 use barschbot::{
     board::{
-        bit_array::BitArray, bit_array_lookup::{COLUMNS, KING_MOVES, PASSED_PAWN_MASK_BLACK, PASSED_PAWN_MASK_WHITE}, dynamic_state::DynamicState, piece_board::PieceBoard, piece_type::{
+        bit_array::BitArray,
+        bit_array_lookup::{COLUMNS, KING_MOVES, PASSED_PAWN_MASK_BLACK, PASSED_PAWN_MASK_WHITE},
+        dynamic_state::DynamicState,
+        piece_board::PieceBoard,
+        piece_type::{
             ColoredPieceType::{BlackPawn, WhitePawn},
             PieceType,
-        }, rank, square::{self, PAWN_SQUARES, Square, VALID_SQUARES},
-    }, evaluation::{
-        barschbot::Barschbot, hans_eval::{self, EvaluationSettings, STANDARD_EVAL}, search_functions::{MAX_VALUE, get_random_pos}, settings::Settings, static_exchange, wiesel_eval::{self, WieselSettings},
-    }, game::{game_result::GameResult, game_state::GameState}, match_handling, moves::{
+        },
+        rank,
+        square::{self, Square, PAWN_SQUARES, VALID_SQUARES},
+    },
+    evaluation::{
+        barschbot::Barschbot,
+        hans_eval::{self, EvaluationSettings, STANDARD_EVAL},
+        move_sorting::generic_move_sorter,
+        search_functions::{get_random_pos, MAX_VALUE},
+        settings::{MoveOrderingMode, Settings},
+        static_exchange,
+        wiesel_eval::{self, WieselSettings},
+    },
+    game::{game_result::GameResult, game_state::GameState},
+    match_handling,
+    moves::{
         move_gen::{self, gen_king_moves_kogge},
         perft_tests::PERFT_FENS,
         slider_gen::{
             self, gen_bishop_moves, gen_bishop_moves_kogge, gen_bishop_moves_pext, gen_rook_moves,
             gen_rook_moves_kindergarten, gen_rook_moves_kindergarten_full, gen_rook_moves_kogge,
-            gen_rook_moves_pext,
+            gen_rook_moves_pdep, gen_rook_moves_pdep_full, gen_rook_moves_pext,
         },
     },
 };
 
 use fearless_simd::{mask8x16, SimdMask};
 use rand::{rngs::StdRng, Rng};
+use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 fn main() {
     // env::set_var("RUST_BACKTRACE", "1");
-    bench_search_functions();
-    // benchmark_fens();
     // benchmark_see();
     // passed_pawn_benchmark();
     // gen_king_moves_vs_lookup();
     // compare_eval_functions();
     // slider_gen();
-    // bench_search_functions();
+    // benchmark_fens();
+    bench_search_functions();
     // rook_bit_sorting();
+    // bench_move_sorting();
 }
 
 pub fn benchmark_see() {
@@ -220,7 +237,7 @@ fn count_moves_iter(game_state: &mut GameState, depth: u8) -> u64 {
     return count;
 }
 
-fn count_moves_sperate_iter(game_state: &mut GameState, depth: u8) -> u64 {
+fn count_moves_separate_iter(game_state: &mut GameState, depth: u8) -> u64 {
     if depth == 0 {
         return 1;
     }
@@ -235,7 +252,7 @@ fn count_moves_sperate_iter(game_state: &mut GameState, depth: u8) -> u64 {
         let m = game_state.board_state.piece_board.get_move(start, target);
 
         game_state.make_move(m);
-        count += count_moves_sperate_iter(game_state, depth - 1);
+        count += count_moves_separate_iter(game_state, depth - 1);
         game_state.undo_move();
     }
 
@@ -253,14 +270,14 @@ fn count_moves_sperate_iter(game_state: &mut GameState, depth: u8) -> u64 {
                 m.promotion_piece = promotion.colored(game_state.active_color());
 
                 game_state.make_move(m);
-                count += count_moves_sperate_iter(game_state, depth - 1);
+                count += count_moves_separate_iter(game_state, depth - 1);
                 game_state.undo_move();
             }
         } else {
             let m = game_state.board_state.piece_board.get_move(start, target);
 
             game_state.make_move(m);
-            count += count_moves_sperate_iter(game_state, depth - 1);
+            count += count_moves_separate_iter(game_state, depth - 1);
             game_state.undo_move();
         }
     }
@@ -623,10 +640,39 @@ pub fn slider_gen() {
         for &(allied, opponent) in &boards {
             for s in VALID_SQUARES {
                 let allied = allied | s.bit_array();
+                sum += gen_rook_moves_pdep(s, allied | opponent) & !allied;
+            }
+        }
+    }
+
+    println!("Gen rook pdep {:?}", start_time.elapsed());
+    println!("{}", sum);
+
+    let mut sum = 0;
+    let start_time = Instant::now();
+    for _ in 0..TRY_COUNT {
+        for &(allied, opponent) in &boards {
+            for s in VALID_SQUARES {
+                let allied = allied | s.bit_array();
+                sum += gen_rook_moves_pdep_full(s, allied | opponent) & !allied;
+            }
+        }
+    }
+
+    println!("Gen rook pdep full {:?}", start_time.elapsed());
+    println!("{}", sum);
+
+    let mut sum = 0;
+    let start_time = Instant::now();
+    for _ in 0..TRY_COUNT {
+        for &(allied, opponent) in &boards {
+            for s in VALID_SQUARES {
+                let allied = allied | s.bit_array();
                 sum += gen_rook_moves_kogge(s.bit_array(), allied, opponent);
             }
         }
     }
+
     println!("Gen rook kogge {:?}", start_time.elapsed());
     println!("{}", sum);
 
@@ -653,27 +699,184 @@ pub fn slider_gen() {
             }
         }
     }
-    println!("Gen rook kindergarten {:?}", start_time.elapsed());
+    println!("Gen rook kindergarten full {:?}", start_time.elapsed());
     println!("{}", sum);
+}
+
+pub fn bench_move_sorting() {
+    const MAX_DEPTH: i32 = 5;
+    const POS_COUNT: usize = 2000;
+
+    let all_list = [
+        generic_move_sorter::<false, false, 0, false, false>,
+        generic_move_sorter::<false, false, 1, false, false>,
+        generic_move_sorter::<false, false, 2, false, false>,
+        generic_move_sorter::<false, false, 3, false, false>,
+        generic_move_sorter::<true, false, 0, false, false>,
+        generic_move_sorter::<true, false, 1, false, false>,
+        generic_move_sorter::<true, false, 2, false, false>,
+        generic_move_sorter::<true, false, 3, false, false>,
+        generic_move_sorter::<false, true, 0, false, false>,
+        generic_move_sorter::<false, true, 1, false, false>,
+        generic_move_sorter::<false, true, 2, false, false>,
+        generic_move_sorter::<false, true, 3, false, false>,
+        generic_move_sorter::<true, true, 0, false, false>,
+        generic_move_sorter::<true, true, 1, false, false>,
+        generic_move_sorter::<true, true, 2, false, false>,
+        generic_move_sorter::<true, true, 3, false, false>,
+        generic_move_sorter::<false, false, 0, true, false>,
+        generic_move_sorter::<false, false, 1, true, false>,
+        generic_move_sorter::<false, false, 2, true, false>,
+        generic_move_sorter::<false, false, 3, true, false>,
+        generic_move_sorter::<true, false, 0, true, false>,
+        generic_move_sorter::<true, false, 1, true, false>,
+        generic_move_sorter::<true, false, 2, true, false>,
+        generic_move_sorter::<true, false, 3, true, false>,
+        generic_move_sorter::<false, true, 0, true, false>,
+        generic_move_sorter::<false, true, 1, true, false>,
+        generic_move_sorter::<false, true, 2, true, false>,
+        generic_move_sorter::<false, true, 3, true, false>,
+        generic_move_sorter::<true, true, 0, true, false>,
+        generic_move_sorter::<true, true, 1, true, false>,
+        generic_move_sorter::<true, true, 2, true, false>,
+        generic_move_sorter::<true, true, 3, true, false>,
+        generic_move_sorter::<false, false, 0, false, true>,
+        generic_move_sorter::<false, false, 1, false, true>,
+        generic_move_sorter::<false, false, 2, false, true>,
+        generic_move_sorter::<false, false, 3, false, true>,
+        generic_move_sorter::<true, false, 0, false, true>,
+        generic_move_sorter::<true, false, 1, false, true>,
+        generic_move_sorter::<true, false, 2, false, true>,
+        generic_move_sorter::<true, false, 3, false, true>,
+        generic_move_sorter::<false, true, 0, false, true>,
+        generic_move_sorter::<false, true, 1, false, true>,
+        generic_move_sorter::<false, true, 2, false, true>,
+        generic_move_sorter::<false, true, 3, false, true>,
+        generic_move_sorter::<true, true, 0, false, true>,
+        generic_move_sorter::<true, true, 1, false, true>,
+        generic_move_sorter::<true, true, 2, false, true>,
+        generic_move_sorter::<true, true, 3, false, true>,
+        generic_move_sorter::<false, false, 0, true, true>,
+        generic_move_sorter::<false, false, 1, true, true>,
+        generic_move_sorter::<false, false, 2, true, true>,
+        generic_move_sorter::<false, false, 3, true, true>,
+        generic_move_sorter::<true, false, 0, true, true>,
+        generic_move_sorter::<true, false, 1, true, true>,
+        generic_move_sorter::<true, false, 2, true, true>,
+        generic_move_sorter::<true, false, 3, true, true>,
+        generic_move_sorter::<false, true, 0, true, true>,
+        generic_move_sorter::<false, true, 1, true, true>,
+        generic_move_sorter::<false, true, 2, true, true>,
+        generic_move_sorter::<false, true, 3, true, true>,
+        generic_move_sorter::<true, true, 0, true, true>,
+        generic_move_sorter::<true, true, 1, true, true>,
+        generic_move_sorter::<true, true, 2, true, true>,
+        generic_move_sorter::<true, true, 3, true, true>,
+    ];
+
+    let indices = [62, 46, 61, 45, 30, 14, 29, 13, 54];
+    let indices = [50, 54, 34, 38, 18, 22, 6, 53, 33, 37, 17, 21, 5];
+    let mut sort_list = Vec::new();
+
+    for i in indices {
+        sort_list.push(all_list[i]);
+    }
+
+    // sort_list = all_list.to_vec();
+
+    let mut bots = Vec::new();
+
+    for i in 0..sort_list.len() {
+        bots.push((
+            i,
+            Barschbot::new(Settings {
+                move_ordering_mode:
+                    barschbot::evaluation::settings::MoveOrderingMode::GenericMoveSorter(
+                        generic_move_sorter::<true, true, 1, true, true>,
+                    ),
+                quiessence_ordering_mode:
+                    barschbot::evaluation::settings::MoveOrderingMode::GenericMoveSorter(
+                        sort_list[i],
+                    ),
+                ..Default::default()
+            }),
+        ));
+    }
+
+    // rayon::ThreadPoolBuilder::new()
+    //     .num_threads(20)
+    //     .build_global()
+    //     .unwrap();
+
+    bots.par_iter_mut().for_each(|(i, bot)| {
+        let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(37);
+
+        let mut positions = Vec::new();
+        for _ in 0..POS_COUNT {
+            let depth = rng.gen_range(50..100);
+
+            let gs = loop {
+                let gs = get_random_pos(depth, &mut rng);
+
+                if matches!(gs.game_result(), GameResult::Undecided) {
+                    break gs;
+                }
+            };
+
+            positions.push(gs);
+        }
+
+        let start_time = Instant::now();
+        for i in 0..POS_COUNT {
+            let gs = &mut positions[i];
+            bot.search_depth(gs, MAX_DEPTH);
+        }
+
+        // bot.search_stats.evals = start_time.elapsed().as_millis() as u64;
+
+        println!("{:?} -> {i}", start_time.elapsed());
+    });
+
+    bots.sort_by_key(|(_, b)| b.search_stats.evals);
+
+    for (i, b) in bots {
+        println!("{} -> {i}", b.search_stats.evals);
+    }
 }
 
 pub fn bench_search_functions() {
     const MAX_DEPTH: i32 = 6;
     const POS_COUNT: usize = 200;
+
+    // const MAX_DEPTH: i32 = 1;
+    // const POS_COUNT: usize = 1;
+
     let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(37);
 
     let mut bot1 = Barschbot::new(Settings {
-        move_ordering_mode: barschbot::evaluation::settings::MoveOrderingMode::SEEMoveSorter,
+        move_ordering_mode: barschbot::evaluation::settings::MoveOrderingMode::GenericMoveSorter(
+            generic_move_sorter::<true, true, 2, true, true>,
+        ),
+        quiessence_ordering_mode:
+            barschbot::evaluation::settings::MoveOrderingMode::GenericMoveSorter(
+                generic_move_sorter::<true, false, 1, true, true>,
+            ),
         ..Default::default()
     });
 
     let mut bot2 = Barschbot::new(Settings {
-        move_ordering_mode: barschbot::evaluation::settings::MoveOrderingMode::BetterMoveSorter,
+        move_ordering_mode: barschbot::evaluation::settings::MoveOrderingMode::GenericMoveSorter(
+            generic_move_sorter::<true, true, 2, true, true>,
+        ),
+        quiessence_ordering_mode:
+            barschbot::evaluation::settings::MoveOrderingMode::GenericMoveSorter(
+                generic_move_sorter::<true, true, 1, true, true>,
+            ),
         ..Default::default()
     });
 
     let mut positions = Vec::new();
-    for i in 0..POS_COUNT {
+    for _ in 0..POS_COUNT {
         let depth = rng.gen_range(50..100);
 
         let gs = loop {
@@ -721,4 +924,7 @@ pub fn bench_search_functions() {
     }
     println!("Bot2: {:?}", start_time.elapsed());
     println!("ErrorCount: {}", error_count);
+
+    bot1.search_stats.print();
+    bot2.search_stats.print();
 }
