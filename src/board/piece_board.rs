@@ -57,7 +57,7 @@ impl PieceBoard {
     }
 
     pub fn print(&self) {
-        self.print_perspective(PlayerColor::White);
+        println!("{}", self.get_perspective(PlayerColor::White));
     }
 
     pub fn from_bit_board(bit_board: &BitBoard) -> PieceBoard {
@@ -69,7 +69,7 @@ impl PieceBoard {
         return board;
     }
 
-    pub fn print_perspective(&self, perspective: PlayerColor) {
+    pub fn get_perspective(&self, perspective: PlayerColor) -> String {
         let mut s = String::new();
 
         for rank in (0..8).rev() {
@@ -82,9 +82,9 @@ impl PieceBoard {
                 let piece = self[square];
 
                 let square_color = if square.is_light() {
-                    CustomColor::new(0, 0, 0)
-                } else {
                     CustomColor::new(25, 25, 25)
+                } else {
+                    CustomColor::new(0, 0, 0)
                 };
 
                 if piece.is_none() {
@@ -106,7 +106,7 @@ impl PieceBoard {
             s += "\n";
         }
 
-        println!("{}", s);
+        return s;
     }
 
     pub fn get_move(&self, start: i8, target: i8) -> ChessMove {

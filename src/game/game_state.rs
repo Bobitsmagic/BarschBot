@@ -6,7 +6,10 @@ use crate::{
         zobrist_hash::ZobristHash,
     },
     fen::fen_helper,
-    game::game_result::DrawType::{FiftyMoveRule, InsufficientMaterial, Repetition},
+    game::{
+        game_flags,
+        game_result::DrawType::{FiftyMoveRule, InsufficientMaterial, Repetition},
+    },
     moves::{
         chess_move::ChessMove,
         move_gen::{self, MoveVector},
@@ -41,10 +44,10 @@ impl GameState {
         GameState {
             board_state: BoardState::start_position(),
             move_stack: Vec::new(),
-            flag_stack: vec![GameFlags::start_flags()],
+            flag_stack: vec![game_flags::START_FLAGS],
             zobrist_hash: ZobristHash::from_position(
                 &PieceBoard::start_position(),
-                GameFlags::start_flags(),
+                game_flags::START_FLAGS,
             ),
             has_null_move: false,
             legal_moves: None,

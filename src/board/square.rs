@@ -100,6 +100,8 @@ pub trait Square {
     fn flip_x(self) -> Self;
     fn flip_y(self) -> Self;
     fn rotate_180(self) -> Self;
+    fn transpose(self) -> Self;
+    fn map_to_triangle(self) -> Self;
 }
 
 pub fn from_file_rank(file: i8, rank: i8) -> i8 {
@@ -233,6 +235,26 @@ impl Square for i8 {
 
     fn rotate_180(self) -> i8 {
         self ^ 63 // 7 * 8 + 7
+    }
+
+    fn transpose(self) -> i8 {
+        (self >> 3) | ((self & 7) << 3)
+    }
+
+    fn map_to_triangle(mut self) -> Self {
+        if self.rank() > 3 {
+            self = self.flip_y()
+        }
+
+        if self.file() > 3 {
+            self = self.flip_x()
+        }
+
+        if self.rank() > self.file() {
+            self = self.transpose()
+        }
+
+        return self;
     }
 
     fn translate(&self, dx: i8, dy: i8) -> i8 {

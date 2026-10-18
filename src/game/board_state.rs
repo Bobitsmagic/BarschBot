@@ -98,7 +98,11 @@ impl DynamicState for BoardState {
 mod tests {
     use rand::Rng;
 
-    use crate::{board::square::VALID_SQUARES, game::game_flags::GameFlags, moves::move_gen};
+    use crate::{
+        board::square::VALID_SQUARES,
+        game::game_flags::{self, GameFlags},
+        moves::move_gen,
+    };
 
     use super::*;
 
@@ -120,7 +124,7 @@ mod tests {
     #[test]
     fn test_random_moves() {
         let mut board_state = BoardState::start_position();
-        let mut game_flags = GameFlags::start_flags();
+        let mut game_flags = game_flags::START_FLAGS;
 
         let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(0);
         for _ in 0..30 {
@@ -153,7 +157,7 @@ mod tests {
     #[test]
     fn test_undo_moves() {
         let mut board_state = BoardState::start_position();
-        let mut game_flags = GameFlags::start_flags();
+        let mut game_flags = game_flags::START_FLAGS;
 
         let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(0);
 

@@ -6,7 +6,7 @@ use crate::{
         player_color::PlayerColor,
         square::{self, Square},
     },
-    game::game_flags::GameFlags,
+    game::game_flags::{self, GameFlags},
 };
 
 pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
@@ -41,7 +41,7 @@ pub fn from_fen(fen: &str) -> (PieceBoard, GameFlags) {
         }
     }
 
-    let mut game_flags = GameFlags::empty_flags();
+    let mut game_flags = game_flags::EMPTY_FLAGS;
     game_flags.active_color = match parts[1] {
         "w" => PlayerColor::White,
         "b" => PlayerColor::Black,

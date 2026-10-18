@@ -1,6 +1,6 @@
 use std::ops;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PlayerColor {
     White = 1,
     Black = -1,

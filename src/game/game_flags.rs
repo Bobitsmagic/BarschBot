@@ -19,31 +19,27 @@ pub struct GameFlags {
     pub quiet_move_counter: u8,
 }
 
+pub const START_FLAGS: GameFlags = GameFlags {
+    active_color: PlayerColor::White,
+    white_queen_side_castle: true,
+    white_king_side_castle: true,
+    black_queen_side_castle: true,
+    black_king_side_castle: true,
+    en_passant_square: square::NONE,
+    quiet_move_counter: 0,
+};
+
+pub const EMPTY_FLAGS: GameFlags = GameFlags {
+    active_color: PlayerColor::White,
+    white_queen_side_castle: false,
+    white_king_side_castle: false,
+    black_queen_side_castle: false,
+    black_king_side_castle: false,
+    en_passant_square: square::NONE,
+    quiet_move_counter: 0,
+};
+
 impl GameFlags {
-    pub fn start_flags() -> GameFlags {
-        GameFlags {
-            active_color: PlayerColor::White,
-            white_queen_side_castle: true,
-            white_king_side_castle: true,
-            black_queen_side_castle: true,
-            black_king_side_castle: true,
-            en_passant_square: square::NONE,
-            quiet_move_counter: 0,
-        }
-    }
-
-    pub fn empty_flags() -> GameFlags {
-        GameFlags {
-            active_color: PlayerColor::White,
-            white_queen_side_castle: false,
-            white_king_side_castle: false,
-            black_queen_side_castle: false,
-            black_king_side_castle: false,
-            en_passant_square: square::NONE,
-            quiet_move_counter: 0,
-        }
-    }
-
     pub fn make_move(&mut self, m: ChessMove, board: &BitBoard) {
         self.active_color = !self.active_color;
 

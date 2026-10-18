@@ -1,7 +1,8 @@
 use core::panic;
+use std::mem;
 
 use crate::{
-    board::{piece_board::PieceBoard, piece_type::PieceType},
+    board::{bit_array_lookup::ROWS, piece_board::PieceBoard, piece_type::PieceType},
     moves::slider_gen::{gen_bishop_moves_kogge_occ, gen_rook_moves_kogge_occ},
 };
 
@@ -16,7 +17,7 @@ use super::{
     square::{Square, VALID_SQUARES},
 };
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct BitBoard {
     pub white_piece: u64,
     pub black_piece: u64,
@@ -42,6 +43,84 @@ impl BitBoard {
         }
     }
 
+    pub fn has_symmetric_piece_count(&self) -> bool {
+        if self.white_piece.count_ones() != self.black_piece.count_ones() {
+            return false;
+        }
+
+        if (self.white_piece & self.pawn).count_ones() != (self.black_piece & self.pawn).count_ones() {
+            return false;
+        }
+
+        if (self.white_piece & self.knight).count_ones() != (self.black_piece & self.knight).count_ones() {
+            return false;
+        }
+
+        if (self.white_piece & self.orthogonal_slider).count_ones() != (self.black_piece & self.orthogonal_slider).count_ones() {
+            return false;
+        }
+
+        if (self.white_piece & self.diagonal_slider).count_ones() != (self.black_piece & self.diagonal_slider).count_ones() {
+            return false;
+        }
+
+        return true;
+    }
+
+    pub fn flip_color(&self) -> BitBoard {
+        let mut ret = self.flip_y();
+
+        mem::swap(&mut ret.white_piece, &mut ret.black_piece);
+
+        return ret;
+    }
+
+    pub fn rotate_180(&self) -> BitBoard {
+        BitBoard {
+            white_piece: self.white_piece.rotate_180(),
+            black_piece: self.black_piece.rotate_180(),
+            pawn: self.pawn.rotate_180(),
+            knight: self.knight.rotate_180(),
+            diagonal_slider: self.diagonal_slider.rotate_180(),
+            orthogonal_slider: self.orthogonal_slider.rotate_180(),
+            king: self.king.rotate_180(),
+        }
+    }
+    pub fn flip_y(&self) -> BitBoard {
+        BitBoard {
+            white_piece: self.white_piece.flip_y(),
+            black_piece: self.black_piece.flip_y(),
+            pawn: self.pawn.flip_y(),
+            knight: self.knight.flip_y(),
+            diagonal_slider: self.diagonal_slider.flip_y(),
+            orthogonal_slider: self.orthogonal_slider.flip_y(),
+            king: self.king.flip_y(),
+        }
+    }
+
+    pub fn transpose(&self) -> BitBoard {
+        BitBoard {
+            white_piece: self.white_piece.transpose(),
+            black_piece: self.black_piece.transpose(),
+            pawn: self.pawn.transpose(),
+            knight: self.knight.transpose(),
+            diagonal_slider: self.diagonal_slider.transpose(),
+            orthogonal_slider: self.orthogonal_slider.transpose(),
+            king: self.king.transpose(),
+        }
+    }
+    pub fn flip_x(&self) -> BitBoard {
+        BitBoard {
+            white_piece: self.white_piece.flip_x(),
+            black_piece: self.black_piece.flip_x(),
+            pawn: self.pawn.flip_x(),
+            knight: self.knight.flip_x(),
+            diagonal_slider: self.diagonal_slider.flip_x(),
+            orthogonal_slider: self.orthogonal_slider.flip_x(),
+            king: self.king.flip_x(),
+        }
+    }
+
     pub fn from_piece_board(piece_board: &PieceBoard) -> BitBoard {
         let mut bit_board = BitBoard::empty();
 
@@ -64,6 +143,18 @@ impl BitBoard {
         let mask = square.bit_array();
 
         return self.pawn & opponents & (mask.translate(1, 0) | mask.translate(-1, 0)) != 0;
+    }
+
+    pub fn get_valid_ep_squares(&self, pc: PlayerColor) -> u64 {
+        let (allied, opponent, forward, row) = match pc {
+            PlayerColor::White => (self.white_piece, self.black_piece, 1, ROWS[5]),
+            PlayerColor::Black => (self.black_piece, self.white_piece, -1, ROWS[2]),
+        };
+
+        let my_pawns = self.pawn & allied;
+        let pawn_attacks = my_pawns.translate(1, forward) | my_pawns.translate(-1, forward);
+
+        return pawn_attacks & row & (opponent & self.pawn).translate_vertical(forward);
     }
 
     pub fn add_piece(&mut self, pt: ColoredPieceType, square: i8) {
@@ -445,6 +536,10 @@ impl BitBoard {
         }
 
         return ColoredPieceType::NonePiece;
+    }
+
+    pub fn to_string(&self) -> String {
+        PieceBoard::from_bit_board(self).get_perspective(PlayerColor::White)
     }
 }
 

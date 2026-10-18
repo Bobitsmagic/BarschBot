@@ -14,6 +14,12 @@ pub trait BitArray {
     fn up(self) -> Self;
     fn down(self) -> Self;
 
+    //Symmetries
+    fn transpose(self) -> Self;
+    fn flip_x(self) -> Self;
+    fn flip_y(self) -> Self;
+    fn rotate_180(self) -> Self;
+
     fn iterate_set_bit_fields(self) -> impl Iterator<Item = u64>;
     fn iterate_set_bits_indices(self) -> impl Iterator<Item = u32>;
     fn iterate_squares(self) -> impl Iterator<Item = i8>;
@@ -37,6 +43,35 @@ impl BitArray for u64 {
 
     fn get_bit(self, i8: i8) -> bool {
         (self & (1 << i8)) != 0
+    }
+
+    //https://chessprogramming.org/Flipping_Mirroring_and_Rotating
+    fn transpose(mut self) -> u64 {
+        const K1: u64 = 0x5500550055005500;
+        const K2: u64 = 0x3333000033330000;
+        const K4: u64 = 0x0f0f0f0f00000000;
+        let mut t = K4 & (self ^ (self << 28));
+        self ^= t ^ (t >> 28);
+        t = K2 & (self ^ (self << 14));
+        self ^= t ^ (t >> 14);
+        t = K1 & (self ^ (self << 7));
+        self ^= t ^ (t >> 7);
+        return self;
+    }
+    fn flip_x(mut self) -> Self {
+        const K1: u64 = 0x5555555555555555;
+        const K2: u64 = 0x3333333333333333;
+        const K4: u64 = 0x0f0f0f0f0f0f0f0f;
+        self ^= K4 & (self ^ self.rotate_left(8));
+        self ^= K2 & (self ^ self.rotate_left(4));
+        self ^= K1 & (self ^ self.rotate_left(2));
+        return self.rotate_right(7);
+    }
+    fn flip_y(self) -> Self {
+        self.swap_bytes()
+    }
+    fn rotate_180(self) -> Self {
+        self.reverse_bits()
     }
 
     fn lowest_square_index(self) -> u32 {
