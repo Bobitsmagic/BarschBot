@@ -1,9 +1,6 @@
-use crate::{
-    board::{
-        dynamic_state::DynamicState,
-        piece_type::{ColoredPieceType, PieceType},
-    },
-    tablebase::endgame_type,
+use crate::board::{
+    dynamic_state::DynamicState,
+    piece_type::{ColoredPieceType, PieceType},
 };
 
 pub const NO_KING_PIECES: [ColoredPieceType; 10] = [
@@ -35,9 +32,9 @@ const INDEX_MAP: [usize; 13] = [
     usize::MAX,
 ];
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct EndGameType {
-    pieces: [i8; 10],
+    pub pieces: [i8; 10],
 }
 
 impl Ord for EndGameType {
@@ -45,6 +42,7 @@ impl Ord for EndGameType {
         self.piece_count()
             .cmp(&other.piece_count())
             .then(self.pawn_count().cmp(&other.pawn_count()))
+            .then(other.pieces.cmp(&self.pieces))
     }
 }
 
@@ -55,6 +53,64 @@ impl PartialOrd for EndGameType {
 }
 
 impl EndGameType {
+    pub fn gen_successors(&self) -> Vec<EndGameType> {
+        let mut ret = Vec::new();
+
+        //captures
+        for i in 0..10 {
+            if self.pieces[i] > 0 {
+                let mut next = self.clone();
+                next.pieces[i] -= 1;
+                ret.push(next);
+            }
+        }
+
+        //promotions
+        for pawn_type in [0, 5] {
+            if self.pieces[pawn_type] <= 0 {
+                continue;
+            }
+
+            for promo_offset in 1..=4 {
+                let mut next = self.clone();
+                next.pieces[pawn_type] -= 1;
+                next.pieces[pawn_type + promo_offset] += 1;
+                ret.push(next);
+            }
+        }
+
+        //promotion capture
+        for pawn_type in [0, 5] {
+            if self.pieces[pawn_type] <= 0 {
+                continue;
+            }
+
+            for promo_offset in 1..=4 {
+                for capture_type in 0..10 {
+                    if pawn_type / 5 == capture_type / 5 {
+                        continue;
+                    }
+
+                    if self.pieces[capture_type] <= 0 {
+                        continue;
+                    }
+
+                    let mut next = self.clone();
+                    next.pieces[pawn_type] -= 1;
+                    next.pieces[capture_type] -= 1;
+                    next.pieces[pawn_type + promo_offset] += 1;
+                    ret.push(next);
+                }
+            }
+        }
+
+        return ret;
+    }
+
+    pub fn representative(&self) -> EndGameType {
+        self.clone().min(self.flipped())
+    }
+
     pub fn flipped(&self) -> EndGameType {
         let mut list = [0; 10];
         for i in 0..5 {
@@ -118,7 +174,7 @@ impl EndGameType {
         return ret_type;
     }
 
-    pub fn print(&self) {
+    pub fn to_string(&self) -> String {
         let mut s = String::new();
 
         for i in 0..10 {
@@ -131,7 +187,7 @@ impl EndGameType {
             s = "Kk".to_owned();
         }
 
-        println!("{}", s);
+        return s;
     }
 }
 
@@ -159,7 +215,6 @@ pub fn generate_piece_lists(max_piece_count: usize) -> Vec<EndGameType> {
         &mut ret,
     );
 
-    ret.remove(0);
     return ret;
 
     fn backtrack_piece_types(
@@ -193,6 +248,12 @@ pub fn generate_piece_lists_sym(max_piece_count: usize) -> Vec<EndGameType> {
         if ret[..i].contains(&other) {
             ret.remove(i);
         }
+    }
+
+    ret.sort();
+
+    for i in 0..ret.len() {
+        ret[i] = ret[i].representative();
     }
 
     return ret;

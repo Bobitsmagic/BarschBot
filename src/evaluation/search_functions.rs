@@ -17,6 +17,7 @@ use crate::{
         chess_move::{self, ChessMove, NULL_MOVE},
         move_gen::{self, MoveVector},
     },
+    tablebase::endgame::endgame_table::EndGameTable,
 };
 
 use super::{search_stats::SearchStats, settings::Settings};
@@ -173,6 +174,7 @@ pub fn bb_timed_search(
     time_left: u128,
     max_depth: i32,
     settings: &Settings,
+    egt: &EndGameTable,
 ) -> (ChessMove, i32, SearchStats) {
     let start_time = std::time::Instant::now();
     let mut stats = SearchStats::new();
@@ -199,6 +201,7 @@ pub fn bb_timed_search(
             &mut stats,
             &mut tt,
             &mut qmt,
+            egt,
         );
 
         let entry = tt.get(&game_state.zobrist_hash.hash).unwrap();
@@ -229,6 +232,7 @@ fn bb_search_with_settings(
     stats: &mut SearchStats,
     tt: &mut TranspositionTable,
     quiet_move_table: &mut QuietMoveTable,
+    end_game_table: &EndGameTable,
 ) -> i32 {
     stats.nodes += 1;
 
@@ -237,6 +241,12 @@ fn bb_search_with_settings(
         GameResult::Win(_, _) => return -CHECKMATE_VALUE + depth,
         GameResult::Draw(_) => return 0,
         GameResult::Undecided => (),
+    }
+
+    if depth > 0 {
+        if let Some(eval) = end_game_table.get_eval(game_state) {
+            return eval;
+        }
     }
 
     if depth_left <= 0 {
@@ -325,6 +335,7 @@ fn bb_search_with_settings(
             stats,
             tt,
             quiet_move_table,
+            end_game_table,
         );
 
         game_state.undo_move();
@@ -391,6 +402,7 @@ fn bb_search_with_settings(
             stats,
             tt,
             quiet_move_table,
+            end_game_table,
         );
 
         if t > alpha && t < beta && i > 0 {
@@ -405,6 +417,7 @@ fn bb_search_with_settings(
                 stats,
                 tt,
                 quiet_move_table,
+                end_game_table,
             );
         }
 

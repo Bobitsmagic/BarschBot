@@ -14,6 +14,7 @@ use barschbot::{
     gui::{render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer},
     match_handling::match_handler,
     moves::chess_move::{self, ChessMove},
+    tablebase::endgame::endgame_table::EndGameTable,
 };
 use rand::seq::SliceRandom;
 //Wins Old version: 358, Wins New version: 499, Draws: 143
@@ -21,10 +22,10 @@ use rand::seq::SliceRandom;
 const START_TIME: u128 = 1000 * 1000 * 10;
 
 fn main() {
-    // start_human_against_bot();
+    start_human_against_bot();
 
     rayon::ThreadPoolBuilder::new()
-        .num_threads(12)
+        .num_threads(3)
         .build_global()
         .unwrap();
 
@@ -74,11 +75,13 @@ fn play_all_fens_vis(mut bot_a: Barschbot, mut bot_b: Barschbot) {
 
     let mut visualizer = Visualizer::new(engine_handle);
 
+    let egt = EndGameTable::get_empty();
+
     //Start random move thread
     std::thread::spawn(move || {
         // random_moves(vis_handle);
         let (a_wins, b_wins, draws) =
-            match_handler::show_all_fens(&mut bot_a, &mut bot_b, START_TIME, vis_handle);
+            match_handler::show_all_fens(&mut bot_a, &mut bot_b, START_TIME, vis_handle, &egt);
         println!(
             "Finished: {} wins: {}, {} wins: {}, Draws: {}",
             bot_a.name, a_wins, bot_b.name, b_wins, draws
@@ -103,7 +106,8 @@ fn probability_of_superiority(a_wins: i32, b_wins: i32, draws: i32) -> f64 {
 
 fn play_all_fens_par(mut bot_a: Barschbot, mut bot_b: Barschbot) {
     let start_time = Instant::now();
-    let stats = match_handler::play_all_fens(&mut bot_a, &mut bot_b, START_TIME);
+    let egt = EndGameTable::get_empty();
+    let stats = match_handler::play_all_fens(&mut bot_a, &mut bot_b, START_TIME, &egt);
     println!("Time: {:?}", start_time.elapsed());
     stats.print_wins(&bot_a.name, &bot_b.name);
     println!(
@@ -157,9 +161,12 @@ fn human_against_bot(engine_handle: VisHandle) {
 
     // let mut gs = fen_list.choose(&mut rng).unwrap().clone();
 
-    let mut gs = GameState::start_position();
+    // let mut gs = GameState::start_position();
+    // let mut gs = GameState::from_fen("8/3p4/3k4/8/3K4/8/8/8 w - - 0 1"); //Pawn endgame (white losing)
     // let mut gs = GameState::from_fen("8/8/2r1k3/8/3K4/8/8/8 w - - 0 1"); //Rook endgame
-    // let mut gs = GameState::from_fen("8/8/2bbk3/8/3K4/8/8/8 w - - 0 1"); //Bishop endgame
+    let mut gs = GameState::from_fen("8/8/2bbk3/8/3K4/8/8/8 w - - 0 1"); //2 Bishop endgame
+    let mut gs = GameState::from_fen("8/8/3k4/3nb3/8/3K4/8/8 w - - 0 1"); //Bishop/Knight endgame
+    
 
     let mut white_time_left = START_TIME;
     let mut black_time_left = START_TIME;
@@ -170,6 +177,8 @@ fn human_against_bot(engine_handle: VisHandle) {
         },
         String::from("New Hans"),
     );
+
+    let egt = EndGameTable::generate_par(2);
 
     // let mut bot = Barschbot::named(
     //     Settings {
@@ -209,7 +218,7 @@ fn human_against_bot(engine_handle: VisHandle) {
     ));
 
     if PLAY_BLACK {
-        let (m, time_used) = get_bot_move(&mut gs, black_time_left, &mut bot);
+        let (m, time_used) = get_bot_move(&mut gs, black_time_left, &mut bot, &egt);
         gs.make_move(m);
 
         white_time_left -= time_used.min(white_time_left);
@@ -261,6 +270,7 @@ fn human_against_bot(engine_handle: VisHandle) {
                 black_time_left
             },
             &mut bot,
+            &egt,
         );
         gs.make_move(m);
         if !matches!(gs.game_result(), GameResult::Undecided) {
@@ -287,10 +297,15 @@ fn human_against_bot(engine_handle: VisHandle) {
         ));
     }
 
-    fn get_bot_move(gs: &mut GameState, time_left: u128, bot: &mut Barschbot) -> (ChessMove, u128) {
+    fn get_bot_move(
+        gs: &mut GameState,
+        time_left: u128,
+        bot: &mut Barschbot,
+        egt: &EndGameTable,
+    ) -> (ChessMove, u128) {
         let start_time = std::time::Instant::now();
         // let (m, _, _) = search_functions::timed_search(gs, time_left);
-        let m = bot.search_time(gs, time_left);
+        let m = bot.search_time(gs, time_left, egt);
         let time_used = start_time.elapsed().as_micros();
         (m, time_used)
     }

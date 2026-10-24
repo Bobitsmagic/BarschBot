@@ -18,6 +18,10 @@ pub struct BoardState {
 }
 
 impl BoardState {
+    pub fn piece_count(&self) -> u32 {
+        self.bit_board.piece_count()
+    }
+
     pub fn start_position() -> BoardState {
         BoardState::from_piece_board(&PieceBoard::start_position())
     }

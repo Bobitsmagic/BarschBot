@@ -4,6 +4,7 @@ use std::mem;
 use crate::{
     board::{bit_array_lookup::ROWS, piece_board::PieceBoard, piece_type::PieceType},
     moves::slider_gen::{gen_bishop_moves_kogge_occ, gen_rook_moves_kogge_occ},
+    tablebase::endgame::endgame_type::EndGameType,
 };
 
 use super::{
@@ -48,23 +49,58 @@ impl BitBoard {
             return false;
         }
 
-        if (self.white_piece & self.pawn).count_ones() != (self.black_piece & self.pawn).count_ones() {
+        if (self.white_piece & self.pawn).count_ones()
+            != (self.black_piece & self.pawn).count_ones()
+        {
             return false;
         }
 
-        if (self.white_piece & self.knight).count_ones() != (self.black_piece & self.knight).count_ones() {
+        if (self.white_piece & self.knight).count_ones()
+            != (self.black_piece & self.knight).count_ones()
+        {
             return false;
         }
 
-        if (self.white_piece & self.orthogonal_slider).count_ones() != (self.black_piece & self.orthogonal_slider).count_ones() {
+        if (self.white_piece & self.orthogonal_slider).count_ones()
+            != (self.black_piece & self.orthogonal_slider).count_ones()
+        {
             return false;
         }
 
-        if (self.white_piece & self.diagonal_slider).count_ones() != (self.black_piece & self.diagonal_slider).count_ones() {
+        if (self.white_piece & self.diagonal_slider).count_ones()
+            != (self.black_piece & self.diagonal_slider).count_ones()
+        {
             return false;
         }
 
         return true;
+    }
+
+    pub fn get_endgame_type(&self) -> EndGameType {
+        EndGameType {
+            pieces: [
+                (self.white_piece & self.pawn).count_ones() as i8,
+                (self.white_piece & self.knight).count_ones() as i8,
+                (self.white_piece & self.diagonal_slider & !self.orthogonal_slider).count_ones()
+                    as i8,
+                (self.white_piece & self.orthogonal_slider & !self.diagonal_slider).count_ones()
+                    as i8,
+                (self.white_piece & self.orthogonal_slider & self.diagonal_slider).count_ones()
+                    as i8,
+                (self.black_piece & self.pawn).count_ones() as i8,
+                (self.black_piece & self.knight).count_ones() as i8,
+                (self.black_piece & self.diagonal_slider & !self.orthogonal_slider).count_ones()
+                    as i8,
+                (self.black_piece & self.orthogonal_slider & !self.diagonal_slider).count_ones()
+                    as i8,
+                (self.black_piece & self.orthogonal_slider & self.diagonal_slider).count_ones()
+                    as i8,
+            ],
+        }
+    }
+
+    pub fn piece_count(&self) -> u32 {
+        (self.white_piece | self.black_piece).count_ones()
     }
 
     pub fn flip_color(&self) -> BitBoard {
@@ -151,10 +187,15 @@ impl BitBoard {
             PlayerColor::Black => (self.black_piece, self.white_piece, -1, ROWS[2]),
         };
 
+        let occupied = self.white_piece | self.black_piece;
         let my_pawns = self.pawn & allied;
         let pawn_attacks = my_pawns.translate(1, forward) | my_pawns.translate(-1, forward);
 
-        return pawn_attacks & row & (opponent & self.pawn).translate_vertical(forward);
+        return pawn_attacks
+            & row
+            & (opponent & self.pawn).translate_vertical(forward)
+            & !occupied
+            & !occupied.translate_vertical(-forward);
     }
 
     pub fn add_piece(&mut self, pt: ColoredPieceType, square: i8) {

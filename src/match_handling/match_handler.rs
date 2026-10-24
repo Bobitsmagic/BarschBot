@@ -19,6 +19,7 @@ use crate::{
     },
     gui::{render_state::RenderState, vis_handle::VisHandle},
     moves::chess_move,
+    tablebase::endgame::endgame_table::EndGameTable,
 };
 
 #[derive(Clone)]
@@ -115,6 +116,7 @@ pub fn play_timed_game(
     bot_a: &mut Barschbot,
     bot_b: &mut Barschbot,
     start_time_mu_s: u128,
+    egt: &EndGameTable,
 ) -> GameResult {
     let mut time_left_a = start_time_mu_s;
     let mut time_left_b = start_time_mu_s;
@@ -128,7 +130,7 @@ pub fn play_timed_game(
         }
 
         let mut start_time = std::time::Instant::now();
-        let m = bot_a.search_time(game_state, time_left_a);
+        let m = bot_a.search_time(game_state, time_left_a, egt);
         let time_used = start_time.elapsed().as_micros();
 
         if time_used > time_left_a {
@@ -144,7 +146,7 @@ pub fn play_timed_game(
         }
 
         start_time = std::time::Instant::now();
-        let m = bot_b.search_time(game_state, time_left_b);
+        let m = bot_b.search_time(game_state, time_left_b, egt);
         let time_used = start_time.elapsed().as_micros();
 
         if time_used > time_left_b {
@@ -161,6 +163,7 @@ pub fn show_timed_game(
     bot_b: &mut Barschbot,
     start_time_ms: u128,
     engine_handle: &VisHandle,
+    egt: &EndGameTable,
 ) -> GameResult {
     let mut time_left_a = start_time_ms;
     let mut time_left_b = start_time_ms;
@@ -199,7 +202,7 @@ pub fn show_timed_game(
         }
 
         let mut start_time = std::time::Instant::now();
-        let m = bot_a.search_time(gs, time_left_a);
+        let m = bot_a.search_time(gs, time_left_a, egt);
         let time_used = start_time.elapsed().as_micros();
 
         if time_used > time_left_a {
@@ -239,7 +242,7 @@ pub fn show_timed_game(
         }
 
         start_time = std::time::Instant::now();
-        let m = bot_b.search_time(gs, time_left_b);
+        let m = bot_b.search_time(gs, time_left_b, egt);
         let time_used = start_time.elapsed().as_micros();
 
         if time_used > time_left_b {
@@ -278,6 +281,7 @@ pub fn play_all_fens(
     bot_a: &mut Barschbot,
     bot_b: &mut Barschbot,
     start_time_mu_s: u128,
+    egt: &EndGameTable,
 ) -> MatchStats {
     let fens = crate::match_handling::file_loader::load_test_fens();
 
@@ -296,10 +300,22 @@ pub fn play_all_fens(
             let mut bot_b = bot_b.clone();
 
             let start_color = game_state.active_color();
-            let res1 = play_timed_game(&mut game_state, &mut bot_a, &mut bot_b, start_time_mu_s);
+            let res1 = play_timed_game(
+                &mut game_state,
+                &mut bot_a,
+                &mut bot_b,
+                start_time_mu_s,
+                egt,
+            );
 
             game_state = GameState::from_fen(&fen.to_fen());
-            let res2 = play_timed_game(&mut game_state, &mut bot_b, &mut bot_a, start_time_mu_s);
+            let res2 = play_timed_game(
+                &mut game_state,
+                &mut bot_b,
+                &mut bot_a,
+                start_time_mu_s,
+                egt,
+            );
             let mut lock = win_counter.lock().unwrap();
             lock.handle_game_result(res1, start_color);
             lock.handle_game_result(res2, !start_color);
@@ -316,6 +332,7 @@ pub fn show_all_fens(
     bot_b: &mut Barschbot,
     start_time_ms: u128,
     engine_handle: VisHandle,
+    egt: &EndGameTable,
 ) -> (i32, i32, i32) {
     let fens = crate::match_handling::file_loader::load_test_fens();
     let mut a_wins = 0;
@@ -326,7 +343,14 @@ pub fn show_all_fens(
         let mut game_state = GameState::from_fen(&fen.to_fen());
 
         let start_color = game_state.active_color();
-        let res = show_timed_game(&mut game_state, bot_a, bot_b, start_time_ms, &engine_handle);
+        let res = show_timed_game(
+            &mut game_state,
+            bot_a,
+            bot_b,
+            start_time_ms,
+            &engine_handle,
+            egt,
+        );
         game_state.board_state.piece_board.print();
         match res {
             GameResult::Win(win_color, _) => {
@@ -346,7 +370,14 @@ pub fn show_all_fens(
         println!("{}", game_state.to_pgn(&bot_a.name, &bot_b.name));
 
         game_state = GameState::from_fen(&fen.to_fen());
-        let res = show_timed_game(&mut game_state, bot_b, bot_a, start_time_ms, &engine_handle);
+        let res = show_timed_game(
+            &mut game_state,
+            bot_b,
+            bot_a,
+            start_time_ms,
+            &engine_handle,
+            egt,
+        );
         game_state.board_state.piece_board.print();
         match res {
             GameResult::Win(win_color, _) => {

@@ -1,4 +1,7 @@
-use crate::{game::game_state::GameState, moves::chess_move::ChessMove};
+use crate::{
+    game::game_state::GameState, moves::chess_move::ChessMove,
+    tablebase::endgame::endgame_table::EndGameTable,
+};
 
 use super::{search_functions::bb_timed_search, search_stats::SearchStats, settings::Settings};
 
@@ -22,16 +25,27 @@ impl Barschbot {
         Barschbot::named(settings, String::from("Barschbot"))
     }
 
-    pub fn search_time(&mut self, game_state: &mut GameState, time_left: u128) -> ChessMove {
-        let (bm, _, stats) = bb_timed_search(game_state, time_left, i32::MAX, &self.settings);
+    pub fn search_time(
+        &mut self,
+        game_state: &mut GameState,
+        time_left: u128,
+        egt: &EndGameTable,
+    ) -> ChessMove {
+        let (bm, _, stats) = bb_timed_search(game_state, time_left, i32::MAX, &self.settings, egt);
 
         self.search_stats += stats;
 
         return bm;
     }
 
-    pub fn search_depth(&mut self, game_state: &mut GameState, max_depth: i32) -> (ChessMove, i32) {
-        let (bm, eval, stats) = bb_timed_search(game_state, u128::MAX, max_depth, &self.settings);
+    pub fn search_depth(
+        &mut self,
+        game_state: &mut GameState,
+        max_depth: i32,
+        egt: &EndGameTable,
+    ) -> (ChessMove, i32) {
+        let (bm, eval, stats) =
+            bb_timed_search(game_state, u128::MAX, max_depth, &self.settings, egt);
 
         self.search_stats += stats;
 

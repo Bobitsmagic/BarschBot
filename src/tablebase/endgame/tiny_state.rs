@@ -4,12 +4,27 @@ use crate::{
     board::{
         bit_array::BitArray,
         bit_board::BitBoard,
+        dynamic_state::DynamicState,
+        piece_board::PieceBoard,
         player_color::PlayerColor,
         square::{self, Square},
     },
+    game::{
+        board_state::BoardState,
+        game_flags::{self, GameFlags},
+        game_result::{DrawType, GameResult, WinType},
+        game_state::GameState,
+    },
+    moves::{
+        chess_move::ChessMove,
+        move_gen::{self, MoveVector},
+    },
 };
-use std::fmt::Debug;
 use std::hash::Hash;
+use std::{
+    fmt::Debug,
+    hash::{DefaultHasher, Hasher},
+};
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TinyState {
@@ -35,17 +50,11 @@ type FlagList = ArrayVec<TinyState, 8>;
 impl TinyState {
     pub fn gen_legal_gameflags(bb: &BitBoard) -> FlagList {
         let mut active_colors: ArrayVec<PlayerColor, 2> = ArrayVec::new();
-        
+
         active_colors.push(PlayerColor::White);
         active_colors.push(PlayerColor::Black);
-        
-        
-        // if !bb.has_symmetric_piece_count() {
-        //     // active_colors.pop();
-        // }
-
         active_colors.retain(|x| !bb.is_in_check(!*x));
-            
+
         let mut ret = ArrayVec::new();
         for active_color in active_colors {
             ret.push(TinyState {
@@ -64,6 +73,64 @@ impl TinyState {
         }
 
         return ret;
+    }
+
+    pub fn from_game_state(gs: &GameState) -> TinyState {
+        let flags = gs.get_flags();
+        TinyState {
+            board: gs.board_state.bit_board.clone(),
+            active_color: flags.active_color,
+            ep_square: flags.en_passant_square,
+        }
+    }
+
+    pub fn get_game_result(&self) -> (GameResult, MoveVector) {
+        let flags = GameFlags {
+            active_color: self.active_color,
+            en_passant_square: self.ep_square,
+            ..game_flags::EMPTY_FLAGS
+        };
+
+        let piece_board = PieceBoard::from_bit_board(&self.board);
+        let board_state = BoardState {
+            piece_board,
+            bit_board: self.board.clone(),
+        };
+
+        let (moves, check) = move_gen::gen_legal_moves_check_pins(&board_state, &flags);
+
+        let result = match (moves.is_empty(), check) {
+            (true, true) => GameResult::Win(!self.active_color, WinType::Checkmate),
+            (true, false) => GameResult::Draw(DrawType::StaleMate),
+            _ => GameResult::Undecided,
+        };
+
+        return (result, moves);
+    }
+
+    pub fn make_move(&mut self, m: ChessMove) {
+        self.board.make_move(m);
+        self.active_color = !self.active_color;
+
+        if m.move_piece.is_pawn()
+            && m.start.rank().abs_diff(m.end.rank()) == 2
+            && self.board.pawn_has_neighbour(m.move_piece.color(), m.end)
+        {
+            self.ep_square = match m.move_piece.color() {
+                PlayerColor::White => m.end.down(),
+                PlayerColor::Black => m.end.up(),
+            };
+        } else {
+            self.ep_square = square::NONE;
+        }
+    }
+
+    pub fn get_hash_value(&self) -> u64 {
+        assert!(self.ep_square >= 0 && self.ep_square <= 64);
+
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish()
     }
 
     pub fn flip_x(&self) -> TinyState {
@@ -144,7 +211,7 @@ mod small_vec_test {
         board::{
             bit_board::BitBoard, piece_type::ColoredPieceType, player_color::ALL_COLORS, square::*,
         },
-        tablebase::tiny_state::TinyState,
+        tablebase::endgame::tiny_state::TinyState,
     };
 
     #[test]
