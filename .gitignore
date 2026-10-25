@@ -17,3 +17,4 @@ Cargo.lock
 *.pdb
 *.bin
 /.VSCodeCounter/2024-11-22_02-49-19
+/stockfish
