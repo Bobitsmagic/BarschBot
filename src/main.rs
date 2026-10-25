@@ -1,7 +1,5 @@
 use std::{
-    f64::consts::SQRT_2,
-    thread,
-    time::{Duration, Instant},
+    f64::consts::SQRT_2, mem, thread, time::{Duration, Instant},
 };
 
 use barschbot::{
@@ -9,23 +7,18 @@ use barschbot::{
         barschbot::Barschbot,
         hans_eval::{self, Attributes, EvaluationSettings, STANDARD_EVAL},
         settings::{self, Settings},
-    },
-    game::{game_result::GameResult, game_state::GameState},
-    gui::{render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer},
-    match_handling::match_handler,
-    moves::chess_move::{self, ChessMove},
-    tablebase::endgame::endgame_table::EndGameTable,
+    }, game::{game_result::GameResult, game_state::GameState}, gui::{render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, match_handling::match_handler, moves::chess_move::{self, ChessMove}, tablebase::endgame::{compact_endgame::CompactEndgame, endgame_table::EndGameTable},
 };
 use rand::seq::SliceRandom;
 //Wins Old version: 358, Wins New version: 499, Draws: 143
 
-const START_TIME: u128 = 1000 * 1000 * 10;
+const START_TIME: u128 = 1000 * 1000 * 30;
 
 fn main() {
-    start_human_against_bot();
+    // start_human_against_bot();
 
     rayon::ThreadPoolBuilder::new()
-        .num_threads(3)
+        .num_threads(20)
         .build_global()
         .unwrap();
 
@@ -35,6 +28,7 @@ fn main() {
                 use_new_feature: true,
                 attr_weights: Attributes { ..STANDARD_EVAL },
             }),
+            use_endgame_table: true,
             ..Default::default()
         },
         String::from("New Hans"),
@@ -46,6 +40,7 @@ fn main() {
                 use_new_feature: false,
                 attr_weights: hans_eval::STANDARD_EVAL,
             }),
+            use_endgame_table: false,
             ..Default::default()
         },
         String::from("Old hans"),
@@ -106,7 +101,7 @@ fn probability_of_superiority(a_wins: i32, b_wins: i32, draws: i32) -> f64 {
 
 fn play_all_fens_par(mut bot_a: Barschbot, mut bot_b: Barschbot) {
     let start_time = Instant::now();
-    let egt = EndGameTable::get_empty();
+    let egt = EndGameTable::load(2);
     let stats = match_handler::play_all_fens(&mut bot_a, &mut bot_b, START_TIME, &egt);
     println!("Time: {:?}", start_time.elapsed());
     stats.print_wins(&bot_a.name, &bot_b.name);
@@ -163,10 +158,12 @@ fn human_against_bot(engine_handle: VisHandle) {
 
     // let mut gs = GameState::start_position();
     // let mut gs = GameState::from_fen("8/3p4/3k4/8/3K4/8/8/8 w - - 0 1"); //Pawn endgame (white losing)
-    // let mut gs = GameState::from_fen("8/8/2r1k3/8/3K4/8/8/8 w - - 0 1"); //Rook endgame
-    let mut gs = GameState::from_fen("8/8/2bbk3/8/3K4/8/8/8 w - - 0 1"); //2 Bishop endgame
-    let mut gs = GameState::from_fen("8/8/3k4/3nb3/8/3K4/8/8 w - - 0 1"); //Bishop/Knight endgame
-    
+    let mut gs = GameState::from_fen("8/8/2n1k3/8/3K4/8/8/8 w - - 0 1"); //Rook endgame
+    // let mut gs = GameState::from_fen("8/8/2bbk3/8/3K4/8/8/8 w - - 0 1"); //2 Bishop endgame
+    // let mut gs = GameState::from_fen("8/8/3k4/3nb3/8/3K4/8/8 w - - 0 1"); //Bishop/Knight endgame
+    // let mut gs = GameState::from_fen("8/8/3k4/3rq3/8/2K5/8/8 w - - 0 1"); //Queen/rook endgame
+    // let mut gs = GameState::from_fen("8/8/3k4/4q3/8/2R5/3K4/8 w - - 0 1"); //Queen vs rook endgame
+    // let mut gs = GameState::from_fen("8/8/3k4/5q2/8/2Q5/1K6/8 w - - 0 1"); //Queen vs queen endgame
 
     let mut white_time_left = START_TIME;
     let mut black_time_left = START_TIME;
@@ -178,7 +175,12 @@ fn human_against_bot(engine_handle: VisHandle) {
         String::from("New Hans"),
     );
 
-    let egt = EndGameTable::generate_par(2);
+    // let egt = EndGameTable::generate_par(2);
+    let egt = EndGameTable::load(2);
+
+    // egt.check_same_counts();
+
+    // let compact = CompactEndgame::from_endgame_table(&egt);
 
     // let mut bot = Barschbot::named(
     //     Settings {

@@ -33,6 +33,7 @@ pub struct Settings {
     pub move_ordering_mode: MoveOrderingMode,
     pub quiessence_ordering_mode: MoveOrderingMode,
     pub evaluation_mode: EvaluationMode,
+    pub use_endgame_table: bool,
 }
 
 impl Default for Settings {
@@ -52,6 +53,7 @@ impl Default for Settings {
                 use_new_feature: false,
                 attr_weights: hans_eval::STANDARD_EVAL,
             }),
+            use_endgame_table: true
         }
     }
 }

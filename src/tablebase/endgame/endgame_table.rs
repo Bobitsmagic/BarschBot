@@ -1,19 +1,14 @@
 use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-    time::Instant,
+    collections::HashMap, fs, sync::{Arc, Mutex}, time::Instant,
 };
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::{
-    board::bit_board::BitBoard,
-    evaluation::search_functions::CHECKMATE_VALUE,
-    game::{
+    board::{bit_board::BitBoard, file}, evaluation::search_functions::CHECKMATE_VALUE, game::{
         game_result::{DrawType, GameResult},
         game_state::GameState,
-    },
-    tablebase::endgame::{
+    }, tablebase::endgame::{
         board_generation::{gen_endgame, generate_king_boards_sym, generate_king_boards_sym_color},
         endgame_type::{self, EndGameType},
         tiny_state::TinyState,
@@ -22,17 +17,75 @@ use crate::{
 
 type Entry = HashMap<u64, i16>;
 
-const CHECKMATE_VAL: i16 = 1000;
+pub const TABLE_CHECKMATE_VALUE: i16 = 1000;
 
 pub struct EndGameTable {
-    max_count: usize,
-    map: HashMap<EndGameType, Entry>,
+    pub max_piece_count: usize,
+    pub map: HashMap<EndGameType, Entry>,
 }
 
 impl EndGameTable {
+    pub fn check_same_counts(&self) {
+        for egt1 in self.map.keys() {
+            for egt2 in self.map.keys() {
+                if egt1 != egt2 && self.map[egt1].len() == self.map[egt2].len() {
+                    println!("Maybe collision at {} - {}", egt1.to_string(), egt2.to_string());
+                }
+            }
+        }
+    }
+
+    pub fn store_file(&self, path: &str) {
+        for (egt, entry) in &self.map {
+            let mut bytes = Vec::with_capacity(entry.len() * 10);
+
+            for (hash, eval) in entry {
+                bytes.extend(hash.to_be_bytes());
+                bytes.extend(eval.to_be_bytes());
+            }
+
+            let file_name = format!("{path}/{}.bin", egt.to_string());
+            fs::write(file_name, bytes).expect("Could not write to file");
+        }
+    }
+
+    pub fn load(max_piece_count: usize) -> EndGameTable {
+        EndGameTable::load_path("data/end_game_table", max_piece_count)
+    }
+
+    fn load_path(path: &str, max_piece_count: usize) -> EndGameTable {
+        let mut ret = EndGameTable::get_empty();
+        ret.max_piece_count = max_piece_count;
+
+        let all_egt = endgame_type::generate_piece_lists_sym(max_piece_count);
+        
+        for egt in all_egt {
+            let repr = egt.representative();
+
+            let file_name = format!("{path}/{}.bin", repr.to_string());
+            let bytes = fs::read(&file_name).expect(&format!("Could not find file {}", file_name));
+
+            let count = bytes.len() / 10;
+            let mut map = HashMap::with_capacity(count);
+
+            for i in 0..count {
+                let hash = u64::from_be_bytes(bytes[i * 10..i * 10 + 8].try_into().unwrap());
+                let eval = i16::from_be_bytes(bytes[i * 10 + 8..i * 10 + 10].try_into().unwrap());
+
+                map.insert(hash,eval);
+            }
+
+            ret.map.insert(repr.clone(), map);
+
+            println!("Finished loading {} repr: {}", egt.to_string(), repr.to_string());
+        }
+
+        return ret;
+    }
+
     pub fn get_empty() -> EndGameTable {
         EndGameTable {
-            max_count: 0,
+            max_piece_count: 0,
             map: HashMap::new(),
         }
     }
@@ -52,13 +105,13 @@ impl EndGameTable {
             }
         }
 
-        return CHECKMATE_VAL - longest;
+        return TABLE_CHECKMATE_VALUE - longest;
     }
 
     pub fn get_eval(&self, gs: &GameState) -> Option<i32> {
         let pc = gs.board_state.piece_count();
 
-        if pc as usize > self.max_count + 2 {
+        if pc as usize > self.max_piece_count + 2 {
             return None;
         }
 
@@ -67,6 +120,7 @@ impl EndGameTable {
 
         let egt = ts.board.get_endgame_type().representative();
 
+        // println!("Searching {:?}", ts);
         let eval = *self
             .map
             .get(&egt)
@@ -78,13 +132,14 @@ impl EndGameTable {
             ))
             .get(&hash)
             .expect(&format!(
-                "Could not find position in previous type table {:?}",
+                "Could not find hash in table {:?}",
                 ts
             ));
 
+
         if eval != 0 {
             return Some(
-                (CHECKMATE_VALUE - (CHECKMATE_VAL - eval.abs()) as i32) * eval.signum() as i32,
+                (CHECKMATE_VALUE - (TABLE_CHECKMATE_VALUE - eval.abs()) as i32) * eval.signum() as i32,
             );
         } else {
             return Some(0);
@@ -93,7 +148,7 @@ impl EndGameTable {
 
     pub fn generate(max_piece_count: usize) -> EndGameTable {
         let mut table = EndGameTable {
-            max_count: max_piece_count,
+            max_piece_count,
             map: HashMap::new(),
         };
 
@@ -114,13 +169,13 @@ impl EndGameTable {
 
     pub fn generate_par(max_piece_count: usize) -> EndGameTable {
         rayon::ThreadPoolBuilder::new()
-            .num_threads(3)
+            .num_threads(4)
             .build_global()
             .unwrap();
 
 
         let mut table = EndGameTable {
-            max_count: max_piece_count,
+            max_piece_count,
             map: HashMap::new(),
         };
 
@@ -206,7 +261,7 @@ impl EndGameTable {
 
             match gs {
                 GameResult::Win(_, _) => {
-                    terminal.insert(hash, -CHECKMATE_VAL);
+                    terminal.insert(hash, -TABLE_CHECKMATE_VALUE);
                     open_list.swap_remove(i);
                 }
                 GameResult::Draw(_) => {

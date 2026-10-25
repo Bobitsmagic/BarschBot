@@ -181,10 +181,18 @@ impl EndGameType {
             for _ in 0..self.pieces[i] {
                 s += &NO_KING_PIECES[i].to_char().to_string();
             }
+
+            if i == 4 {
+                s += "_"
+            }
         }
 
         if s == "" {
-            s = "Kk".to_owned();
+            s = "K_k".to_owned();
+        }
+
+        if s.ends_with("_") {
+            s.pop().unwrap();
         }
 
         return s;

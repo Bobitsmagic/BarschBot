@@ -23,13 +23,9 @@ use bitintr::Blsic;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 fn count_boards_par(piece_count: usize) {
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(3)
-        .build_global()
-        .unwrap();
-
     let start_time = Instant::now();
     let table = EndGameTable::generate_par(piece_count);
+    table.store_file("data/end_game_table");
     println!("Time: {:?}", start_time.elapsed());
     println!("Count: {}", table.count());
 }

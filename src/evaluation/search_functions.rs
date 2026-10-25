@@ -243,7 +243,7 @@ fn bb_search_with_settings(
         GameResult::Undecided => (),
     }
 
-    if depth > 0 {
+    if depth > 0 && settings.use_endgame_table {
         if let Some(eval) = end_game_table.get_eval(game_state) {
             return eval;
         }
