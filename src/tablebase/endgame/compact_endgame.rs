@@ -4,7 +4,8 @@ use crate::{evaluation::search_functions::CHECKMATE_VALUE, game::game_state::Gam
 
 pub struct CompactEndgame {
     max_piece_count: usize,
-    map: HashMap<u64, i16>
+    pub map: HashMap<u64, i16>
+    
 }
 
 impl CompactEndgame {
@@ -26,7 +27,7 @@ impl CompactEndgame {
         return CompactEndgame { max_piece_count: endgame.max_piece_count, map };
     }
 
-    pub fn get_eval(&self, gs: &GameState) -> Option<i32> {
+    pub fn get(&self, gs: &GameState) -> Option<i32> {
         let pc = gs.board_state.piece_count();
 
         if pc as usize > self.max_piece_count + 2 {

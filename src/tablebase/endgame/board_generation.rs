@@ -158,7 +158,7 @@ pub fn generate_game_states_sym_king_boards_tiny(
     }
 }
 
-pub fn gen_endgame(endgame: &EndGameType, king_list: &Vec<BitBoard>) -> Vec<TinyState> {
+pub fn gen_all_stats(endgame: &EndGameType, king_list: &Vec<BitBoard>) -> Vec<TinyState> {
     if endgame.is_symmetric() {
         assert_eq!(king_list.len(), 246)
     } else {
@@ -193,7 +193,7 @@ pub fn gen_all_endgames(piece_count: usize) -> Vec<Vec<TinyState>> {
             &king_list
         };
 
-        let list = gen_endgame(egt, kl);
+        let list = gen_all_stats(egt, kl);
         print!("{} ", list.len());
         egt.to_string();
 

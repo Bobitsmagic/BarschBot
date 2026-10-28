@@ -7,7 +7,7 @@ use barschbot::{
         barschbot::Barschbot,
         hans_eval::{self, Attributes, EvaluationSettings, STANDARD_EVAL},
         settings::{self, Settings},
-    }, game::{game_result::GameResult, game_state::GameState}, gui::{render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, match_handling::match_handler, moves::chess_move::{self, ChessMove}, tablebase::endgame::{compact_endgame::CompactEndgame, endgame_table::EndGameTable},
+    }, game::{game_result::GameResult, game_state::GameState}, gui::{render_state::RenderState, vis_handle::VisHandle, visualizer::Visualizer}, match_handling::match_handler, moves::chess_move::{self, ChessMove}, tablebase::endgame::{array_endgame::ArrayEndgame, compact_endgame::CompactEndgame, endgame_table::EndGameTable},
 };
 use rand::seq::SliceRandom;
 //Wins Old version: 358, Wins New version: 499, Draws: 143
@@ -15,7 +15,20 @@ use rand::seq::SliceRandom;
 const START_TIME: u128 = 1000 * 1000 * 30;
 
 fn main() {
-    // start_human_against_bot();
+    // let mut l1: Vec<u64> = vec![0,1,2];
+    // let l2: Vec<i16> = vec![3,4,5];
+
+    // let mut bytes: Vec<u8> = vec![0; 10 * l1.len()];
+
+    // l1 = unsafe {
+    //     mem::transmute(vec![0_u8; 10 * 3][..24])  
+    // };
+
+
+
+
+
+    start_human_against_bot();
 
     rayon::ThreadPoolBuilder::new()
         .num_threads(20)
@@ -176,11 +189,20 @@ fn human_against_bot(engine_handle: VisHandle) {
     );
 
     // let egt = EndGameTable::generate_par(2);
+    let mut start_time = Instant::now();
     let egt = EndGameTable::load(2);
+    println!("old load time: {:?}", start_time.elapsed());
 
     // egt.check_same_counts();
 
-    // let compact = CompactEndgame::from_endgame_table(&egt);
+    let compact = CompactEndgame::from_endgame_table(&egt);
+    let array = ArrayEndgame::from_hashmap(compact.map);
+    array.store_file();
+
+    let mut start_time = Instant::now();
+    let array = ArrayEndgame::load_file();
+    println!("new load time: {:?}", start_time.elapsed());
+    
 
     // let mut bot = Barschbot::named(
     //     Settings {

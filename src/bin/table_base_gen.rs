@@ -12,11 +12,8 @@ use barschbot::{
         piece_type::ColoredPieceType,
         player_color::PlayerColor::{self, Black},
         square,
-    },
-    moves::uci_move,
-    tablebase::endgame::{
-        board_generation,
-        endgame_table::{self, EndGameTable},
+    }, moves::uci_move, tablebase::endgame::{
+        board_generation, compact_table::CompactTable, endgame_table::{self, EndGameTable},
     },
 };
 use bitintr::Blsic;
@@ -24,7 +21,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 fn count_boards_par(piece_count: usize) {
     let start_time = Instant::now();
-    let table = EndGameTable::generate_par(piece_count);
+    let table = EndGameTable::generate(piece_count);
     table.store_file("data/end_game_table");
     println!("Time: {:?}", start_time.elapsed());
     println!("Count: {}", table.count());
@@ -47,7 +44,9 @@ fn from_input() {
 
 fn main() {
     //2 piece: 125501770
-    count_boards_par(3);
+    // count_boards_par(3);
+
+    let table = CompactTable::generate(3);
 
     // let mut vec = vec![1,2,3, 4];
     // vec.swap_remove(1);

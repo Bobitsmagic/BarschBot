@@ -9,7 +9,7 @@ use crate::{
         game_result::{DrawType, GameResult},
         game_state::GameState,
     }, tablebase::endgame::{
-        board_generation::{gen_endgame, generate_king_boards_sym, generate_king_boards_sym_color},
+        board_generation::{gen_all_stats, generate_king_boards_sym, generate_king_boards_sym_color},
         endgame_type::{self, EndGameType},
         tiny_state::TinyState,
     },
@@ -243,7 +243,7 @@ impl EndGameTable {
         kl: &Vec<BitBoard>,
         kl_sym: &Vec<BitBoard>,
     ) -> Entry {
-        let mut open_list = gen_endgame(&et, if et.is_symmetric() { &kl_sym } else { &kl });
+        let mut open_list = gen_all_stats(&et, if et.is_symmetric() { &kl_sym } else { &kl });
 
         let mut terminal = HashMap::with_capacity(open_list.len());
         let mut next_repr = HashMap::with_capacity(open_list.len());

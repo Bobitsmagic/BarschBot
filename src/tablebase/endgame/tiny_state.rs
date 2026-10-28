@@ -37,10 +37,11 @@ impl Debug for TinyState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "\n{}\n Active: {:?} EpSquare {}",
+            "\n{}\n Active: {:?} EpSquare {} Hash {:x}",
             self.board.to_string(),
             self.active_color,
-            self.ep_square.square_string()
+            self.ep_square.square_string(),
+            self.get_hash_value()
         )
     }
 }
